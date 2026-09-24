@@ -1,34 +1,19 @@
 local BASE = "https://raw.githubusercontent.com/pablo5850004-cpu/FortniHub/main/"
-local FILES = { "one", "two" }
+local url = BASE .. "one.lua"
 
-local function fetch(url)
-    local ok, body = pcall(function() return game:HttpGet(url, true) end)
-    if ok and type(body) == "string" and #body > 32 then
-        local head = body:sub(1, 200):lower()
-        if not (head:find("<!doctype") or head:find("<html") or head:find("not found")) then
-            return body
-        end
-    end
-    return nil
+local body = game:HttpGet(url, true)
+if type(body) ~= "string" or #body < 100 then
+    warn("[FH] one.lua не скачался")
+    return
 end
-
-for _, name in ipairs(FILES) do
-    local url = BASE .. name .. ".lua"
-    local body = fetch(url)
-    if not body then
-        warn("[FH] не удалось загрузить " .. name .. ".lua: " .. url)
-    else
-        local fn, err = loadstring(body, "@" .. name)
-        if type(fn) ~= "function" then
-            warn("[FH] ошибка компиляции " .. name .. ".lua: " .. tostring(err))
-        else
-            local ok2, err2 = pcall(fn)
-            if not ok2 then
-                warn("[FH] ошибка выполнения " .. name .. ".lua: " .. tostring(err2))
-            else
-                print("[FH] " .. name .. ".lua выполнен")
-            end
-        end
-    end
-    task.wait(0.1)
+local fn = loadstring(body, "@one")
+if type(fn) ~= "function" then
+    warn("[FH] one.lua не скомпилировался")
+    return
+end
+local ok, err = pcall(fn)
+if not ok then
+    warn("[FH] one.lua упал: " .. tostring(err))
+else
+    print("[FH] one.lua выполнен")
 end
