@@ -2130,5 +2130,34 @@ task.spawn(function()
         logInfo("two.lua загружен из контекста one.lua")
     end
 end)
+-- ============================================================
+-- TOUCH-FLING
+-- ============================================================
+logInfo("Загружаю Touch-Fling...")
+do
+    local body = safeHttpGet("https://rawscripts.net/raw/Universal-Script-Touch-fling-script-22447", "TouchFling")
+    local fn = body and safeLoadstring(body, "TouchFling")
+    if fn then
+        local res = safeRun(fn, "TouchFling")
+        if res ~= nil then TouchFlingLoaded = true; logInfo("Touch-Fling загружен") end
+    else
+        logWarn("Touch-Fling недоступен — пропускаю")
+    end
+end
 
+-- ============================================================
+-- INVISIBLE
+-- ============================================================
+logInfo("Загружаю Invisible...")
+do
+    local body = safeHttpGet("https://rawscripts.net/raw/Universal-Script-Invisible-script-20557", "Invisible")
+    local fn = body and safeLoadstring(body, "Invisible")
+    if fn then
+        safeRun(fn, "Invisible")
+        logInfo("Invisible загружен")
+    else
+        logWarn("Invisible недоступен — пропускаю")
+    end
+end
+task.wait(0.5)
 logInfo("Скрипт полностью загружен")
