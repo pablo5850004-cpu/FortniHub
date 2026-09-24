@@ -1,6 +1,5 @@
 local BASE = "https://raw.githubusercontent.com/pablo5850004-cpu/FortniHub/main/"
 local url = BASE .. "one.lua"
-
 local body = game:HttpGet(url, true)
 if type(body) ~= "string" or #body < 100 then
     warn("[FH] one.lua не скачался")
