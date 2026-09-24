@@ -1,61 +1,21 @@
 -- ============================================================
--- loader.lua — точка входа
--- Запускается через loadstring(game:HttpGet("..." ))()
+-- FortniHub :: loader.lua v14.0.0
+-- Загружает части скрипта по очереди.
+-- При разделении на новые файлы — просто добавь их имя в FILES.
 -- ============================================================
 
-local BASE_URL = "https://raw.githubusercontent.com/pablo5850004-cpu/FortniHub/main/"
+local BASE  = "https://raw.githubusercontent.com/Pabo5850004-cpu/FortniHub/main/"
+local FILES = { "one", "two" }  -- three, four, ... добавляй по мере роста
 
--- Глобальная таблица для shared state
-getgenv().FH = getgenv().FH or {}
-local FH = getgenv().FH
-
-FH.VERSION = "1.0.0"
-FH.BASE_URL = BASE_URL
-FH.Modules = {}
-FH.Connections = {}
-
--- ============================================================
--- Загрузчик модулей
--- ============================================================
-local cache = {}
-
-local function LoadModule(path)
-    if cache[path] then return cache[path] end
-
-    local url = BASE_URL .. path .. ".lua"
-    local ok, result = pcall(function()
-        return loadstring(game:HttpGet(url))()
+for _, name in ipairs(FILES) do
+    local url = BASE .. name .. ".lua"
+    local ok, err = pcall(function()
+        loadstring(game:HttpGet(url))()
     end)
-
     if not ok then
-        warn("[FH] Ошибка загрузки " .. path .. ": " .. tostring(result))
-        return nil
+        warn("[FortniHub] Ошибка загрузки " .. name .. ".lua: " .. tostring(err))
+    else
+        print("[FortniHub] " .. name .. ".lua загружен")
     end
-
-    cache[path] = result
-    print("[FH] Загружено: " .. path)
-    return result
+    task.wait(0.05)
 end
-
--- ============================================================
--- Подгрузка библиотек
--- ============================================================
-LoadModule("lib/utils")
-LoadModule("lib/ui")
-
--- ============================================================
--- Подгрузка модулей
--- ============================================================
-LoadModule("modules/combat")
-LoadModule("modules/movement")
-LoadModule("modules/visual")
-LoadModule("modules/autofarm")
-
--- ============================================================
--- Финализация
--- ============================================================
-if FH.Notify then
-    FH.Notify("FortniHub", "Загружено v" .. FH.VERSION, 4)
-end
-
-print("[FH] Loader завершён. Версия: " .. FH.VERSION)
