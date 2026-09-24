@@ -1,5 +1,5 @@
 local BASE  = "https://raw.githubusercontent.com/pablo5850004-cpu/FortniHub/main/"
-local FILES = { "one", "two" }
+local FILES = { "one" }
 
 for _, name in ipairs(FILES) do
     local url = BASE .. name .. ".lua"
