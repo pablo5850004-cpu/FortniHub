@@ -1379,57 +1379,67 @@ local function BuildUI()
     tV:AddSlider("MovGraphHeight",{Title=L("mov_graph_height"),Min=40,Max=120,Default=72,Rounding=0}):OnChanged(function(v) A.movGraphH=v end)
     tV:AddSlider("MovGraphY",{Title=L("mov_graph_y"),Min=-200,Max=400,Default=180,Rounding=0}):OnChanged(function(v) A.movGraphY=v end)
 
-    -- NEW VISUALS
-    tV:AddToggle("OffArrows",{Title=L("off_arrows"),Default=false}):OnChanged(function(v) A.arrowsOn=v end)
-    tV:AddSlider("OffArrowsSize",{Title=L("off_arrows_size"),Min=16,Max=96,Default=42,Rounding=0}):OnChanged(function(v) A.arrowsSize=v end)
-    tV:AddSlider("OffArrowsDist",{Title=L("off_arrows_dist"),Min=40,Max=520,Default=260,Rounding=0}):OnChanged(function(v) A.arrowsDist=v end)
-    tV:AddColorPicker("ArrowsMur",{Title="Маньяк",Default=Color3.fromRGB(255,60,60)}):OnChanged(function(c) A.arrowsColorMur=c end)
-    tV:AddColorPicker("ArrowsShf",{Title="Шериф",Default=Color3.fromRGB(60,140,255)}):OnChanged(function(c) A.arrowsColorShf=c end)
-    tV:AddColorPicker("ArrowsInno",{Title="Невиновный",Default=Color3.fromRGB(255,255,255)}):OnChanged(function(c) A.arrowsColorInno=c end)
+       -- ============ NEW "EFFECTS" TAB ============
+    local tE = Window:AddTab({ Title = "Effects", Icon = "sparkles" })
 
-    tV:AddToggle("MatChams",{Title=L("mat_chams"),Default=false}):OnChanged(function(v) A.matChamsOn=v; if not v then MatChamsClear() end end)
-    tV:AddDropdown("MatChamsType",{Title=L("mat_chams_type"),Values={"ForceField","Flat","Chromatic"},Default="ForceField"}):OnChanged(function(v) A.matChamsType=v end)
+    -- Off-screen arrows
+    tE:AddToggle("OffArrows",{Title=L("off_arrows"),Default=false}):OnChanged(function(v) A.arrowsOn=v end)
+    tE:AddSlider("OffArrowsSize",{Title=L("off_arrows_size"),Min=16,Max=96,Default=42,Rounding=0}):OnChanged(function(v) A.arrowsSize=v end)
+    tE:AddSlider("OffArrowsDist",{Title=L("off_arrows_dist"),Min=40,Max=520,Default=260,Rounding=0}):OnChanged(function(v) A.arrowsDist=v end)
+    tE:AddColorPicker("ArrowsMur",{Title="Маньяк",Default=Color3.fromRGB(255,60,60)}):OnChanged(function(c) A.arrowsColorMur=c end)
+    tE:AddColorPicker("ArrowsShf",{Title="Шериф",Default=Color3.fromRGB(60,140,255)}):OnChanged(function(c) A.arrowsColorShf=c end)
+    tE:AddColorPicker("ArrowsInno",{Title="Невиновный",Default=Color3.fromRGB(255,255,255)}):OnChanged(function(c) A.arrowsColorInno=c end)
 
-    tV:AddToggle("Crosshair",{Title=L("crosshair"),Default=false}):OnChanged(function(v)
+    -- Material Chams
+    tE:AddToggle("MatChams",{Title=L("mat_chams"),Default=false}):OnChanged(function(v) A.matChamsOn=v; if not v then MatChamsClear() end end)
+    tE:AddDropdown("MatChamsType",{Title=L("mat_chams_type"),Values={"ForceField","Flat","Chromatic"},Default="ForceField"}):OnChanged(function(v) A.matChamsType=v end)
+
+    -- Custom Crosshair
+    tE:AddToggle("Crosshair",{Title=L("crosshair"),Default=false}):OnChanged(function(v)
         A.crosshairOn=v; if v then CrosshairBuild() else CrosshairClear() end
     end)
-    tV:AddSlider("CrosshairGap",{Title=L("crosshair_gap"),Min=0,Max=20,Default=4,Rounding=1}):OnChanged(function(v) A.crosshairGap=v end)
-    tV:AddSlider("CrosshairLen",{Title=L("crosshair_len"),Min=2,Max=30,Default=8,Rounding=1}):OnChanged(function(v) A.crosshairLen=v end)
-    tV:AddSlider("CrosshairThick",{Title=L("crosshair_thick"),Min=1,Max=5,Default=2,Rounding=1}):OnChanged(function(v) A.crosshairThick=v end)
-    tV:AddSlider("CrosshairRot",{Title=L("crosshair_rotate"),Min=0,Max=10,Default=0,Rounding=1}):OnChanged(function(v) A.crosshairRot=v end)
-    tV:AddColorPicker("CrosshairColor",{Title=L("crosshair_color"),Default=Color3.fromRGB(255,255,255)}):OnChanged(function(c) A.crosshairColor=c end)
-    tV:AddColorPicker("CrosshairOutline",{Title=L("crosshair_outline"),Default=Color3.fromRGB(0,0,0)}):OnChanged(function(c) A.crosshairOutline=c end)
+    tE:AddSlider("CrosshairGap",{Title=L("crosshair_gap"),Min=0,Max=20,Default=4,Rounding=1}):OnChanged(function(v) A.crosshairGap=v end)
+    tE:AddSlider("CrosshairLen",{Title=L("crosshair_len"),Min=2,Max=30,Default=8,Rounding=1}):OnChanged(function(v) A.crosshairLen=v end)
+    tE:AddSlider("CrosshairThick",{Title=L("crosshair_thick"),Min=1,Max=5,Default=2,Rounding=1}):OnChanged(function(v) A.crosshairThick=v end)
+    tE:AddSlider("CrosshairRot",{Title=L("crosshair_rotate"),Min=0,Max=10,Default=0,Rounding=1}):OnChanged(function(v) A.crosshairRot=v end)
+    tE:AddColorPicker("CrosshairColor",{Title=L("crosshair_color"),Default=Color3.fromRGB(255,255,255)}):OnChanged(function(c) A.crosshairColor=c end)
+    tE:AddColorPicker("CrosshairOutline",{Title=L("crosshair_outline"),Default=Color3.fromRGB(0,0,0)}):OnChanged(function(c) A.crosshairOutline=c end)
 
-    tV:AddToggle("Shader",{Title=L("shader"),Default=false}):OnChanged(function(v)
+    -- Shaders
+    tE:AddToggle("Shader",{Title=L("shader"),Default=false}):OnChanged(function(v)
         A.shaderOn=v; if not v then RestoreShader() end
     end)
-    tV:AddDropdown("ShaderType",{Title=L("shader_preset"),Values={"morning","midday","evening","night"},Default="morning"}):OnChanged(function(v) A.shaderType=v end)
+    tE:AddDropdown("ShaderType",{Title=L("shader_preset"),Values={"morning","midday","evening","night"},Default="morning"}):OnChanged(function(v) A.shaderType=v end)
 
-    tV:AddToggle("TimeChanger",{Title=L("time_changer"),Default=false}):OnChanged(function(v)
+    -- Time
+    tE:AddToggle("TimeChanger",{Title=L("time_changer"),Default=false}):OnChanged(function(v)
         A.timeOn=v; if not v then Lighting.ClockTime=origLighting.ClockTime end
     end)
-    tV:AddSlider("TimeValue",{Title=L("time_value"),Min=0,Max=24,Default=12,Rounding=1}):OnChanged(function(v) A.timeValue=v end)
+    tE:AddSlider("TimeValue",{Title=L("time_value"),Min=0,Max=24,Default=12,Rounding=1}):OnChanged(function(v) A.timeValue=v end)
 
-    tV:AddToggle("CustomFog",{Title=L("custom_fog"),Default=false}):OnChanged(function(v)
+    -- Fog
+    tE:AddToggle("CustomFog",{Title=L("custom_fog"),Default=false}):OnChanged(function(v)
         A.fogOn=v
         if not v then
             Lighting.FogColor=origLighting.FogColor; Lighting.FogStart=origLighting.FogStart; Lighting.FogEnd=origLighting.FogEnd
         end
     end)
-    tV:AddColorPicker("FogColor",{Title=L("fog_color"),Default=Color3.fromRGB(192,192,192)}):OnChanged(function(c) A.fogColor=c end)
-    tV:AddSlider("FogStart",{Title=L("fog_start"),Min=0,Max=1000,Default=0,Rounding=1}):OnChanged(function(v) A.fogStart=v end)
-    tV:AddSlider("FogEnd",{Title=L("fog_end"),Min=0,Max=1000,Default=1000,Rounding=1}):OnChanged(function(v) A.fogEnd=v end)
+    tE:AddColorPicker("FogColor",{Title=L("fog_color"),Default=Color3.fromRGB(192,192,192)}):OnChanged(function(c) A.fogColor=c end)
+    tE:AddSlider("FogStart",{Title=L("fog_start"),Min=0,Max=1000,Default=0,Rounding=1}):OnChanged(function(v) A.fogStart=v end)
+    tE:AddSlider("FogEnd",{Title=L("fog_end"),Min=0,Max=1000,Default=1000,Rounding=1}):OnChanged(function(v) A.fogEnd=v end)
 
-    tV:AddToggle("WorldFX",{Title=L("world_fx"),Default=false}):OnChanged(function(v) A.fxOn=v end)
-    tV:AddDropdown("WorldFXType",{Title=L("world_fx_type"),Values={"Snow","Sakura"},Default="Snow"}):OnChanged(function(v)
+    -- World FX
+    tE:AddToggle("WorldFX",{Title=L("world_fx"),Default=false}):OnChanged(function(v) A.fxOn=v end)
+    tE:AddDropdown("WorldFXType",{Title=L("world_fx_type"),Values={"Snow","Sakura"},Default="Snow"}):OnChanged(function(v)
         A.fxType=v; if A.fxEmitter then FXStyle() end
     end)
-    tV:AddColorPicker("WorldFXColor",{Title=L("world_fx_color"),Default=Color3.fromRGB(150,200,255)}):OnChanged(function(c) A.fxColor=c; if A.fxEmitter then A.fxEmitter.Color=ColorSequence.new(c) end end)
-    tV:AddSlider("WorldFXRate",{Title=L("world_fx_rate"),Min=20,Max=900,Default=250,Rounding=1}):OnChanged(function(v) A.fxRate=v; if A.fxEmitter then FXStyle() end end)
+    tE:AddColorPicker("WorldFXColor",{Title=L("world_fx_color"),Default=Color3.fromRGB(150,200,255)}):OnChanged(function(c) A.fxColor=c; if A.fxEmitter then A.fxEmitter.Color=ColorSequence.new(c) end end)
+    tE:AddSlider("WorldFXRate",{Title=L("world_fx_rate"),Min=20,Max=900,Default=250,Rounding=1}):OnChanged(function(v) A.fxRate=v; if A.fxEmitter then FXStyle() end end)
 
-    tV:AddToggle("WorldAura",{Title=L("world_aura"),Default=false}):OnChanged(function(v) A.auraOn=v; if not v then AuraClear() end end)
-    tV:AddDropdown("WorldAuraType",{Title=L("world_aura_type"),Values=auraOrder,Default="angel"}):OnChanged(function(v) A.auraType=v; if A.auraOn then AuraApply() end end)
-    tV:AddColorPicker("WorldAuraColor",{Title=L("world_aura_color"),Default=Color3.fromRGB(133,220,255)}):OnChanged(function(c)
+    -- World Aura
+    tE:AddToggle("WorldAura",{Title=L("world_aura"),Default=false}):OnChanged(function(v) A.auraOn=v; if not v then AuraClear() end end)
+    tE:AddDropdown("WorldAuraType",{Title=L("world_aura_type"),Values=auraOrder,Default="angel"}):OnChanged(function(v) A.auraType=v; if A.auraOn then AuraApply() end end)
+    tE:AddColorPicker("WorldAuraColor",{Title=L("world_aura_color"),Default=Color3.fromRGB(133,220,255)}):OnChanged(function(c)
         A.auraColor=c
         if A.auraOn then
             for _,m in pairs(A.auraCache) do
@@ -1443,10 +1453,11 @@ local function BuildUI()
         end
     end)
 
-    tV:AddToggle("LandCircle",{Title=L("land_circle"),Default=false}):OnChanged(function(v) A.landOn=v end)
-    tV:AddColorPicker("LandColor",{Title=L("land_circle_color"),Default=Color3.fromRGB(255,255,255)}):OnChanged(function(c) A.landColor=c end)
-    tV:AddSlider("LandTransp",{Title="Прозрачность",Min=0,Max=1,Default=1,Rounding=2}):OnChanged(function(v) A.landTransp=v end)
-    tV:AddSlider("LandDur",{Title=L("land_circle_dur"),Min=0.1,Max=3,Default=0.82,Rounding=2}):OnChanged(function(v) A.landDur=v end)
+    -- Landing Circle
+    tE:AddToggle("LandCircle",{Title=L("land_circle"),Default=false}):OnChanged(function(v) A.landOn=v end)
+    tE:AddColorPicker("LandColor",{Title=L("land_circle_color"),Default=Color3.fromRGB(255,255,255)}):OnChanged(function(c) A.landColor=c end)
+    tE:AddSlider("LandTransp",{Title="Прозрачность",Min=0,Max=1,Default=1,Rounding=2}):OnChanged(function(v) A.landTransp=v end)
+    tE:AddSlider("LandDur",{Title=L("land_circle_dur"),Min=0.1,Max=3,Default=0.82,Rounding=2}):OnChanged(function(v) A.landDur=v end)
 
     -- ANTI
     tU:AddToggle("AntiFling",{Title=L("anti_fling"),Default=false}):OnChanged(function(v) A.antiFling=v end)
