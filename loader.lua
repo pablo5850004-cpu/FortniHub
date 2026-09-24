@@ -1,11 +1,5 @@
--- ============================================================
--- FortniHub :: loader.lua v14.0.0
--- Загружает части скрипта по очереди.
--- При разделении на новые файлы — просто добавь их имя в FILES.
--- ============================================================
-
-local BASE  = "https://raw.githubusercontent.com/Pabo5850004-cpu/FortniHub/main/"
-local FILES = { "one", "two" }  -- three, four, ... добавляй по мере роста
+local BASE  = "https://raw.githubusercontent.com/pablo5850004-cpu/FortniHub/main/"
+local FILES = { "one", "two" }
 
 for _, name in ipairs(FILES) do
     local url = BASE .. name .. ".lua"
