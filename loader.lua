@@ -3,7 +3,7 @@
 -- Запускается через loadstring(game:HttpGet("..." ))()
 -- ============================================================
 
-local BASE_URL = "local BASE_URL = "https://raw.githubusercontent.com/pablo5850004-cpu/FortniHub/main/""
+local BASE_URL = "https://raw.githubusercontent.com/pablo5850004-cpu/FortniHub/main/"
 
 -- Глобальная таблица для shared state
 getgenv().FH = getgenv().FH or {}
