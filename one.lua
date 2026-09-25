@@ -5877,15 +5877,11 @@ do
         end
     end))
 
-    -- UI обновление
-    task.spawn(function()
-        task.wait(5)
-        if not Tabs.Settings then return end
-        local sec
-        for _, s in ipairs(Tabs.Settings:GetDescendants and {} or {}) do end
-        -- создаём отдельную секцию для надёжности
-        sec = Tabs.Settings:AddSection({Name = "Клавиша меню"})
-
+   -- UI обновление
+task.spawn(function()
+    task.wait(5)
+    if not Tabs.Settings then return end
+    local sec = Tabs.Settings:AddSection({Name = "Клавиша меню"})
         sec:AddKeybind("MenuKeyBindFinal", {
             Title = "Клавиша открытия меню (P по дефолту)",
             Default = "P",
