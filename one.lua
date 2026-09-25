@@ -434,7 +434,7 @@ do
         TabWidth = 130,
         Size = UDim2.fromOffset(500, 380),
         Theme = "Darker",
-        MinimizeKey = Enum.KeyCode.RightControl,
+        MinimizeKey = nil,
     }
     Window = Fluent:CreateWindow(winOpts)
     Options = Fluent.Options
@@ -5187,13 +5187,6 @@ end
 -- ============================================================
 pcall(function() Window:SelectTab(1) end)
 
-AddConn("MenuKey", UserInputService.InputBegan:Connect(function(input, gpe)
-    if gpe then return end
-    if input.KeyCode == Enum.KeyCode.P then
-        pcall(function() Window:Minimize() end)
-    end
-end))
-
 print("[FortniHub][INFO] ================================")
 print("[FortniHub][INFO] PART 3/3 УСПЕШНО ЗАГРУЖЕН")
 print("[FortniHub][INFO] FortniHub v16.1 REWRITE")
@@ -5283,146 +5276,293 @@ do
 end
 
 -- ============================================================
--- 3. AUTOFARM v3 (universal) — без string*number крашей
+-- AUTOFARM v4 (по мотивам друга)
 -- ============================================================
 do
-    if Connections["FarmV3"] then pcall(function() Connections["FarmV3"]:Disconnect() end) end
+    if Connections["FarmV4"] then pcall(function() Connections["FarmV4"]:Disconnect() end) end
 
-    local function findCoins()
-        local out, seen = {}, {}
-        local ok, tagged = pcall(function() return CollectionService:GetTagged("CoinVisual") end)
-        if ok and type(tagged) == "table" then
-            for _, v in ipairs(tagged) do
-                if v and v.Parent and v:IsA("BasePart") and not seen[v] then
-                    seen[v] = true
-                    if not v:GetAttribute("Collected") and not v:GetAttribute("Delete") then
-                        out[#out + 1] = v
-                    end
-                end
+    local rs       = game:GetService("ReplicatedStorage")
+    local cs       = game:GetService("CollectionService")
+    local run      = game:GetService("RunService")
+    local players  = game:GetService("Players")
+    local lp       = players.LocalPlayer
+
+    local FARM_SPEED = 23
+    local farm_on, avoid_on, autoreset_on = false, false, false
+    local farm_mode   = "Basic"
+    local nc_cache     = {}
+    local last_touch   = 0
+    local mhrp_cache, mhrp_t = nil, 0
+    local round_mod    = nil
+    local saw_coins    = false
+    local done_flag    = false
+    local collected    = {}
+
+    getgenv().AUTOFARM_HOLD = false
+
+    local function hrp()
+        local c = lp.Character
+        return c and c:FindFirstChild("HumanoidRootPart")
+    end
+
+    local function round_data()
+        if not round_mod then
+            local ok, m = pcall(function()
+                return require(rs:WaitForChild("Modules"):WaitForChild("CurrentRoundClient"))
+            end)
+            if ok and type(m) == "table" then round_mod = m end
+        end
+        return round_mod and round_mod.PlayerData
+    end
+
+    local function can_farm()
+        local c = lp.Character
+        local h = c and c:FindFirstChildOfClass("Humanoid")
+        if not h or h.Health <= 0 then return false end
+        local d = round_data()
+        if type(d) == "table" then
+            local me = d[lp.Name]
+            if not me or not me.Role or me.Dead then return false end
+        end
+        return true
+    end
+
+    local function bags_full()
+        local pg = lp:FindFirstChild("PlayerGui")
+        local main = pg and pg:FindFirstChild("MainGUI")
+        local gg = main and main:FindFirstChild("Game")
+        local b = gg and gg:FindFirstChild("CoinBags")
+        local cont = b and b:FindFirstChild("Container")
+        if not cont then return false end
+        local any = false
+        for _, v in ipairs(cont:GetChildren()) do
+            if v:IsA("Frame") and v.Visible then
+                any = true
+                local full = v:FindFirstChild("Full")
+                if not (full and full.Visible) then return false end
             end
         end
-        for _, v in ipairs(Workspace:GetDescendants()) do
-            if v:IsA("BasePart") and (v.Name == "Coin_Server" or v.Name == "Coin" or v.Name:lower():find("coin")) and not seen[v] then
-                seen[v] = true
-                if not v:GetAttribute("Collected") and not v:GetAttribute("Delete") then
-                    out[#out + 1] = v
-                end
-            end
+        return any
+    end
+
+    local function reset_progress()
+        collected = {}
+        done_flag = false
+        saw_coins = false
+        getgenv().AUTOFARM_HOLD = false
+    end
+
+    task.spawn(function()
+        local ok, r = pcall(function()
+            return rs:WaitForChild("Remotes"):WaitForChild("Gameplay"):WaitForChild("CoinsStarted", 15)
+        end)
+        if ok and r then r.OnClientEvent:Connect(reset_progress) end
+    end)
+    lp.CharacterAdded:Connect(reset_progress)
+
+    local function coin_ok(v)
+        return v and v.Parent and v:IsA("BasePart")
+            and not v:GetAttribute("Collected") and not v:GetAttribute("Delete")
+    end
+
+    local function coin_list()
+        local out = {}
+        for _, v in ipairs(cs:GetTagged("CoinVisual")) do
+            if coin_ok(v) then out[#out + 1] = v end
         end
         return out
     end
 
-    local function fireTouch(hrp, coin)
+    local function nearest(pos, list)
+        local best, bd = nil, math.huge
+        for _, v in ipairs(list) do
+            local d = (v.Position - pos).Magnitude
+            if d < bd then bd = d; best = v end
+        end
+        return best
+    end
+
+    local function set_noclip(on)
+        local c = lp.Character
+        local h = c and c:FindFirstChildOfClass("Humanoid")
+        if on then
+            if not c then return end
+            if h then pcall(function() h.PlatformStand = true end) end
+            for _, p in ipairs(c:GetDescendants()) do
+                if p:IsA("BasePart") and p.CanCollide then
+                    if nc_cache[p] == nil then nc_cache[p] = p.CanCollide end
+                    p.CanCollide = false
+                end
+            end
+        else
+            if h then pcall(function() h.PlatformStand = false end) end
+            for p, v in pairs(nc_cache) do
+                if p and p.Parent then pcall(function() p.CanCollide = v end) end
+            end
+            nc_cache = {}
+        end
+    end
+
+    local function murderer_hrp()
+        local now = os.clock()
+        if now - mhrp_t < 0.25 then return mhrp_cache end
+        mhrp_t = now
+        mhrp_cache = nil
+        local d = round_data()
+        if type(d) ~= "table" then return nil end
+        for name, info in pairs(d) do
+            if type(info) == "table" and info.Role == "Murderer"
+                and not info.Dead and name ~= lp.Name then
+                local pl = players:FindFirstChild(name)
+                local ch = pl and pl.Character
+                local h = ch and ch:FindFirstChild("HumanoidRootPart")
+                local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+                if h and (not hum or hum.Health > 0) then
+                    mhrp_cache = h
+                end
+                break
+            end
+        end
+        return mhrp_cache
+    end
+
+    local function fire_touch(coin)
         if type(firetouchinterest) ~= "function" then return end
+        if not coin or not coin.Parent then return end
+        local now = os.clock()
+        if now - last_touch < 0.05 then return end
+        last_touch = now
+        local my = hrp()
+        if not my then return end
         local targets = { coin }
         for _, v in ipairs(coin:GetChildren()) do
             if v:IsA("BasePart") then targets[#targets + 1] = v end
         end
         for _, p in ipairs(targets) do
-            pcall(firetouchinterest, hrp, p, 0)
-            pcall(firetouchinterest, hrp, p, 1)
+            pcall(firetouchinterest, my, p, 0)
+            pcall(firetouchinterest, my, p, 1)
         end
     end
 
-    local farmOn, farmSpeed, farmAvoid = false, 23, false
-    local lastFarmDebug = 0
-
-    task.spawn(function()
-        task.wait(4)
-        if not Tabs.Farm then return end
-        local sec = Tabs.Farm:AddSection({Name = "Автофарм v3 (универсальный)"})
-
-        sec:AddToggle("FarmOnV3", {
-            Title = "Включить автофарм",
-            Default = false,
-        }):OnChanged(function(v)
-            farmOn = v
-            Notify("FortniHub", "Автофарм " .. (v and "ВКЛ" or "ВЫКЛ"), 2)
+    local function move_to(my, dest, dt)
+        local dir = dest - my.Position
+        local dist = dir.Magnitude
+        if dist < 0.1 then return end
+        local step = math.min(FARM_SPEED * dt, dist)
+        local cf = CFrame.new(my.Position + dir.Unit * step)
+        pcall(function()
+            my.CFrame = cf
+            my.AssemblyLinearVelocity = Vector3.zero
+            my.AssemblyAngularVelocity = Vector3.zero
         end)
+    end
 
-        sec:AddSlider("FarmSpeedV3", {
-            Title = "Скорость фарма",
-            Min = 5, Max = 60, Default = 23, Rounding = 1,
-        }):OnChanged(function(v) farmSpeed = tonumber(v) or 23 end)
-
-        sec:AddToggle("FarmAvoidV3", {
-            Title = "Избегать маньяка",
-            Default = false,
-        }):OnChanged(function(v) farmAvoid = v end)
-
-        sec:AddButton({
-            Title = "Показать найденные монеты в консоли",
-            Callback = function()
-                local coins = findCoins()
-                print("[FortniHub][FARM] Найдено монет: " .. #coins)
-                for i, c in ipairs(coins) do
-                    if i > 20 then break end
-                    print(string.format("  [%d] %s", i, c.Name))
-                end
-            end,
-        })
-    end)
-
-    AddConn("FarmV3", RunService.Heartbeat:Connect(function(_, dt)
-        if not farmOn then return end
-        local char = LocalPlayer.Character
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        if not hum or hum.Health <= 0 then return end
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if not hrp then return end
-
-        if farmAvoid then
-            local m = isMurderer()
-            if m and m.Character then
-                local mh = m.Character:FindFirstChild("HumanoidRootPart")
-                if mh and (mh.Position - hrp.Position).Magnitude < 40 then
-                    local away = (hrp.Position - mh.Position)
-                    if away.Magnitude < 0.1 then away = Vector3.new(1, 0, 0) end
-                    hrp.CFrame = CFrame.new(hrp.Position + away.Unit * 20)
-                    return
-                end
-            end
+    AddConn("FarmV4", run.Heartbeat:Connect(function(_, dt)
+        if not farm_on then return end
+        if not can_farm() then
+            set_noclip(false)
+            return
         end
+        local my = hrp()
+        if not my then return end
 
-        local coins = findCoins()
-        local sp = tonumber(farmSpeed) or 23
+        local list = coin_list()
 
-        if tick() - lastFarmDebug > 5 then
-            lastFarmDebug = tick()
-            print("[FortniHub][FARM] Монет на карте: " .. #coins)
-        end
-
-        if #coins == 0 then
-            local randDir = Vector3.new(srand(-100, 100) / 100, 0, srand(-100, 100) / 100)
-            if randDir.Magnitude > 0.1 then
-                hrp.CFrame = CFrame.new(hrp.Position + randDir.Unit * sp * dt * 0.5)
+        if saw_coins and bags_full() then
+            set_noclip(false)
+            if not done_flag then
+                done_flag = true
+                getgenv().AUTOFARM_HOLD = false
+                if autoreset_on then
+                    local h = lp.Character and lp.Character:FindFirstChildOfClass("Humanoid")
+                    if h then pcall(function() h.Health = 0 end) end
+                end
             end
             return
         end
 
-        local best, bd = nil, math.huge
-        for _, c in ipairs(coins) do
-            local d = (c.Position - hrp.Position).Magnitude
-            if d < bd then bd = d; best = c end
+        if #list == 0 then
+            set_noclip(false)
+            if saw_coins and not done_flag then
+                done_flag = true
+                getgenv().AUTOFARM_HOLD = false
+                if autoreset_on then
+                    local h = lp.Character and lp.Character:FindFirstChildOfClass("Humanoid")
+                    if h then pcall(function() h.Health = 0 end) end
+                end
+            end
+            return
         end
-        if not best then return end
 
-        local prompt = best:FindFirstChildOfClass("ProximityPrompt")
-        if prompt then pcall(function() fireproximityprompt(prompt) end) end
+        saw_coins = true
+        if done_flag then done_flag = false end
 
-        local dir = best.Position - hrp.Position
-        local dist = dir.Magnitude
-        if dist > 0.5 then
-            local step = math.min(sp * dt, dist)
-            hrp.CFrame = CFrame.new(hrp.Position + dir.Unit * step)
-            hrp.AssemblyLinearVelocity = Vector3.zero
+        local mh = avoid_on and murderer_hrp() or nil
+        local mp = mh and mh.Position or nil
+
+        -- если мурдер близко — отбегаем
+        if mp and (mp - my.Position).Magnitude < 40 then
+            local away = my.Position - mp
+            if away.Magnitude < 0.1 then away = Vector3.new(1, 0, 0) end
+            away = Vector3.new(away.X, 0, away.Z).Unit
+            set_noclip(true)
+            move_to(my, my.Position + away * 25, dt)
+            return
         end
-        if dist < 6 then fireTouch(hrp, best) end
+
+        -- безопасный выбор цели: если avoid_on, монеты рядом с мурдером игнорятся
+        local best
+        if avoid_on and mp then
+            best = nil
+            local bd = math.huge
+            for _, v in ipairs(list) do
+                local mdist = (Vector3.new(v.Position.X - mp.X, 0, v.Position.Z - mp.Z)).Magnitude
+                if mdist >= 25 then
+                    local d = (v.Position - my.Position).Magnitude
+                    if d < bd then bd = d; best = v end
+                end
+            end
+        else
+            best = nearest(my.Position, list)
+        end
+
+        if not best then
+            set_noclip(false)
+            return
+        end
+
+        set_noclip(true)
+        local dest = best.Position
+        local dist = (dest - my.Position).Magnitude
+        if dist <= 6 then fire_touch(best) end
+        move_to(my, dest, dt)
     end))
 
-    print("[FortniHub][INFO] AutoFarm v3 готов")
-end
+    task.spawn(function()
+        task.wait(3)
+        if not Tabs.Farm then return end
+        local sec = Tabs.Farm:AddSection({Name = "Автофарм v4"})
 
+        sec:AddToggle("FarmV4On", {Title = "Включить автофарм", Default = false})
+            :OnChanged(function(v)
+                farm_on = v
+                if not v then set_noclip(false) end
+                getgenv().AUTOFARM_HOLD = false
+                Notify("FortniHub", "Автофарм " .. (v and "ВКЛ" or "ВЫКЛ"), 2)
+            end)
+
+        sec:AddSlider("FarmV4Speed", {Title = "Скорость", Min = 5, Max = 60, Default = 23, Rounding = 1})
+            :OnChanged(function(v) FARM_SPEED = tonumber(v) or 23 end)
+
+        sec:AddToggle("FarmV4Avoid", {Title = "Избегать маньяка", Default = false})
+            :OnChanged(function(v) avoid_on = v end)
+
+        sec:AddToggle("FarmV4Reset", {Title = "Авто-ресет при полных мешках", Default = false})
+            :OnChanged(function(v) autoreset_on = v end)
+    end)
+
+    print("[FortniHub][INFO] AutoFarm v4 готов")
+end
 -- ============================================================
 -- ФИНАЛЬНЫЙ ЛОГ
 -- ============================================================
@@ -5461,46 +5601,6 @@ do
             -- (см. ниже в разделе Sounds Fix)
         end
     end)
-end
-
--- ============================================================
--- 2. КЛАВИША ОТКРЫТИЯ МЕНЮ
--- ============================================================
-do
-    -- Текущая клавиша меню
-    _G.FH_MENU_KEY = Enum.KeyCode.P
-
-    -- Убираем старый обработчик
-    if Connections["MenuKey"] then
-        pcall(function() Connections["MenuKey"]:Disconnect() end)
-    end
-
-    AddConn("MenuKeyV2", UserInputService.InputBegan:Connect(function(input, gpe)
-        if gpe then return end
-        if input.KeyCode == _G.FH_MENU_KEY then
-            pcall(function() Window:Minimize() end)
-        end
-    end))
-
-    -- UI в Settings
-    task.spawn(function()
-        task.wait(5)
-        if not Tabs.Settings then return end
-        local sec = Tabs.Settings:AddSection({Name = "Интерфейс"})
-
-        sec:AddKeybind("MenuKeyBind", {
-            Title = "Клавиша открытия меню",
-            Default = "P",
-        }):OnChanged(function(k)
-            local ok, kc = pcall(function() return Enum.KeyCode[k] end)
-            if ok and kc then
-                _G.FH_MENU_KEY = kc
-                Notify("FortniHub", "Меню: " .. tostring(kc), 2)
-            end
-        end)
-    end)
-
-    print("[FortniHub][INFO] Клавиша меню готова")
 end
 
 -- ============================================================
@@ -5856,10 +5956,9 @@ end)
 -- ============================================================
 
 -- ============================================================
--- 1. КЛАВИША МЕНЮ — рабочий фикс
+-- КЛАВИША МЕНЮ (единый фикс)
 -- ============================================================
 do
-    -- Убиваем все старые обработчики
     for keyName, conn in pairs(Connections) do
         if keyName:find("MenuKey") then
             pcall(function() conn:Disconnect() end)
@@ -5867,34 +5966,40 @@ do
         end
     end
 
-    _G.FH_MENU_KEY = _G.FH_MENU_KEY or Enum.KeyCode.P
+    _G.FH_MENU_KEY = Enum.KeyCode.P
 
     AddConn("MenuKey_Final", UserInputService.InputBegan:Connect(function(input, gpe)
         if gpe then return end
         if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
         if input.KeyCode == _G.FH_MENU_KEY then
-            pcall(function() Window:Minimize() end)
+            pcall(function()
+                if Window.Minimize then
+                    Window:Minimize()
+                elseif Window.Toggle then
+                    Window:Toggle()
+                end
+            end)
         end
     end))
+    -- UI в Settings — ОДИН раз
+    task.spawn(function()
+        task.wait(4)
+        if not Tabs.Settings then return end
 
-   -- UI обновление
-task.spawn(function()
-    task.wait(5)
-    if not Tabs.Settings then return end
-    local sec = Tabs.Settings:AddSection({Name = "Клавиша меню"})
-        sec:AddKeybind("MenuKeyBindFinal", {
-            Title = "Клавиша открытия меню (P по дефолту)",
+        local sec = Tabs.Settings:AddSection({Name = "Клавиша меню"})
+
+                sec:AddKeybind("MenuKeyBindFinal", {
+            Title = "Клавиша открытия меню",
             Default = "P",
         }):OnChanged(function(k)
             local ok, kc = pcall(function() return Enum.KeyCode[k] end)
             if ok and kc then
                 _G.FH_MENU_KEY = kc
-                Notify("FortniHub", "Клавиша меню: " .. tostring(kc), 2)
+                Notify("FortniHub", "Меню: " .. tostring(kc), 2)
             end
         end)
-    end)
 
-    print("[FortniHub][INFO] Menu key v2 готов")
+    print("[FortniHub][INFO] Menu key (единый) готов")
 end
 
 -- ============================================================
