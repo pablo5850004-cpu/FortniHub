@@ -1,21 +1,18 @@
--- loader.lua — FortniHub v15.2.5 (Fluent API auto-fix)
+-- loader.lua — FortniHub v15.2.6 (Fluent text-patch)
 local BASE = "https://raw.githubusercontent.com/pablo5850004-cpu/FortniHub/main/"
 local url = BASE .. "one.lua?t=" .. os.time()
 
-print("[FH] Загружаю FortniHub v15.2.5...")
+print("[FH] FortniHub v15.2.6 запускается...")
 local body = game:HttpGet(url, true)
 if type(body) ~= "string" or #body < 100 then
     warn("[FH] one.lua не скачался")
     return
 end
-print("[FH] Скачано: " .. #body .. " байт")
 
--- Убираем служебные === в начале
+-- Убираем === в начале
 body = body:gsub("^=+%s*\n", "")
 
--- ============================================================
 -- SafeRandom
--- ============================================================
 if not getgenv().safeRandom then
     local orig = math.random
     getgenv().safeRandom = function(a, b)
@@ -35,83 +32,41 @@ if not getgenv().safeRandom then
 end
 safeRandom = getgenv().safeRandom
 
--- Патч math.random
+-- Патчи math.random
 body = body:gsub("math%.random%s*=%s*function", "_G.__patchedRandom = function")
 body = body:gsub("string%.random%s*=%s*function", "_G.__patchedStringRandom = function")
 body = body:gsub("math%.random%s*%(", "safeRandom(")
 
 -- ============================================================
--- ИНЖЕКТ: патч Fluent API
--- Вставляем СРАЗУ ПОСЛЕ "Fluent загружен", чтобы обернуть
--- CreateWindow до того, как он будет вызван
+-- ПРЯМОЙ ТЕКСТОВЫЙ ФИКС Fluent API
 -- ============================================================
-local FLUENT_PATCH = [[
 
--- ⚡ Auto-injected Fluent API patch
-do
-    if type(Fluent) == "table" and type(Fluent.CreateWindow) == "function" then
-        local _origCreate = Fluent.CreateWindow
-        Fluent.CreateWindow = function(self, ...)
-            local win = _origCreate(self, ...)
-            if type(win) == "table" or type(win) == "userdata" then
-                local _origAddTab = win.AddTab
-                win.AddTab = function(w, ...)
-                    local tab = _origAddTab(w, ...)
-                    if tab and not rawget(tab, "__fh_patched") then
-                        rawset(tab, "__fh_patched", true)
-                        -- AddSection: принимает и строку и {Name=...}
-                        if type(tab.AddSection) == "function" then
-                            local _origAS = tab.AddSection
-                            tab.AddSection = function(t, arg)
-                                if type(arg) == "table" then
-                                    arg = arg.Name or arg.name or "section"
-                                end
-                                if arg == nil then arg = "section" end
-                                return _origAS(t, arg)
-                            end
-                        end
-                        -- AddColorPicker → AddColorpicker
-                        if type(tab.AddColorpicker) == "function" and type(tab.AddColorPicker) ~= "function" then
-                            tab.AddColorPicker = tab.AddColorpicker
-                        end
-                        -- Keybind также в lowercase у старой версии
-                        if type(tab.AddKeybind) == "function" then
-                            -- уже есть
-                        elseif type(tab.AddKeybind) ~= "function" and type(tab.AddKeyBind) == "function" then
-                            tab.AddKeybind = tab.AddKeyBind
-                        end
-                    end
-                    return tab
-                end
-            end
-            return win
-        end
-        print("[FH] Fluent API patch применён")
-    else
-        warn("[FH] Fluent patch: пропуск (Fluent не найден)")
-    end
-end
+-- 1. AddColorPicker → AddColorpicker (в твоём Fluent маленькая p)
+body = body:gsub("AddColorPicker", "AddColorpicker")
 
-]]
-
--- Инжект после "Fluent загружен"
-local injected = false
+-- 2. AddSection({Name = "abc"}) → AddSection("abc")
 body = body:gsub(
-    '(logInfo%("Fluent загружен"%)%s*\n)',
-    function(m)
-        injected = true
-        return m .. FLUENT_PATCH
-    end,
-    1
+    'AddSection%s*%(?{%s*Name%s*=%s*"([^"]*)"%s*}%s*%)',
+    'AddSection("%1")'
 )
-if not injected then
-    warn("[FH] Не нашёл точку инжекта Fluent patch")
-end
+
+-- 3. AddSection({Name = "abc" .. var}) → AddSection("abc" .. var)
+body = body:gsub(
+    'AddSection%s*%(?{%s*Name%s*=%s*"([^"]*)"%s*%.%.%s*([^}]+?)%s*}%s*%)',
+    'AddSection("%1" .. %2)'
+)
+
+-- 4. AddSection({Name = <любое_выражение>}) — страховка:
+--    если осталось, заменяем на AddSection("section") чтобы не крашить
+body = body:gsub(
+    'AddSection%s*%(?{%s*Name%s*=%s*[^}]-%s*}%s*%)',
+    'AddSection("section")'
+)
 
 -- ============================================================
 -- Компиляция
 -- ============================================================
-local fn, err = loadstring(body, "@FortniHub_v15.2.5")
+local fn, err = loadstring(body, "@FortniHub_v15.2.6")
 if type(fn) ~= "function" then
     warn("[FH] Компиляция упала: " .. tostring(err))
     return
@@ -122,5 +77,5 @@ local ok, err2 = pcall(fn)
 if not ok then
     warn("[FH] Runtime упал: " .. tostring(err2))
 else
-    print("[FH] FortniHub v15.2.5 загружен успешно")
+    print("[FH] FortniHub v15.2.6 загружен успешно")
 end
