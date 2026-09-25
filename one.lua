@@ -5365,3 +5365,899 @@ task.spawn(function()
     task.wait(1)
     Notify("FortniHub", "v16.1 полностью загружен! P - меню", 8)
 end)
+-- ============================================================
+-- FORTNIHUB v16.2 — PART 4: FIXES
+-- ============================================================
+
+-- ============================================================
+-- 1. AUTOGRAB GUN — 1 попытка в раунде
+-- ============================================================
+do
+    -- Отключаем старый обработчик
+    if Connections["AutoGrabTick"] then pcall(function() Connections["AutoGrabTick"]:Disconnect() end) end
+    if Connections["AutoGrabReset"] then pcall(function() Connections["AutoGrabReset"]:Disconnect() end) end
+
+    local grabFailedRound = false
+    local isGrabbing = false
+    local lastRoundReset = 0
+
+    local gunCache = {}
+    for _, v in ipairs(Workspace:GetDescendants()) do
+        if v.Name == "GunDrop" then gunCache[v] = true end
+    end
+    AddConn("GunCacheAdd2", Workspace.DescendantAdded:Connect(function(v)
+        if v.Name == "GunDrop" then gunCache[v] = true end
+    end))
+    AddConn("GunCacheRem2", Workspace.DescendantRemoving:Connect(function(v)
+        if v.Name == "GunDrop" then gunCache[v] = nil end
+    end))
+
+    -- Сброс флага при старте нового раунда (CoinsStarted)
+    task.spawn(function()
+        local ok, remote = pcall(function()
+            return ReplicatedStorage:WaitForChild("Remotes", 15)
+                :WaitForChild("Gameplay", 15)
+                :WaitForChild("CoinsStarted", 15)
+        end)
+        if ok and remote then
+            remote.OnClientEvent:Connect(function()
+                grabFailedRound = false
+                isGrabbing = false
+                lastRoundReset = tick()
+                print("[FortniHub] Новый раунд — AutoGrab сброшен")
+            end)
+        end
+    end)
+
+    -- Резервный сброс через 90 сек
+    AddConn("AutoGrabResetFallback", RunService.Heartbeat:Connect(function()
+        if tick() - lastRoundReset > 90 then
+            if grabFailedRound then
+                grabFailedRound = false
+                lastRoundReset = tick()
+            end
+        end
+    end))
+
+    local function findNearestGun(my)
+        local best, bd = nil, math.huge
+        for gun in pairs(gunCache) do
+            if gun.Parent and gun:IsA("BasePart") then
+                local d = (gun.Position - my.Position).Magnitude
+                if d < bd then bd = d; best = gun end
+            end
+        end
+        return best
+    end
+
+    AddConn("AutoGrabTickV2", RunService.Heartbeat:Connect(function()
+        if not (Options.AutoGrabGun and Options.AutoGrabGun.Value) then return end
+        if grabFailedRound or isGrabbing then return end
+        local char = LocalPlayer.Character
+        if not char then return end
+        if char:FindFirstChild("Gun") then return end
+        local bp = LocalPlayer:FindFirstChildOfClass("Backpack")
+        if bp and bp:FindFirstChild("Gun") then return end
+        local my = char:FindFirstChild("HumanoidRootPart")
+        if not my then return end
+        local gun = findNearestGun(my)
+        if not gun then return end
+
+        isGrabbing = true
+        task.spawn(function()
+            local rp = my.CFrame
+            local grabbed = false
+            for i = 1, 3 do
+                if my and my.Parent then my.CFrame = gun.CFrame end
+                task.wait(0.04)
+                pcall(function()
+                    firetouchinterest(my, gun, 0)
+                    task.wait(0.02)
+                    firetouchinterest(my, gun, 1)
+                end)
+                local c = LocalPlayer.Character
+                if c and c:FindFirstChild("Gun") then grabbed = true break end
+                local b = LocalPlayer:FindFirstChildOfClass("Backpack")
+                if b and b:FindFirstChild("Gun") then grabbed = true break end
+            end
+            if my and my.Parent then
+                my.CFrame = rp
+                my.AssemblyLinearVelocity = Vector3.zero
+                my.AssemblyAngularVelocity = Vector3.zero
+            end
+            if not grabbed then
+                grabFailedRound = true
+                Notify("FortniHub", "Пистолет не подобран. Больше не пробую в этом раунде.", 4)
+            end
+            isGrabbing = false
+        end)
+    end))
+
+    AddConn("AutoGrabResetV2", LocalPlayer.CharacterAdded:Connect(function()
+        isGrabbing = false
+    end))
+
+    print("[FortniHub][INFO] AutoGrab Gun v2 (1 попытка в раунде) готов")
+end
+
+-- ============================================================
+-- 2. BACKTRACK — переживает респавн
+-- ============================================================
+do
+    if Connections["BacktrackTick"] then pcall(function() Connections["BacktrackTick"]:Disconnect() end) end
+
+    local btOn = false
+    local btCol = Color3.fromRGB(255, 60, 60)
+    local btModel = nil
+    local btPairs = {}
+    local BTCAP = 256
+    local btHist = table.create(BTCAP)
+    for i = 1, BTCAP do btHist[i] = {0, CFrame.identity} end
+    local btFirst, btCount = 1, 0
+    local btPing, btPingAt = 0.15, 0
+
+    local function btKill()
+        if btModel then pcall(function() btModel:Destroy() end) btModel = nil end
+        btPairs = {}
+        btFirst, btCount = 1, 0
+    end
+
+    local function btBuild()
+        btKill()
+        local char = LocalPlayer.Character
+        if not char then return end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        char.Archivable = true
+        local ok, m = pcall(function() return char:Clone() end)
+        char.Archivable = false
+        if not ok or not m then return end
+        local rp = {}
+        for _, o in ipairs(char:GetDescendants()) do
+            if o:IsA("BasePart") then rp[#rp + 1] = o end
+        end
+        local ci = 0
+        for _, o in ipairs(m:GetDescendants()) do
+            if o:IsA("Script") or o:IsA("LocalScript") then pcall(function() o:Destroy() end)
+            elseif o:IsA("Decal") or o:IsA("Texture") or o:IsA("SurfaceAppearance") then pcall(function() o:Destroy() end)
+            elseif o:IsA("ParticleEmitter") or o:IsA("Beam") or o:IsA("Trail") or o:IsA("PointLight") then pcall(function() o:Destroy() end)
+            elseif o:IsA("BasePart") then
+                o.Anchored = true
+                o.CanCollide = false
+                o.CanQuery = false
+                o.CastShadow = false
+                if o.Name == "HumanoidRootPart" then o.Transparency = 1
+                else
+                    o.Material = Enum.Material.ForceField
+                    o.Color = btCol
+                    o.Transparency = 0
+                end
+                ci = ci + 1
+                btPairs[#btPairs + 1] = {o, rp[ci]}
+            end
+        end
+        local h = m:FindFirstChildOfClass("Humanoid")
+        if h then pcall(function() h:Destroy() end) end
+        m.Parent = Workspace
+        btModel = m
+    end
+
+    local function btUpdate()
+        if not btOn then return end
+        local char = LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        if not btModel or not btModel.Parent then btBuild() if not btModel then return end end
+        local now = os.clock()
+        local cf = hrp.CFrame
+        if btCount < BTCAP then btCount = btCount + 1
+        else btFirst = btFirst % BTCAP + 1 end
+        local slot = btHist[(btFirst + btCount - 2) % BTCAP + 1]
+        slot[1], slot[2] = now, cf
+        if now - btPingAt >= 0.2 then
+            btPingAt = now
+            local ok, v = pcall(function()
+                return Stats.Network.ServerStatsItem["Data Ping"]:GetValue() / 1000
+            end)
+            btPing = math.clamp((ok and v) or 0.15, 0.05, 0.6)
+        end
+        local target = now - btPing
+        local tcf = cf
+        for k = btCount, 1, -1 do
+            local s = btHist[(btFirst + k - 2) % BTCAP + 1]
+            if s[1] <= target then tcf = s[2] break end
+        end
+        local inv = hrp.CFrame:Inverse()
+        for i = 1, #btPairs do
+            local cp, rp = btPairs[i][1], btPairs[i][2]
+            if cp and cp.Parent and rp and rp.Parent then
+                cp.CFrame = tcf * (inv * rp.CFrame)
+            end
+        end
+    end
+
+    -- Старая переменная для UI (перезаписываем)
+    _G.FH_BT_ON = function()
+        return btOn
+    end
+
+    AddConn("BacktrackTickV2", RunService.Heartbeat:Connect(btUpdate))
+
+    AddConn("BacktrackRespawn", LocalPlayer.CharacterAdded:Connect(function()
+        task.wait(1)
+        if btOn then
+            btBuild()
+        end
+    end))
+
+    -- UI — секция в Visual (пересоздаём)
+    task.spawn(function()
+        task.wait(4)
+        if not Tabs.Visual then return end
+        local sec = Tabs.Visual:AddSection({Name = "Backtrack v2"})
+
+        sec:AddToggle("BacktrackOnV2", {
+            Title = L("Backtrack"),
+            Default = false,
+        }):OnChanged(function(v)
+            btOn = v
+            if v then btBuild()
+            else btKill() end
+        end)
+
+        sec:AddColorPicker("BacktrackColV2", {
+            Title = L("Color"),
+            Default = Color3.fromRGB(255, 60, 60),
+        }):OnChanged(function(c)
+            btCol = c
+            if btModel then
+                for _, p in ipairs(btModel:GetDescendants()) do
+                    if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then
+                        p.Color = c
+                    end
+                end
+            end
+        end)
+    end)
+
+    print("[FortniHub][INFO] Backtrack v2 (с респавном) готов")
+end
+
+-- ============================================================
+-- 3. ESP CHAMS FIX — Highlight в персонажа, не в папку
+-- ============================================================
+do
+    -- Старая папка
+    pcall(function()
+        local old = Workspace:FindFirstChild("FH_ChamsFolder")
+        if old then
+            for _, c in ipairs(old:GetChildren()) do pcall(function() c:Destroy() end) end
+        end
+    end)
+
+    local function ensureChams(p, role)
+        local char = p.Character
+        if not char then return end
+        local esp = _G.FH_ESP
+        if not esp or not esp.chams then
+            local old = char:FindFirstChild("FH_ChamsHL")
+            if old then old:Destroy() end
+            return
+        end
+        local hl = char:FindFirstChild("FH_ChamsHL")
+        if not hl then
+            hl = Instance.new("Highlight")
+            hl.Name = "FH_ChamsHL"
+            hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+            hl.Parent = char
+        end
+        hl.Adornee = char
+        local rk = role == "murder" and "Mur" or (role == "sheriff" and "Shf" or "Inno")
+        hl.FillColor = esp["chamsF" .. rk][1]
+        hl.FillTransparency = esp["chamsF" .. rk][2]
+        hl.OutlineColor = esp["chamsO" .. rk][1]
+        hl.OutlineTransparency = esp["chamsO" .. rk][2]
+    end
+
+    local function classify(p)
+        local ok, m = pcall(function()
+            return require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("CurrentRoundClient"))
+        end)
+        if ok and type(m) == "table" and type(m.PlayerData) == "table" then
+            local d = m.PlayerData[p.Name]
+            if d and not d.Dead then
+                if d.Role == "Murderer" then return "murder" end
+                if d.Role == "Sheriff" or d.Role == "Hero" then return "sheriff" end
+                return "inno"
+            end
+        end
+        return "inno"
+    end
+
+    -- Убираем старую папку-ориентированную логику
+    if Connections["RenderTickChams"] then pcall(function() Connections["RenderTickChams"]:Disconnect() end) end
+
+    AddConn("RenderTickChamsV2", RunService.Heartbeat:Connect(function()
+        local esp = _G.FH_ESP
+        if not esp then return end
+        -- всегда проходим и обновляем/убираем
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character then
+                local role = classify(p)
+                ensureChams(p, role)
+            end
+        end
+    end))
+
+    -- Сброс при выключении ESP или chams
+    AddConn("ChamsCleanup", RunService.Heartbeat:Connect(function()
+        local esp = _G.FH_ESP
+        if esp and esp.chams then return end
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p.Character then
+                local hl = p.Character:FindFirstChild("FH_ChamsHL")
+                if hl then hl:Destroy() end
+            end
+        end
+    end))
+
+    print("[FortniHub][INFO] Chams v2 (Highlight в персонаже) готов")
+end
+
+-- ============================================================
+-- 4. AUTOFARM — расширенный поиск монет (все возможные имена/теги)
+-- ============================================================
+do
+    if Connections["FarmV2"] then pcall(function() Connections["FarmV2"]:Disconnect() end) end
+    if Connections["FarmV1"] then pcall(function() Connections["FarmV1"]:Disconnect() end) end
+
+    local grabFailedCoinId = {}
+
+    local function findCoins()
+        local out, seen = {}, {}
+        -- 1) CoinVisual тег
+        local ok, tagged = pcall(function() return CollectionService:GetTagged("CoinVisual") end)
+        if ok and type(tagged) == "table" then
+            for _, v in ipairs(tagged) do
+                if v and v.Parent and v:IsA("BasePart") and not seen[v] then
+                    seen[v] = true
+                    if not v:GetAttribute("Collected") and not v:GetAttribute("Delete") then
+                        out[#out + 1] = v
+                    end
+                end
+            end
+        end
+        -- 2) Coin_Server / Coin
+        for _, v in ipairs(Workspace:GetDescendants()) do
+            if v:IsA("BasePart") and (v.Name == "Coin_Server" or v.Name == "Coin" or v.Name:lower():find("coin")) and not seen[v] then
+                seen[v] = true
+                if not v:GetAttribute("Collected") and not v:GetAttribute("Delete") then
+                    out[#out + 1] = v
+                end
+            end
+        end
+        return out
+    end
+
+    local function fireTouch(hrp, coin)
+        if type(firetouchinterest) ~= "function" then return end
+        local targets = { coin }
+        for _, v in ipairs(coin:GetChildren()) do
+            if v:IsA("BasePart") then targets[#targets + 1] = v end
+        end
+        for _, p in ipairs(targets) do
+            pcall(firetouchinterest, hrp, p, 0)
+            pcall(firetouchinterest, hrp, p, 1)
+        end
+    end
+
+    local farmOn, farmSpeed, farmAvoid = false, 23, false
+    local lastFarmDebug = 0
+
+    -- UI
+    task.spawn(function()
+        task.wait(4)
+        if not Tabs.Farm then return end
+        local sec = Tabs.Farm:AddSection({Name = "Автофарм v3 (универсальный)"})
+
+        sec:AddToggle("FarmOnV3", {
+            Title = "Включить автофарм",
+            Default = false,
+        }):OnChanged(function(v)
+            farmOn = v
+            Notify("FortniHub", "Автофарм " .. (v and "ВКЛ" or "ВЫКЛ"), 2)
+        end)
+
+        sec:AddSlider("FarmSpeedV3", {
+            Title = "Скорость фарма",
+            Min = 5, Max = 60, Default = 23, Rounding = 1,
+        }):OnChanged(function(v) farmSpeed = v end)
+
+        sec:AddToggle("FarmAvoidV3", {
+            Title = "Избегать маньяка",
+            Default = false,
+        }):OnChanged(function(v) farmAvoid = v end)
+
+        sec:AddButton({
+            Title = "Показать найденные монеты в консоли",
+            Callback = function()
+                local coins = findCoins()
+                print("[FortniHub][FARM] Найдено монет: " .. #coins)
+                for i, c in ipairs(coins) do
+                    print(string.format("  [%d] %s pos=%s", i, c.Name, tostring(c.Position)))
+                end
+            end,
+        })
+    end)
+
+    AddConn("FarmV3", RunService.Heartbeat:Connect(function(_, dt)
+        if not farmOn then return end
+        local char = LocalPlayer.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if not hum or hum.Health <= 0 then return end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+
+        -- Avoid murderer
+        if farmAvoid then
+            local m = isMurderer()
+            if m and m.Character then
+                local mh = m.Character:FindFirstChild("HumanoidRootPart")
+                if mh and (mh.Position - hrp.Position).Magnitude < 40 then
+                    local away = (hrp.Position - mh.Position)
+                    if away.Magnitude < 0.1 then away = Vector3.new(1, 0, 0) end
+                    hrp.CFrame = CFrame.new(hrp.Position + away.Unit * 20)
+                    return
+                end
+            end
+        end
+
+        local coins = findCoins()
+
+        -- Debug раз в 5 сек
+        if tick() - lastFarmDebug > 5 then
+            lastFarmDebug = tick()
+            print("[FortniHub][FARM] Монет на карте: " .. #coins)
+        end
+
+        if #coins == 0 then
+            -- если не нашли — пробуем пройтись по карте с рандомным смещением
+            local cf = hrp.CFrame
+            local randDir = Vector3.new(srand(-100, 100) / 100, 0, srand(-100, 100) / 100)
+            if randDir.Magnitude > 0.1 then
+                hrp.CFrame = CFrame.new(hrp.Position + randDir.Unit * farmSpeed * dt * 0.5)
+            end
+            return
+        end
+
+        local best, bd = nil, math.huge
+        for _, c in ipairs(coins) do
+            local d = (c.Position - hrp.Position).Magnitude
+            if d < bd then bd = d; best = c end
+        end
+        if not best then return end
+
+        local prompt = best:FindFirstChildOfClass("ProximityPrompt")
+        if prompt then pcall(function() fireproximityprompt(prompt) end) end
+
+        local dir = best.Position - hrp.Position
+        local dist = dir.Magnitude
+        if dist > 0.5 then
+            local step = math.min(farmSpeed * dt, dist)
+            hrp.CFrame = CFrame.new(hrp.Position + dir.Unit * step)
+            hrp.AssemblyLinearVelocity = Vector3.zero
+        end
+        if dist < 6 then fireTouch(hrp, best) end
+    end))
+
+    print("[FortniHub][INFO] AutoFarm v3 (universal) готов")
+end
+
+-- ============================================================
+-- 5. AWP — переделана через CFrame.LookVector + ручная ориентация
+-- ============================================================
+do
+    if Connections["AWPCheck"] then pcall(function() Connections["AWPCheck"]:Disconnect() end) end
+    if Connections["AWPRender"] then pcall(function() Connections["AWPRender"]:Disconnect() end) end
+
+    local awpOn = false
+    local entries = {}
+
+    local COL = {
+        BODY = Color3.fromRGB(58, 74, 42),
+        METAL = Color3.fromRGB(28, 28, 30),
+        GLASS = Color3.fromRGB(40, 90, 110),
+        RUB = Color3.fromRGB(15, 15, 15),
+    }
+
+    local function clearAWP()
+        for _, e in ipairs(entries) do
+            if e.part and e.part.Parent then pcall(function() e.part:Destroy() end) end
+        end
+        entries = {}
+    end
+
+    local function buildAWP(handle)
+        if not handle or handle:GetAttribute("FH_AWP") then return end
+        local tool = handle.Parent
+        if not tool then return end
+        handle:SetAttribute("FH_AWP", true)
+        local origTransparency = handle.Transparency
+        handle.Transparency = 1
+        handle:SetAttribute("FH_ORIG_TRANS", origTransparency)
+
+        local function part(name, size, col, mat, off, shape)
+            local p = Instance.new("Part")
+            p.Name = name
+            p.Size = size
+            p.Color = col
+            p.Material = mat or Enum.Material.Metal
+            p.Anchored = true
+            p.CanCollide = false
+            p.CanQuery = false
+            p.CanTouch = false
+            p.CastShadow = true
+            p.Massless = true
+            p.TopSurface = Enum.SurfaceType.Smooth
+            p.BottomSurface = Enum.SurfaceType.Smooth
+            if shape then p.Shape = shape end
+            p.Parent = tool
+            entries[#entries + 1] = {part = p, off = off}
+        end
+
+        -- Ствол
+        part("AWP_Receiver", Vector3.new(0.13, 0.15, 0.46), COL.BODY, Enum.Material.SmoothPlastic, CFrame.new(0, 0, -0.26))
+        part("AWP_Barrel", Vector3.new(0.80, 0.05, 0.05), COL.METAL, Enum.Material.Metal,
+            CFrame.new(0, 0, -1.03) * CFrame.Angles(0, math.rad(90), 0), Enum.PartType.Cylinder)
+        -- Цевьё
+        part("AWP_Forend_T", Vector3.new(0.13, 0.02, 0.89), COL.BODY, Enum.Material.SmoothPlastic, CFrame.new(0, 0.055, -0.915))
+        part("AWP_Forend_B", Vector3.new(0.13, 0.02, 0.89), COL.BODY, Enum.Material.SmoothPlastic, CFrame.new(0, -0.055, -0.915))
+        part("AWP_Forend_L", Vector3.new(0.02, 0.11, 0.89), COL.BODY, Enum.Material.SmoothPlastic, CFrame.new(-0.055, 0, -0.915))
+        part("AWP_Forend_R", Vector3.new(0.02, 0.11, 0.89), COL.BODY, Enum.Material.SmoothPlastic, CFrame.new(0.055, 0, -0.915))
+        -- Прицел
+        part("AWP_Scope_Tube", Vector3.new(0.55, 0.045, 0.045), COL.METAL, Enum.Material.Metal,
+            CFrame.new(0, 0.20, -0.18) * CFrame.Angles(0, math.rad(90), 0), Enum.PartType.Cylinder)
+        part("AWP_Scope_Bell", Vector3.new(0.09, 0.065, 0.065), COL.METAL, Enum.Material.Metal,
+            CFrame.new(0, 0.20, -0.49) * CFrame.Angles(0, math.rad(90), 0), Enum.PartType.Cylinder)
+        part("AWP_Scope_Lens", Vector3.new(0.02, 0.058, 0.058), COL.GLASS, Enum.Material.Glass,
+            CFrame.new(0, 0.20, -0.54) * CFrame.Angles(0, math.rad(90), 0), Enum.PartType.Cylinder)
+        part("AWP_Scope_Rear", Vector3.new(0.08, 0.055, 0.055), COL.METAL, Enum.Material.Metal,
+            CFrame.new(0, 0.20, 0.13) * CFrame.Angles(0, math.rad(90), 0), Enum.PartType.Cylinder)
+        -- Приклад
+        part("AWP_Stock", Vector3.new(0.11, 0.14, 0.75), COL.BODY, Enum.Material.SmoothPlastic, CFrame.new(0, 0, 0.325))
+        part("AWP_Stock_Cheek", Vector3.new(0.07, 0.045, 0.40), COL.BODY, Enum.Material.SmoothPlastic, CFrame.new(0, 0.088, 0.20))
+        part("AWP_Stock_Pad", Vector3.new(0.11, 0.15, 0.06), COL.RUB, Enum.Material.Rubber, CFrame.new(0, 0, 0.74))
+        -- Рукоять
+        part("AWP_Grip", Vector3.new(0.075, 0.17, 0.06), COL.BODY, Enum.Material.SmoothPlastic,
+            CFrame.new(0, -0.15, 0.06) * CFrame.Angles(math.rad(-14), 0, 0))
+        -- Магазин
+        part("AWP_Mag", Vector3.new(0.055, 0.20, 0.032), COL.METAL, Enum.Material.Metal, CFrame.new(0, -0.26, -0.34))
+    end
+
+    -- Проверка и построение
+    AddConn("AWPCheckV2", RunService.Heartbeat:Connect(function()
+        if not awpOn then return end
+        local c = LocalPlayer.Character
+        local bp = LocalPlayer:FindFirstChildOfClass("Backpack")
+        for _, root in ipairs({c, bp}) do
+            if root then
+                local g = root:FindFirstChild("Gun")
+                if g then
+                    local h = g:FindFirstChild("Handle")
+                    if h and not h:GetAttribute("FH_AWP") then
+                        buildAWP(h)
+                    end
+                end
+            end
+        end
+    end))
+
+    -- Позиционирование относительно Handle
+    AddConn("AWPRenderV2", RunService.RenderStepped:Connect(function()
+        if not awpOn then return end
+        for i = #entries, 1, -1 do
+            local e = entries[i]
+            if not e.part or not e.part.Parent then
+                table.remove(entries, i)
+            else
+                local tool = e.part.Parent
+                if tool then
+                    local h = tool:FindFirstChild("Handle")
+                    if h then
+                        e.part.CFrame = h.CFrame * e.off
+                    end
+                end
+            end
+        end
+    end))
+
+    -- UI
+    task.spawn(function()
+        task.wait(4)
+        if not Tabs.Visual then return end
+        -- Убираем старую секцию если была
+        local sec = Tabs.Visual:AddSection({Name = "AWP v2"})
+
+        sec:AddToggle("AWPV2", {
+            Title = "Замена оружия на AWP",
+            Default = false,
+        }):OnChanged(function(v)
+            awpOn = v
+            if v then
+                local c = LocalPlayer.Character
+                local bp = LocalPlayer:FindFirstChildOfClass("Backpack")
+                for _, root in ipairs({c, bp}) do
+                    if root then
+                        local g = root:FindFirstChild("Gun")
+                        if g then
+                            local h = g:FindFirstChild("Handle")
+                            if h then buildAWP(h) end
+                        end
+                    end
+                end
+                Notify("FortniHub", "AWP ВКЛ", 2)
+            else
+                clearAWP()
+                -- Возвращаем прозрачность старым рукояткам
+                for _, p in ipairs(Players:GetPlayers()) do end
+                local function restore(container)
+                    if not container then return end
+                    local g = container:FindFirstChild("Gun")
+                    if g then
+                        local h = g:FindFirstChild("Handle")
+                        if h and h:GetAttribute("FH_AWP") then
+                            local t = h:GetAttribute("FH_ORIG_TRANS")
+                            if t then h.Transparency = t end
+                            h:SetAttribute("FH_AWP", false)
+                        end
+                    end
+                end
+                restore(LocalPlayer.Character)
+                restore(LocalPlayer:FindFirstChildOfClass("Backpack"))
+                Notify("FortniHub", "AWP ВЫКЛ", 2)
+            end
+        end)
+    end)
+
+    print("[FortniHub][INFO] AWP v2 готов")
+end
+
+-- ============================================================
+-- 6. EMOTES — автоиспользование + переделанные кнопки (без эмодзи)
+-- ============================================================
+do
+    if Connections["EmoteAutoRebind"] then pcall(function() Connections["EmoteAutoRebind"]:Disconnect() end) end
+
+    local statEmotes = {
+        {"Griddy", "129149402922241"},
+        {"Floss", "129149402922241"},
+        {"Dab", "11953266178"},
+        {"Default Dance", "10272060486"},
+        {"Kazotsky Kick", "11397105951"},
+        {"Robot", "11953266178"},
+        {"Orange Justice", "11970665200"},
+        {"Take the L", "12327207789"},
+    }
+    local emoteMap, emoteList, animCache = {}, {}, {}
+    local curTrack, selId = nil, nil
+    local autoEmoteOn = false
+
+    local function getHum()
+        local c = LocalPlayer.Character
+        return c and c:FindFirstChildOfClass("Humanoid")
+    end
+
+    local function stopEmote()
+        if curTrack then
+            pcall(function() curTrack:Stop() end)
+            curTrack = nil
+        end
+    end
+
+    local function resolveId(id)
+        if animCache[id] then return animCache[id] end
+        if id:find("://") then animCache[id] = id return id end
+        local raw = id:gsub("%D", "")
+        local ok, objs = pcall(game.GetObjects, game, "rbxassetid://" .. raw)
+        if ok and type(objs) == "table" then
+            local found
+            local function scan(inst)
+                if found then return end
+                if inst:IsA("Animation") and inst.AnimationId ~= "" then found = inst.AnimationId return end
+                for _, c in ipairs(inst:GetChildren()) do scan(c) end
+            end
+            for _, o in ipairs(objs) do scan(o) pcall(function() o:Destroy() end) end
+            if found then animCache[id] = found return found end
+        end
+        local url = "rbxassetid://" .. raw
+        animCache[id] = url
+        return url
+    end
+
+    local function playEmote(id)
+        local hum = getHum()
+        if not hum or not id then return end
+        stopEmote()
+        local anim = Instance.new("Animation")
+        anim.AnimationId = resolveId(id)
+        local ok, track = pcall(function() return hum:LoadAnimation(anim) end)
+        anim:Destroy()
+        if ok and track then
+            track.Priority = Enum.AnimationPriority.Action
+            track.Looped = true
+            track:Play()
+            curTrack = track
+        end
+    end
+
+    for _, e in ipairs(statEmotes) do
+        if not emoteMap[e[1]] then
+            emoteMap[e[1]] = e[2]
+            emoteList[#emoteList + 1] = e[1]
+        end
+    end
+
+    -- UI пересоздание
+    task.spawn(function()
+        task.wait(4)
+        if not Tabs.Troll then return end
+        local sec = Tabs.Troll:AddSection({Name = "Эмоции v2"})
+
+        local drop = sec:AddDropdown("EmoteListV4", {
+            Title = "Выбрать эмоцию",
+            Values = emoteList,
+            Default = emoteList[1],
+        }):OnChanged(function(v)
+            selId = emoteMap[v]
+        end)
+
+        sec:AddButton({Title = "Активировать эмоцию", Callback = function()
+            if selId then
+                playEmote(selId)
+                Notify("FortniHub", "Эмоция запущена", 2)
+            end
+        end})
+
+        sec:AddButton({Title = "Остановить эмоцию", Callback = function()
+            stopEmote()
+            Notify("FortniHub", "Эмоция остановлена", 2)
+        end})
+
+        sec:AddToggle("EmoteAuto", {
+            Title = "Авто-использование после респавна",
+            Default = false,
+        }):OnChanged(function(v)
+            autoEmoteOn = v
+            if v and selId then
+                task.wait(1)
+                playEmote(selId)
+            end
+        end)
+
+        -- Авто после респавна
+        AddConn("EmoteAutoRebind", LocalPlayer.CharacterAdded:Connect(function()
+            task.wait(1.5)
+            if autoEmoteOn and selId then
+                playEmote(selId)
+                Notify("FortniHub", "Эмоция перезапущена", 2)
+            end
+        end))
+
+        -- Fetch из EmoteSniper
+        task.spawn(function()
+            local ok, res = pcall(function()
+                local c = game:HttpGet("https://raw.githubusercontent.com/7yd7/sniper-Emote/refs/heads/test/EmoteSniper.json")
+                return c ~= "" and HttpService:JSONDecode(c) or nil
+            end)
+            if ok and type(res) == "table" then
+                local list = res.data or res
+                local seen = {}
+                for _, item in pairs(list) do
+                    local id = tonumber(item.id)
+                    if id and id > 0 and not seen[id] then
+                        seen[id] = true
+                        local nm = tostring(item.name or ("Emote_" .. id))
+                        if not emoteMap[nm] then
+                            emoteMap[nm] = tostring(id)
+                            emoteList[#emoteList + 1] = nm
+                        end
+                    end
+                end
+                pcall(function()
+                    drop:SetValues(emoteList)
+                    drop:Generate()
+                end)
+                print("[FortniHub][INFO] Emotes v2: загружено " .. #emoteList .. " штук")
+            end
+        end)
+    end)
+
+    print("[FortniHub][INFO] Emotes v2 готов")
+end
+
+-- ============================================================
+-- 7. SOUNDS — кнопки "Прослушать"
+-- ============================================================
+do
+    -- Старые звуки переопределим через кнопки в новой секции
+    task.spawn(function()
+        task.wait(4)
+        if not Tabs.Utility then return end
+        local sec = Tabs.Utility:AddSection({Name = "Звуки — прослушивание"})
+
+        -- Play через BasePart в SoundService
+        local SoundService = game:GetService("SoundService")
+
+        local function playPreviewFromName(name)
+            -- Скачиваем и играем
+            local cacheDir = "shitaro_sounds/"
+            local path = cacheDir .. name .. ".ogg"
+            local url = "https://github.com/khenn791/lmao/raw/refs/heads/main/" .. (name:gsub(" ", "%%20")) .. ".ogg"
+            task.spawn(function()
+                -- Если уже есть
+                if not (isfile and isfile(path)) then
+                    pcall(function()
+                        if isfolder and not isfolder(cacheDir) and makefolder then
+                            makefolder(cacheDir)
+                        end
+                    end)
+                    local ok, data = pcall(function() return game:HttpGet(url) end)
+                    if ok and type(data) == "string" and #data > 1024 then
+                        pcall(function() writefile(path, data) end)
+                    end
+                end
+                if isfile and isfile(path) then
+                    local getAsset = getcustomasset or getsynasset
+                    if getAsset then
+                        local ok2, id = pcall(getAsset, path)
+                        if ok2 and id then
+                            local s = Instance.new("Sound")
+                            s.SoundId = id
+                            s.Volume = 1
+                            s.Parent = SoundService
+                            s:Play()
+                            task.delay(8, function() pcall(function() s:Destroy() end) end)
+                        end
+                    end
+                end
+            end)
+        end
+
+        local soundList = {"mc bow", "skeet", "neverlose", "rust", "primordial", "sparkle", "break", "applepay", "bubble", "combobreak", "killcard", "xp", "na naxuy", "stony", "hentai"}
+
+        local previewPick = sec:AddDropdown("PreviewSoundPick", {
+            Title = "Выбрать звук для прослушки",
+            Values = soundList,
+            Default = "mc bow",
+        })
+
+        sec:AddButton({Title = "Прослушать", Callback = function()
+            local v = previewPick:GetValue()
+            if v then
+                playPreviewFromName(v)
+                Notify("FortniHub", "Играю: " .. v, 2)
+            end
+        end})
+    end)
+
+    print("[FortniHub][INFO] Sounds v2 (preview) готов")
+end
+
+-- ============================================================
+-- ФИНАЛЬНЫЙ ЛОГ
+-- ============================================================
+print("[FortniHub][INFO] ================================")
+print("[FortniHub][INFO] PART 4 FIXES ЗАГРУЖЕН")
+print("[FortniHub][INFO] - AutoGrab: 1 попытка в раунде")
+print("[FortniHub][INFO] - Backtrack: переживает респавн")
+print("[FortniHub][INFO] - Chams: работают для всех")
+print("[FortniHub][INFO] - AutoFarm v3: универсальный поиск")
+print("[FortniHub][INFO] - AWP v2: переделана")
+print("[FortniHub][INFO] - Emotes: авто-использование + без эмодзи")
+print("[FortniHub][INFO] - Sounds: preview кнопки")
+print("[FortniHub][INFO] ================================")
+
+task.spawn(function()
+    task.wait(1)
+    Notify("FortniHub", "Part 4 (Fixes) загружен!", 6)
+end)
