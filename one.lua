@@ -4,7 +4,11 @@
 -- Part 1/3: Core, UI, HUD v2, Silent Aim v15.1, Knife Silent,
 --           KillAura v2, AutoFarm v2, Combat, Movement
 -- ============================================================
-
+-- СБРОС ФЛАГОВ при каждой загрузке скрипта (иначе Part 2/3 и 3/3 скипаются)
+_G.SHITARO_ADDON_V151_LOADED = nil
+_G.SHITARO_ADDON_V152_P2_LOADED = nil
+_G.SHITARO_ADDON_V152_P3_LOADED = nil
+print("[FH] Флаги сброшены, все 3 части будут загружены")
 -- LPH shim (для совместимости с друг-кодом)
 if not LPH_OBFUSCATED then
     local a = function() end
