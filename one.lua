@@ -5996,9 +5996,8 @@ do
             if ok and kc then
                 _G.FH_MENU_KEY = kc
                 Notify("FortniHub", "Меню: " .. tostring(kc), 2)
-            end
+            end)
         end)
-
     print("[FortniHub][INFO] Menu key (единый) готов")
 end
 
