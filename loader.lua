@@ -1,17 +1,18 @@
--- loader.lua — FortniHub v15.6 FIXED (REAL-compatible)
--- Исправления: убран 2-й аргумент HttpGet, убран ?t=os.time(),
--- убраны опасные gsub, поправлен доступ к silent, добавлена диагностика.
+-- ============================================================
+-- loader.lua — FortniHub v16 FINAL
+-- Чистый лоадер: скачивает one.lua, патчит Fluent, запускает.
+-- ============================================================
 
 local BASE = "https://raw.githubusercontent.com/pablo5850004-cpu/FortniHub/main/"
-local url = BASE .. "one.lua"
+local url  = BASE .. "one.lua"
 
-print("[FH] FortniHub v15.6 запускается...")
+print("[FH] FortniHub loader запускается...")
 
 -- ============================================================
--- 1. Скачивание (БЕЗ второго аргумента — REAL его не любит)
+-- 1. Скачивание one.lua
 -- ============================================================
-local httpOk, body = pcall(function() return game:HttpGet(url) end)
-if not httpOk then
+local ok_http, body = pcall(function() return game:HttpGet(url) end)
+if not ok_http then
     warn("[FH] HttpGet упал: " .. tostring(body))
     return
 end
@@ -21,11 +22,11 @@ if type(body) ~= "string" or #body < 100 then
 end
 print("[FH] one.lua скачан, размер: " .. #body .. " байт")
 
--- Убираем ведущий "=" от lua-формата
+-- убираем ведущие "=" от lua-формата
 body = body:gsub("^=+%s*\n", "")
 
 -- ============================================================
--- 2. SafeRandom (на случай, если one.lua его где-то вызывает)
+-- 2. SafeRandom (на случай если one.lua его вызывает)
 -- ============================================================
 if not getgenv().safeRandom then
     local orig = math.random
@@ -45,16 +46,14 @@ if not getgenv().safeRandom then
     end
 end
 safeRandom = getgenv().safeRandom
--- Дополнительно кладём как upvalue-совместимое имя
-getgenv().FH_safeRandom = getgenv().safeRandom
 
 -- ============================================================
--- 3. INJECT (Fluent patch + Silent bind + coin diag)
---    Вставляется ВНУТРЬ one.lua → имеет доступ к local silent / Notify / Tabs
+-- 3. INJECT — только Fluent patch + диагностика
+--    (silent bind и AWP теперь живут в one.lua, дублей нет)
 -- ============================================================
 local INJECT = [[
 
--- ⚡ FortniHub v15.6 inject
+-- ⚡ FortniHub inject (Fluent patch + diag)
 do
     -- ============ FLUENT MONKEY-PATCH ============
     if type(Fluent) == "table" and type(Fluent.CreateWindow) == "function" then
@@ -62,6 +61,7 @@ do
         Fluent.CreateWindow = function(self, ...)
             local win = origCreate(self, ...)
             if not win then return win end
+
             local origAddTab = win.AddTab
             win.AddTab = function(w, ...)
                 local tab = origAddTab(w, ...)
@@ -69,9 +69,10 @@ do
 
                 local function hook(container)
                     if type(container) ~= "table" then return end
-                    for _, name in ipairs({"AddToggle","AddSlider","AddDropdown",
-                                            "AddInput","AddButton","AddLabel",
-                                            "AddKeybind","AddColorpicker","AddColorPicker"}) do
+                    for _, name in ipairs({
+                        "AddToggle","AddSlider","AddDropdown","AddInput","AddButton",
+                        "AddLabel","AddKeybind","AddColorpicker","AddColorPicker"
+                    }) do
                         local orig = container[name]
                         if type(orig) == "function" and not container["__hk_"..name] then
                             container["__hk_"..name] = true
@@ -82,9 +83,12 @@ do
                             end
                         end
                     end
-                    if type(container.AddColorpicker) == "function" and type(container.AddColorPicker) ~= "function" then
+
+                    if type(container.AddColorpicker) == "function"
+                        and type(container.AddColorPicker) ~= "function" then
                         container.AddColorPicker = container.AddColorpicker
                     end
+
                     if type(container.AddSection) == "function" and not container.__hk_AS then
                         container.__hk_AS = true
                         local origAS = container.AddSection
@@ -106,74 +110,15 @@ do
             end
             return win
         end
-        print("[FH] Fluent patch v15.6 применён")
+        print("[FH] Fluent patch применён")
     end
 
-    -- ============ SILENT AIM BIND ============
-    -- ВАЖНО: silent — это local в one.lua. Инжект находится в том же чанке,
-    -- поэтому видит его как upvalue. Никаких SILENT (глобал) тут быть не должно.
-    _G.FH_SILENT_BIND = Enum.KeyCode.E
-
-    UserInputService.InputBegan:Connect(function(input, gpe)
-        if gpe then return end
-        if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
-        if input.KeyCode ~= _G.FH_SILENT_BIND then return end
-
-        -- silent может быть nil если порядок в one.lua изменился — защищаемся
-        local sn = (type(silent) == "table") and silent or nil
-        if not (sn and sn.enabled) then
-            pcall(function()
-                if type(Notify) == "function" then
-                    Notify("FortniHub", "Включи Silent Aim в Бой", 2)
-                end
-            end)
-            return
-        end
-
-        local char = LocalPlayer.Character
-        if not char then return end
-        local gun = char:FindFirstChild("Gun")
-        if not gun then
-            local bp = LocalPlayer:FindFirstChildOfClass("Backpack")
-            gun = bp and bp:FindFirstChild("Gun")
-            if gun then
-                local hum = char:FindFirstChildOfClass("Humanoid")
-                if hum then hum:EquipTool(gun) end
-                task.wait(0.05)
-            end
-        end
-        if not gun then return end
-        pcall(function() gun:Activate() end)
-        pcall(function() VirtualUser:ClickButton1(Vector2.new(0, 0)) end)
-    end)
-
-    -- UI для бинда (мягко, через pcall)
-    task.spawn(function()
-        task.wait(4)
-        if not (Tabs and Tabs.Combat) then return end
-        pcall(function()
-            local sec = Tabs.Combat:AddSection({Name = "silent_bind"})
-            if sec and sec.AddKeybind then
-                sec:AddKeybind("SilentBindKey", {
-                    Title = "Кнопка тихого выстрела (Silent)",
-                    Default = "E",
-                }):OnChanged(function(k)
-                    local ok, kc = pcall(function() return Enum.KeyCode[k] end)
-                    if ok and kc then
-                        _G.FH_SILENT_BIND = kc
-                        print("[FH] Silent bind: " .. tostring(kc))
-                    end
-                end)
-            end
-        end)
-    end)
-
-    print("[FH] Silent Aim Bind активен (E)")
-
-    -- ============ AUTOFARM DIAG ============
+    -- ============ COIN DIAG ============
     task.spawn(function()
         task.wait(3)
-        local ok, coins = pcall(function() return CollectionService:GetTagged("CoinVisual") end)
+        local ok, coins = pcall(function()
+            return CollectionService:GetTagged("CoinVisual")
+        end)
         if ok and type(coins) == "table" then
             print("[FH] CoinVisual найдено: " .. #coins .. " шт.")
         else
@@ -185,35 +130,50 @@ end
 ]]
 
 -- ============================================================
--- 4. Инжект INJECT в нужное место
+-- 4. Вставляем INJECT после строки про Fluent
 -- ============================================================
 local injected = false
-body = body:gsub('(logInfo%("Fluent загружен"%)%s*\n)', function(m)
+body = body:gsub('(print%s*%(%s*"[^"]*Fluent загружен[^"]*"%s*%)%s*\n)', function(m)
     injected = true
     return m .. INJECT
 end, 1)
 
 if not injected then
-    warn("[FH] Точка инжекта logInfo('Fluent загружен') не найдена — вставляю INJECT в конец файла")
+    warn("[FH] Точка инжекта не найдена — INJECT в конец (Fluent patch всё равно сработает)")
     body = body .. "\n" .. INJECT
-    -- Внимание: если инжект в конце, silent/Notify/Tabs будут недоступны как upvalue.
-    -- Тогда фичи инжекта (кроме Fluent patch) не заработают. Проверь one.lua.
+else
+    print("[FH] INJECT вставлен после Fluent")
 end
 
 -- ============================================================
--- 5. Компиляция с подробной диагностикой
+-- 5. Компиляция + диагностика
 -- ============================================================
 print("[FH] Компилирую " .. #body .. " байт...")
-local fn, err = loadstring(body, "@FortniHub_v15.6")
+local fn, err = loadstring(body, "@FortniHub_v16")
 if type(fn) ~= "function" then
     warn("[FH] Компиляция упала: " .. tostring(err))
+
+    -- автодиагностика строки
+    local lineNum = tonumber(string.match(tostring(err), ":(%d+):"))
+    if lineNum then
+        local lines = {}
+        for line in (body .. "\n"):gmatch("([^\r\n]*)\r?\n") do
+            lines[#lines + 1] = line
+        end
+        print("[FH] === Контекст вокруг строки " .. lineNum .. " ===")
+        for n = math.max(1, lineNum - 5), math.min(#lines, lineNum + 5) do
+            local mark = (n == lineNum) and ">>>" or "   "
+            print(string.format("[FH] %s %5d | %s", mark, n, lines[n]))
+        end
+        print("[FH] === Конец контекста ===")
+    end
     return
 end
 
 print("[FH] Компиляция OK, запускаю...")
-local runOk, runErr = pcall(fn)
-if not runOk then
-    warn("[FH] Runtime упал: " .. tostring(runErr))
+local ok_run, run_err = pcall(fn)
+if not ok_run then
+    warn("[FH] Runtime упал: " .. tostring(run_err))
 else
-    print("[FH] FortniHub v15.6 загружен успешно!")
-end 
+    print("[FH] FortniHub загружен успешно!")
+end
