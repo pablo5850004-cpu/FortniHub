@@ -6006,96 +6006,49 @@ end
 -- 2. ПРОСЛУШИВАНИЕ ЗВУКОВ — рабочий фикс (без GetValue)
 -- ============================================================
 do
-    task.spawn(function()
-        task.wait(6)
-        if not Tabs.Utility then return end
+    for keyName, conn in pairs(Connections) do
+        if keyName:find("MenuKey") then
+            pcall(function() conn:Disconnect() end)
+            Connections[keyName] = nil
+        end
+    end
 
-        local SoundService = game:GetService("SoundService")
+    _G.FH_MENU_KEY = Enum.KeyCode.P
 
-        local function playByName(name)
-            local cacheDir = "shitaro_sounds/"
-            local path = cacheDir .. name .. ".ogg"
-            local url = "https://github.com/khenn791/lmao/raw/refs/heads/main/" .. (name:gsub(" ", "%%20")) .. ".ogg"
-
-            task.spawn(function()
-                -- Скачиваем если нет
-                if not (isfile and isfile(path)) then
-                    pcall(function()
-                        if isfolder and makefolder and not isfolder(cacheDir) then
-                            makefolder(cacheDir)
-                        end
-                    end)
-                    local ok, data = pcall(function() return game:HttpGet(url) end)
-                    if ok and type(data) == "string" and #data > 1024 then
-                        pcall(function() writefile(path, data) end)
-                    end
+    AddConn("MenuKey_Final", UserInputService.InputBegan:Connect(function(input, gpe)
+        if gpe then return end
+        if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+        if input.KeyCode == _G.FH_MENU_KEY then
+            pcall(function()
+                if Window.Minimize then
+                    Window:Minimize()
+                elseif Window.Toggle then
+                    Window:Toggle()
                 end
-
-                -- Пробуем проиграть
-                local getAsset = getcustomasset or getsynasset
-                if getAsset and isfile and isfile(path) then
-                    local ok2, id = pcall(getAsset, path)
-                    if ok2 and type(id) == "string" and id ~= "" then
-                        local s = Instance.new("Sound")
-                        s.SoundId = id
-                        s.Volume = 1
-                        s.Parent = SoundService
-                        pcall(function() s:Play() end)
-                        task.delay(8, function() pcall(function() s:Destroy() end) end)
-                        return true
-                    end
-                end
-
-                -- Fallback: пробуем как Roblox asset id (для встроенных)
-                local builtin = {
-                    ["mc bow"] = "rbxassetid://131961136",
-                    ["skeet"] = "rbxassetid://131961136",
-                }
-                local bid = builtin[name]
-                if bid then
-                    local s = Instance.new("Sound")
-                    s.SoundId = bid
-                    s.Volume = 1
-                    s.Parent = SoundService
-                    pcall(function() s:Play() end)
-                    task.delay(8, function() pcall(function() s:Destroy() end) end)
-                    return true
-                end
-
-                return false
             end)
         end
+    end))
 
-        local sec = Tabs.Utility:AddSection({Name = "Прослушка звуков v3"})
+    task.spawn(function()
+        task.wait(4)
+        if not Tabs.Settings then return end
 
-        local soundList = {"mc bow", "skeet", "neverlose", "rust", "primordial", "sparkle", "break", "applepay", "bubble", "combobreak", "killcard", "xp", "na naxuy", "stony", "hentai"}
+        local sec = Tabs.Settings:AddSection({Name = "Клавиша меню"})
 
-        local picker = sec:AddDropdown("PreviewSoundV3", {
-            Title = "Выбрать звук",
-            Values = soundList,
-            Default = "mc bow",
-        })
-
-        sec:AddButton({Title = "Прослушать", Callback = function()
-            -- ВАЖНО: .Value а не :GetValue()
-            local v = picker and picker.Value
-            if type(v) == "table" then v = v[1] end
-            if type(v) ~= "string" or v == "" then
-                Notify("FortniHub", "Выбери звук", 2)
-                return
+        sec:AddKeybind("MenuKeyBindFinal", {
+            Title = "Клавиша открытия меню",
+            Default = "P",
+        }):OnChanged(function(k)
+            local ok, kc = pcall(function() return Enum.KeyCode[k] end)
+            if ok and kc then
+                _G.FH_MENU_KEY = kc
+                Notify("FortniHub", "Меню: " .. tostring(kc), 2)
             end
-            local ok = playByName(v)
-            if ok then
-                Notify("FortniHub", "Играю: " .. v, 2)
-            else
-                Notify("FortniHub", "Не удалось загрузить: " .. v, 3)
-            end
-        end})
-
-        print("[FortniHub][INFO] Прослушка v3 готов")
+        end)
     end)
-end
 
+    print("[FortniHub][INFO] Menu key (единый) готов")
+end
 -- ============================================================
 -- 3. CHINA HAT — рабочий фикс (z-index + camera distance)
 -- ============================================================
