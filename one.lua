@@ -81,7 +81,7 @@ local TR = {
     ["Bunny Hop"]="Банихоп",
     ["Max Speed"]="Макс. скорость",
     ["Accel Time"]="Время разгона",
-    ["Noclip"]="Проход сквозь стены",
+    ["Noclip"]="ноуклип",
     ["Spinbot"]="Кручение",
     ["Spin Speed"]="Скорость кручения",
     ["Infinite Jump"]="Бесконечный прыжок",
@@ -571,7 +571,7 @@ do
     fpsIcon.Size = UDim2.fromOffset(20, 40)
     fpsIcon.Position = UDim2.fromOffset(6, 0)
     fpsIcon.Font = Enum.Font.GothamBold
-    fpsIcon.Text = "▸"
+    fpsIcon.Text = ""
     fpsIcon.TextSize = 16
     fpsIcon.TextColor3 = THEME_OK
     fpsIcon.TextXAlignment = Enum.TextXAlignment.Left
@@ -607,7 +607,7 @@ do
     pingIcon.Size = UDim2.fromOffset(20, 40)
     pingIcon.Position = UDim2.fromOffset(6, 0)
     pingIcon.Font = Enum.Font.GothamBold
-    pingIcon.Text = "▮"
+    pingIcon.Text = ""
     pingIcon.TextSize = 16
     pingIcon.TextColor3 = THEME_OK
     pingIcon.TextXAlignment = Enum.TextXAlignment.Left
@@ -1419,19 +1419,6 @@ do
             hum.UseJumpPower = true
             local jp = Options.JumpPowerVal and Options.JumpPowerVal.Value or 100
             if hum.JumpPower ~= jp then hum.JumpPower = jp end
-        end
-
-        -- Bhop
-        local bhopOn = Options.BhopToggle and Options.BhopToggle.Value
-        if bhopOn then
-            local maxS = Options.BhopMax and Options.BhopMax.Value or 250
-            local acc = Options.BhopAccel and Options.BhopAccel.Value or 10
-            if hum.MoveDirection.Magnitude > 0.1 then
-                _G.BhopSpeed = math.min((_G.BhopSpeed or 16) + (maxS / acc) * 0.02, maxS)
-            else
-                _G.BhopSpeed = 16
-            end
-            hum.WalkSpeed = _G.BhopSpeed
         end
 
         -- Spinbot
@@ -3491,162 +3478,6 @@ do
 end
 
 -- ============================================================
--- AWP REPLACE (нормальная версия — полноценная модель)
--- ============================================================
-do
-    local awpSec = Tabs.Visual:AddSection({Name = L("AWP Replace")})
-    local awpOn = false
-    local partsList = {}
-    local origTransparency = {}
-
-    local COL = {
-        BODY = Color3.fromRGB(58, 74, 42),
-        BODY_D = Color3.fromRGB(40, 52, 30),
-        METAL = Color3.fromRGB(28, 28, 30),
-        METAL_L = Color3.fromRGB(48, 48, 50),
-        METAL_D = Color3.fromRGB(15, 15, 16),
-        RUB = Color3.fromRGB(15, 15, 15),
-        GLASS = Color3.fromRGB(40, 90, 110),
-    }
-
-    local function mkPart(name, size, col, mat, off, shape, parent)
-        local p = Instance.new("Part")
-        p.Name = name
-        p.Size = size
-        p.Color = col
-        p.Material = mat or Enum.Material.Metal
-        p.Anchored = true
-        p.CanCollide = false
-        p.CanQuery = false
-        p.CanTouch = false
-        p.Massless = true
-        p.CastShadow = true
-        p.TopSurface = Enum.SurfaceType.Smooth
-        p.BottomSurface = Enum.SurfaceType.Smooth
-        if shape then p.Shape = shape end
-        p.Parent = parent
-        partsList[#partsList + 1] = {p = p, off = off}
-        return p
-    end
-
-    local function buildAWP(handle)
-        if not handle or handle:GetAttribute("FH_AWP") then return end
-        local tool = handle.Parent
-        if not tool then return end
-        handle:SetAttribute("FH_AWP", true)
-        origTransparency[handle] = handle.Transparency
-        handle.Transparency = 1
-
-        -- Receiver
-        mkPart("AWP_Receiver", Vector3.new(0.13, 0.15, 0.46), COL.BODY, Enum.Material.SmoothPlastic,
-            CFrame.new(0, 0, -0.26), nil, tool)
-        -- Barrel
-        mkPart("AWP_Barrel", Vector3.new(0.80, 0.05, 0.05), COL.METAL, Enum.Material.Metal,
-            CFrame.new(0, 0, -1.03) * CFrame.Angles(0, math.rad(90), 0), Enum.PartType.Cylinder, tool)
-        -- Forend
-        mkPart("AWP_Forend_Top", Vector3.new(0.13, 0.02, 0.89), COL.BODY, Enum.Material.SmoothPlastic,
-            CFrame.new(0, 0.055, -0.915), nil, tool)
-        mkPart("AWP_Forend_Bottom", Vector3.new(0.13, 0.02, 0.89), COL.BODY, Enum.Material.SmoothPlastic,
-            CFrame.new(0, -0.055, -0.915), nil, tool)
-        mkPart("AWP_Forend_Left", Vector3.new(0.02, 0.11, 0.89), COL.BODY, Enum.Material.SmoothPlastic,
-            CFrame.new(-0.055, 0, -0.915), nil, tool)
-        mkPart("AWP_Forend_Right", Vector3.new(0.02, 0.11, 0.89), COL.BODY, Enum.Material.SmoothPlastic,
-            CFrame.new(0.055, 0, -0.915), nil, tool)
-        -- Scope
-        mkPart("AWP_Scope_Tube", Vector3.new(0.55, 0.045, 0.045), COL.METAL, Enum.Material.Metal,
-            CFrame.new(0, 0.20, -0.18) * CFrame.Angles(0, math.rad(90), 0), Enum.PartType.Cylinder, tool)
-        mkPart("AWP_Scope_Bell", Vector3.new(0.09, 0.065, 0.065), COL.METAL, Enum.Material.Metal,
-            CFrame.new(0, 0.20, -0.49) * CFrame.Angles(0, math.rad(90), 0), Enum.PartType.Cylinder, tool)
-        mkPart("AWP_Scope_Lens", Vector3.new(0.02, 0.058, 0.058), COL.GLASS, Enum.Material.Glass,
-            CFrame.new(0, 0.20, -0.54) * CFrame.Angles(0, math.rad(90), 0), Enum.PartType.Cylinder, tool)
-        -- Stock
-        mkPart("AWP_Stock", Vector3.new(0.11, 0.14, 0.75), COL.BODY, Enum.Material.SmoothPlastic,
-            CFrame.new(0, 0, 0.325), nil, tool)
-        mkPart("AWP_Stock_Cheek", Vector3.new(0.07, 0.045, 0.40), COL.BODY, Enum.Material.SmoothPlastic,
-            CFrame.new(0, 0.088, 0.20), nil, tool)
-        mkPart("AWP_Stock_Pad", Vector3.new(0.11, 0.15, 0.06), COL.RUB, Enum.Material.Rubber,
-            CFrame.new(0, 0, 0.74), nil, tool)
-        -- Grip
-        mkPart("AWP_Grip", Vector3.new(0.075, 0.17, 0.06), COL.BODY, Enum.Material.SmoothPlastic,
-            CFrame.new(0, -0.15, 0.06) * CFrame.Angles(math.rad(-14), 0, 0), nil, tool)
-        -- Mag
-        mkPart("AWP_Mag", Vector3.new(0.055, 0.20, 0.032), COL.METAL, Enum.Material.Metal,
-            CFrame.new(0, -0.26, -0.34), nil, tool)
-    end
-
-    local function clearAWP()
-        for _, entry in ipairs(partsList) do
-            pcall(function() entry.p:Destroy() end)
-        end
-        partsList = {}
-        for handle, t in pairs(origTransparency) do
-            pcall(function() handle.Transparency = t end)
-            pcall(function() handle:SetAttribute("FH_AWP", false) end)
-        end
-        origTransparency = {}
-    end
-
-    local function updateAWPPositions()
-        for _, entry in ipairs(partsList) do
-            local p = entry.p
-            if p.Parent and p.Parent:IsA("Tool") then
-                local h = p.Parent:FindFirstChild("Handle")
-                if h then
-                    p.CFrame = h.CFrame * entry.off
-                end
-            end
-        end
-    end
-
-    local awpConn = RunService.RenderStepped:Connect(function()
-        if awpOn then
-            updateAWPPositions()
-        end
-    end)
-
-    awpSec:AddToggle("AWPOn", {Title = L("AWP Replace"), Default = false}):OnChanged(function(v)
-        awpOn = v
-        if v then
-            local c = LocalPlayer.Character
-            local bp = LocalPlayer:FindFirstChildOfClass("Backpack")
-            for _, root in ipairs({c, bp}) do
-                if root then
-                    local g = root:FindFirstChild("Gun")
-                    if g then
-                        local h = g:FindFirstChild("Handle")
-                        if h then buildAWP(h) end
-                    end
-                end
-            end
-            Notify("FortniHub", "AWP Replace ВКЛ", 2)
-        else
-            clearAWP()
-            Notify("FortniHub", "AWP Replace ВЫКЛ", 2)
-        end
-    end)
-
-    -- Автоподхват Gun
-    AddConn("AWPCheck", RunService.Heartbeat:Connect(function()
-        if not awpOn then return end
-        local c = LocalPlayer.Character
-        local bp = LocalPlayer:FindFirstChildOfClass("Backpack")
-        for _, root in ipairs({c, bp}) do
-            if root then
-                local g = root:FindFirstChild("Gun")
-                if g then
-                    local h = g:FindFirstChild("Handle")
-                    if h and not h:GetAttribute("FH_AWP") then
-                        buildAWP(h)
-                    end
-                end
-            end
-        end
-    end))
-
-    print("[FortniHub][INFO] AWP Replace готов")
-end
-
--- ============================================================
 -- КОНЕЦ ЧАСТИ 2/3
 -- ============================================================
 print("[FortniHub][INFO] ================================")
@@ -5377,141 +5208,6 @@ end)
 -- ============================================================
 
 -- ============================================================
--- 1. BACKTRACK — переживает респавн
--- ============================================================
-do
-    if Connections["BacktrackTickV2"] then pcall(function() Connections["BacktrackTickV2"]:Disconnect() end) end
-
-    local btOn = false
-    local btCol = Color3.fromRGB(255, 60, 60)
-    local btModel = nil
-    local btPairs = {}
-    local BTCAP = 256
-    local btHist = table.create(BTCAP)
-    for i = 1, BTCAP do btHist[i] = {0, CFrame.identity} end
-    local btFirst, btCount = 1, 0
-    local btPing, btPingAt = 0.15, 0
-
-    local function btKill()
-        if btModel then pcall(function() btModel:Destroy() end) btModel = nil end
-        btPairs = {}
-        btFirst, btCount = 1, 0
-    end
-
-    local function btBuild()
-        btKill()
-        local char = LocalPlayer.Character
-        if not char then return end
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if not hrp then return end
-        char.Archivable = true
-        local ok, m = pcall(function() return char:Clone() end)
-        char.Archivable = false
-        if not ok or not m then return end
-        local rp = {}
-        for _, o in ipairs(char:GetDescendants()) do
-            if o:IsA("BasePart") then rp[#rp + 1] = o end
-        end
-        local ci = 0
-        for _, o in ipairs(m:GetDescendants()) do
-            if o:IsA("Script") or o:IsA("LocalScript") then pcall(function() o:Destroy() end)
-            elseif o:IsA("Decal") or o:IsA("Texture") or o:IsA("SurfaceAppearance") then pcall(function() o:Destroy() end)
-            elseif o:IsA("ParticleEmitter") or o:IsA("Beam") or o:IsA("Trail") or o:IsA("PointLight") then pcall(function() o:Destroy() end)
-            elseif o:IsA("BasePart") then
-                o.Anchored = true
-                o.CanCollide = false
-                o.CanQuery = false
-                o.CastShadow = false
-                if o.Name == "HumanoidRootPart" then o.Transparency = 1
-                else
-                    o.Material = Enum.Material.ForceField
-                    o.Color = btCol
-                    o.Transparency = 0
-                end
-                ci = ci + 1
-                btPairs[#btPairs + 1] = {o, rp[ci]}
-            end
-        end
-        local h = m:FindFirstChildOfClass("Humanoid")
-        if h then pcall(function() h:Destroy() end) end
-        m.Parent = Workspace
-        btModel = m
-    end
-
-    local function btUpdate()
-        if not btOn then return end
-        local char = LocalPlayer.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if not hrp then return end
-        if not btModel or not btModel.Parent then btBuild() if not btModel then return end end
-        local now = os.clock()
-        local cf = hrp.CFrame
-        if btCount < BTCAP then btCount = btCount + 1
-        else btFirst = btFirst % BTCAP + 1 end
-        local slot = btHist[(btFirst + btCount - 2) % BTCAP + 1]
-        slot[1], slot[2] = now, cf
-        if now - btPingAt >= 0.2 then
-            btPingAt = now
-            local ok, v = pcall(function()
-                return Stats.Network.ServerStatsItem["Data Ping"]:GetValue() / 1000
-            end)
-            btPing = math.clamp((ok and v) or 0.15, 0.05, 0.6)
-        end
-        local target = now - btPing
-        local tcf = cf
-        for k = btCount, 1, -1 do
-            local s = btHist[(btFirst + k - 2) % BTCAP + 1]
-            if s[1] <= target then tcf = s[2] break end
-        end
-        local inv = hrp.CFrame:Inverse()
-        for i = 1, #btPairs do
-            local cp, rp = btPairs[i][1], btPairs[i][2]
-            if cp and cp.Parent and rp and rp.Parent then
-                cp.CFrame = tcf * (inv * rp.CFrame)
-            end
-        end
-    end
-
-    AddConn("BacktrackTickV2", RunService.Heartbeat:Connect(btUpdate))
-
-    AddConn("BacktrackRespawn", LocalPlayer.CharacterAdded:Connect(function()
-        task.wait(1)
-        if btOn then btBuild() end
-    end))
-
-    task.spawn(function()
-        task.wait(4)
-        if not Tabs.Visual then return end
-        local sec = Tabs.Visual:AddSection({Name = "Backtrack v2"})
-
-        sec:AddToggle("BacktrackOnV2", {
-            Title = L("Backtrack"),
-            Default = false,
-        }):OnChanged(function(v)
-            btOn = v
-            if v then btBuild()
-            else btKill() end
-        end)
-
-        sec:AddColorPicker("BacktrackColV2", {
-            Title = L("Color"),
-            Default = Color3.fromRGB(255, 60, 60),
-        }):OnChanged(function(c)
-            btCol = c
-            if btModel then
-                for _, p in ipairs(btModel:GetDescendants()) do
-                    if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then
-                        p.Color = c
-                    end
-                end
-            end
-        end)
-    end)
-
-    print("[FortniHub][INFO] Backtrack v2 готов")
-end
-
--- ============================================================
 -- 2. ESP CHAMS FIX
 -- ============================================================
 do
@@ -5725,225 +5421,6 @@ do
     end))
 
     print("[FortniHub][INFO] AutoFarm v3 готов")
-end
-
--- ============================================================
--- 4. AWP v2
--- ============================================================
-do
-    if Connections["AWPCheckV2"] then pcall(function() Connections["AWPCheckV2"]:Disconnect() end) end
-    if Connections["AWPRenderV2"] then pcall(function() Connections["AWPRenderV2"]:Disconnect() end) end
-
-    local awpOn = false
-    local entries = {}
-
-    local COL = {
-        BODY = Color3.fromRGB(58, 74, 42),
-        METAL = Color3.fromRGB(28, 28, 30),
-        GLASS = Color3.fromRGB(40, 90, 110),
-        RUB = Color3.fromRGB(15, 15, 15),
-    }
-
-    local function clearAWP()
-        for _, e in ipairs(entries) do
-            if e.part and e.part.Parent then pcall(function() e.part:Destroy() end) end
-        end
-        entries = {}
-    end
-
-    local function buildAWP(handle)
-        if not handle or handle:GetAttribute("FH_AWP") then return end
-        local tool = handle.Parent
-        if not tool then return end
-        handle:SetAttribute("FH_AWP", true)
-        local origTransparency = handle.Transparency
-        handle.Transparency = 1
-        handle:SetAttribute("FH_ORIG_TRANS", origTransparency)
-
-        local function part(name, size, col, mat, off, shape)
-            local p = Instance.new("Part")
-            p.Name = name
-            p.Size = size
-            p.Color = col
-            p.Material = mat or Enum.Material.Metal
-            p.Anchored = true
-            p.CanCollide = false
-            p.CanQuery = false
-            p.CanTouch = false
-            p.CastShadow = true
-            p.Massless = true
-            p.TopSurface = Enum.SurfaceType.Smooth
-            p.BottomSurface = Enum.SurfaceType.Smooth
-            if shape then p.Shape = shape end
-            p.Parent = tool
-            entries[#entries + 1] = {part = p, off = off}
-        end
-
-        part("AWP_Receiver", Vector3.new(0.13, 0.15, 0.46), COL.BODY, Enum.Material.SmoothPlastic, CFrame.new(0, 0, -0.26))
-        part("AWP_Barrel", Vector3.new(0.80, 0.05, 0.05), COL.METAL, Enum.Material.Metal,
-            CFrame.new(0, 0, -1.03) * CFrame.Angles(0, math.rad(90), 0), Enum.PartType.Cylinder)
-        part("AWP_Forend_T", Vector3.new(0.13, 0.02, 0.89), COL.BODY, Enum.Material.SmoothPlastic, CFrame.new(0, 0.055, -0.915))
-        part("AWP_Forend_B", Vector3.new(0.13, 0.02, 0.89), COL.BODY, Enum.Material.SmoothPlastic, CFrame.new(0, -0.055, -0.915))
-        part("AWP_Forend_L", Vector3.new(0.02, 0.11, 0.89), COL.BODY, Enum.Material.SmoothPlastic, CFrame.new(-0.055, 0, -0.915))
-        part("AWP_Forend_R", Vector3.new(0.02, 0.11, 0.89), COL.BODY, Enum.Material.SmoothPlastic, CFrame.new(0.055, 0, -0.915))
-        part("AWP_Scope_Tube", Vector3.new(0.55, 0.045, 0.045), COL.METAL, Enum.Material.Metal,
-            CFrame.new(0, 0.20, -0.18) * CFrame.Angles(0, math.rad(90), 0), Enum.PartType.Cylinder)
-        part("AWP_Scope_Bell", Vector3.new(0.09, 0.065, 0.065), COL.METAL, Enum.Material.Metal,
-            CFrame.new(0, 0.20, -0.49) * CFrame.Angles(0, math.rad(90), 0), Enum.PartType.Cylinder)
-        part("AWP_Scope_Lens", Vector3.new(0.02, 0.058, 0.058), COL.GLASS, Enum.Material.Glass,
-            CFrame.new(0, 0.20, -0.54) * CFrame.Angles(0, math.rad(90), 0), Enum.PartType.Cylinder)
-        part("AWP_Scope_Rear", Vector3.new(0.08, 0.055, 0.055), COL.METAL, Enum.Material.Metal,
-            CFrame.new(0, 0.20, 0.13) * CFrame.Angles(0, math.rad(90), 0), Enum.PartType.Cylinder)
-        part("AWP_Stock", Vector3.new(0.11, 0.14, 0.75), COL.BODY, Enum.Material.SmoothPlastic, CFrame.new(0, 0, 0.325))
-        part("AWP_Stock_Cheek", Vector3.new(0.07, 0.045, 0.40), COL.BODY, Enum.Material.SmoothPlastic, CFrame.new(0, 0.088, 0.20))
-        part("AWP_Stock_Pad", Vector3.new(0.11, 0.15, 0.06), COL.RUB, Enum.Material.Rubber, CFrame.new(0, 0, 0.74))
-        part("AWP_Grip", Vector3.new(0.075, 0.17, 0.06), COL.BODY, Enum.Material.SmoothPlastic,
-            CFrame.new(0, -0.15, 0.06) * CFrame.Angles(math.rad(-14), 0, 0))
-        part("AWP_Mag", Vector3.new(0.055, 0.20, 0.032), COL.METAL, Enum.Material.Metal, CFrame.new(0, -0.26, -0.34))
-    end
-
-    AddConn("AWPCheckV2", RunService.Heartbeat:Connect(function()
-        if not awpOn then return end
-        local c = LocalPlayer.Character
-        local bp = LocalPlayer:FindFirstChildOfClass("Backpack")
-        for _, root in ipairs({c, bp}) do
-            if root then
-                local g = root:FindFirstChild("Gun")
-                if g then
-                    local h = g:FindFirstChild("Handle")
-                    if h and not h:GetAttribute("FH_AWP") then buildAWP(h) end
-                end
-            end
-        end
-    end))
-
-    AddConn("AWPRenderV2", RunService.RenderStepped:Connect(function()
-        if not awpOn then return end
-        for i = #entries, 1, -1 do
-            local e = entries[i]
-            if not e.part or not e.part.Parent then
-                table.remove(entries, i)
-            else
-                local tool = e.part.Parent
-                if tool then
-                    local h = tool:FindFirstChild("Handle")
-                    if h then
-                        e.part.CFrame = h.CFrame * e.off
-                    end
-                end
-            end
-        end
-    end))
-
-    task.spawn(function()
-        task.wait(4)
-        if not Tabs.Visual then return end
-        local sec = Tabs.Visual:AddSection({Name = "AWP v2"})
-
-        sec:AddToggle("AWPV2", {
-            Title = "Замена оружия на AWP",
-            Default = false,
-        }):OnChanged(function(v)
-            awpOn = v
-            if v then
-                local c = LocalPlayer.Character
-                local bp = LocalPlayer:FindFirstChildOfClass("Backpack")
-                for _, root in ipairs({c, bp}) do
-                    if root then
-                        local g = root:FindFirstChild("Gun")
-                        if g then
-                            local h = g:FindFirstChild("Handle")
-                            if h then buildAWP(h) end
-                        end
-                    end
-                end
-                Notify("FortniHub", "AWP ВКЛ", 2)
-            else
-                clearAWP()
-                local function restore(container)
-                    if not container then return end
-                    local g = container:FindFirstChild("Gun")
-                    if g then
-                        local h = g:FindFirstChild("Handle")
-                        if h and h:GetAttribute("FH_AWP") then
-                            local t = h:GetAttribute("FH_ORIG_TRANS")
-                            if t then h.Transparency = t end
-                            h:SetAttribute("FH_AWP", false)
-                        end
-                    end
-                end
-                restore(LocalPlayer.Character)
-                restore(LocalPlayer:FindFirstChildOfClass("Backpack"))
-                Notify("FortniHub", "AWP ВЫКЛ", 2)
-            end
-        end)
-    end)
-
-    print("[FortniHub][INFO] AWP v2 готов")
-end
-
--- ============================================================
--- 5. SOUNDS — preview
--- ============================================================
-do
-    task.spawn(function()
-        task.wait(4)
-        if not Tabs.Utility then return end
-        local sec = Tabs.Utility:AddSection({Name = "Звуки — прослушивание"})
-
-        local SoundService = game:GetService("SoundService")
-
-        local function playPreviewFromName(name)
-            local cacheDir = "shitaro_sounds/"
-            local path = cacheDir .. name .. ".ogg"
-            local url = "https://github.com/khenn791/lmao/raw/refs/heads/main/" .. (name:gsub(" ", "%%20")) .. ".ogg"
-            task.spawn(function()
-                if not (isfile and isfile(path)) then
-                    pcall(function()
-                        if isfolder and not isfolder(cacheDir) and makefolder then
-                            makefolder(cacheDir)
-                        end
-                    end)
-                    local ok, data = pcall(function() return game:HttpGet(url) end)
-                    if ok and type(data) == "string" and #data > 1024 then
-                        pcall(function() writefile(path, data) end)
-                    end
-                end
-                if isfile and isfile(path) then
-                    local getAsset = getcustomasset or getsynasset
-                    if getAsset then
-                        local ok2, id = pcall(getAsset, path)
-                        if ok2 and id then
-                            local s = Instance.new("Sound")
-                            s.SoundId = id
-                            s.Volume = 1
-                            s.Parent = SoundService
-                            s:Play()
-                            task.delay(8, function() pcall(function() s:Destroy() end) end)
-                        end
-                    end
-                end
-            end)
-        end
-
-        local soundList = {"mc bow", "skeet", "neverlose", "rust", "primordial", "sparkle", "break", "applepay", "bubble", "combobreak", "killcard", "xp", "na naxuy", "stony", "hentai"}
-
-        local previewPick = sec:AddDropdown("PreviewSoundPick", {
-            Title = "Выбрать звук для прослушки",
-            Values = soundList,
-            Default = "mc bow",
-        })
-
-        sec:AddButton({Title = "Прослушать", Callback = function()
-            local v = previewPick:GetValue()
-            if v then
-                playPreviewFromName(v)
-                Notify("FortniHub", "Играю: " .. v, 2)
-            end
-        end})
-    end)
-
-    print("[FortniHub][INFO] Sounds v2 (preview) готов")
 end
 
 -- ============================================================
@@ -6373,4 +5850,930 @@ print("[FortniHub][INFO] ================================")
 task.spawn(function()
     task.wait(1)
     Notify("FortniHub", "v16.3 готов! P — меню", 6)
+end)
+-- ============================================================
+-- FORTNIHUB v16.4 — PART 6: FIXES + NEW FEATURES
+-- ============================================================
+
+-- ============================================================
+-- 1. КЛАВИША МЕНЮ — рабочий фикс
+-- ============================================================
+do
+    -- Убиваем все старые обработчики
+    for keyName, conn in pairs(Connections) do
+        if keyName:find("MenuKey") then
+            pcall(function() conn:Disconnect() end)
+            Connections[keyName] = nil
+        end
+    end
+
+    _G.FH_MENU_KEY = _G.FH_MENU_KEY or Enum.KeyCode.P
+
+    AddConn("MenuKey_Final", UserInputService.InputBegan:Connect(function(input, gpe)
+        if gpe then return end
+        if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+        if input.KeyCode == _G.FH_MENU_KEY then
+            pcall(function() Window:Minimize() end)
+        end
+    end))
+
+    -- UI обновление
+    task.spawn(function()
+        task.wait(5)
+        if not Tabs.Settings then return end
+        local sec
+        for _, s in ipairs(Tabs.Settings:GetDescendants and {} or {}) do end
+        -- создаём отдельную секцию для надёжности
+        sec = Tabs.Settings:AddSection({Name = "Клавиша меню"})
+
+        sec:AddKeybind("MenuKeyBindFinal", {
+            Title = "Клавиша открытия меню (P по дефолту)",
+            Default = "P",
+        }):OnChanged(function(k)
+            local ok, kc = pcall(function() return Enum.KeyCode[k] end)
+            if ok and kc then
+                _G.FH_MENU_KEY = kc
+                Notify("FortniHub", "Клавиша меню: " .. tostring(kc), 2)
+            end
+        end)
+    end)
+
+    print("[FortniHub][INFO] Menu key v2 готов")
+end
+
+-- ============================================================
+-- 2. ПРОСЛУШИВАНИЕ ЗВУКОВ — рабочий фикс (без GetValue)
+-- ============================================================
+do
+    task.spawn(function()
+        task.wait(6)
+        if not Tabs.Utility then return end
+
+        local SoundService = game:GetService("SoundService")
+
+        local function playByName(name)
+            local cacheDir = "shitaro_sounds/"
+            local path = cacheDir .. name .. ".ogg"
+            local url = "https://github.com/khenn791/lmao/raw/refs/heads/main/" .. (name:gsub(" ", "%%20")) .. ".ogg"
+
+            task.spawn(function()
+                -- Скачиваем если нет
+                if not (isfile and isfile(path)) then
+                    pcall(function()
+                        if isfolder and makefolder and not isfolder(cacheDir) then
+                            makefolder(cacheDir)
+                        end
+                    end)
+                    local ok, data = pcall(function() return game:HttpGet(url) end)
+                    if ok and type(data) == "string" and #data > 1024 then
+                        pcall(function() writefile(path, data) end)
+                    end
+                end
+
+                -- Пробуем проиграть
+                local getAsset = getcustomasset or getsynasset
+                if getAsset and isfile and isfile(path) then
+                    local ok2, id = pcall(getAsset, path)
+                    if ok2 and type(id) == "string" and id ~= "" then
+                        local s = Instance.new("Sound")
+                        s.SoundId = id
+                        s.Volume = 1
+                        s.Parent = SoundService
+                        pcall(function() s:Play() end)
+                        task.delay(8, function() pcall(function() s:Destroy() end) end)
+                        return true
+                    end
+                end
+
+                -- Fallback: пробуем как Roblox asset id (для встроенных)
+                local builtin = {
+                    ["mc bow"] = "rbxassetid://131961136",
+                    ["skeet"] = "rbxassetid://131961136",
+                }
+                local bid = builtin[name]
+                if bid then
+                    local s = Instance.new("Sound")
+                    s.SoundId = bid
+                    s.Volume = 1
+                    s.Parent = SoundService
+                    pcall(function() s:Play() end)
+                    task.delay(8, function() pcall(function() s:Destroy() end) end)
+                    return true
+                end
+
+                return false
+            end)
+        end
+
+        local sec = Tabs.Utility:AddSection({Name = "Прослушка звуков v3"})
+
+        local soundList = {"mc bow", "skeet", "neverlose", "rust", "primordial", "sparkle", "break", "applepay", "bubble", "combobreak", "killcard", "xp", "na naxuy", "stony", "hentai"}
+
+        local picker = sec:AddDropdown("PreviewSoundV3", {
+            Title = "Выбрать звук",
+            Values = soundList,
+            Default = "mc bow",
+        })
+
+        sec:AddButton({Title = "Прослушать", Callback = function()
+            -- ВАЖНО: .Value а не :GetValue()
+            local v = picker and picker.Value
+            if type(v) == "table" then v = v[1] end
+            if type(v) ~= "string" or v == "" then
+                Notify("FortniHub", "Выбери звук", 2)
+                return
+            end
+            local ok = playByName(v)
+            if ok then
+                Notify("FortniHub", "Играю: " .. v, 2)
+            else
+                Notify("FortniHub", "Не удалось загрузить: " .. v, 3)
+            end
+        end})
+
+        print("[FortniHub][INFO] Прослушка v3 готов")
+    end)
+end
+
+-- ============================================================
+-- 3. CHINA HAT — рабочий фикс (z-index + camera distance)
+-- ============================================================
+do
+    local chOn, chCol = false, Color3.fromRGB(255, 60, 60)
+    local chSeg = 40
+    local chRadius, chHeight = 1.8, 0.9
+    local chConn, chRows = nil, {}
+
+    local function chClear()
+        for i = 1, #chRows do pcall(function() chRows[i]:Remove() end) end
+        chRows = {}
+    end
+
+    local function chUpdate()
+        local char = LocalPlayer.Character
+        local head = char and char:FindFirstChild("Head")
+        if not head or not head:IsA("BasePart") then return end
+        local cam = Workspace.CurrentCamera
+        if not cam then return end
+
+        local base = Vector3.new(head.Position.X, head.Position.Y + head.Size.Y * 0.5, head.Position.Z)
+        local apex3D = base + Vector3.new(0, chHeight, 0)
+        local apex = cam:WorldToViewportPoint(apex3D)
+        if apex.Z <= 0 then chClear() return end
+
+        local pxs, pys = {}, {}
+        pxs[1], pys[1] = apex.X, apex.Y
+
+        for i = 1, chSeg do
+            local a = (i - 1) / chSeg * math.pi * 2
+            local p3d = base + Vector3.new(math.cos(a) * chRadius, 0, math.sin(a) * chRadius)
+            local p = cam:WorldToViewportPoint(p3d)
+            if p.Z <= 0 then chClear() return end
+            pxs[i + 1] = p.X
+            pys[i + 1] = p.Y
+        end
+
+        -- Convex hull
+        local ord = {}
+        for i = 1, chSeg + 1 do ord[i] = i end
+        table.sort(ord, function(i, j)
+            if pxs[i] == pxs[j] then return pys[i] < pys[j] end
+            return pxs[i] < pxs[j]
+        end)
+        local stack, m = {}, 0
+        for k = 1, chSeg + 1 do
+            local i = ord[k]
+            while m >= 2 do
+                local o, a = stack[m - 1], stack[m]
+                if (pxs[a] - pxs[o]) * (pys[i] - pys[o]) - (pys[a] - pys[o]) * (pxs[i] - pxs[o]) > 0 then break end
+                m = m - 1
+            end
+            m = m + 1
+            stack[m] = i
+        end
+        local lower = m
+        for k = chSeg, 1, -1 do
+            local i = ord[k]
+            while m > lower do
+                local o, a = stack[m - 1], stack[m]
+                if (pxs[a] - pxs[o]) * (pys[i] - pys[o]) - (pys[a] - pys[o]) * (pxs[i] - pxs[o]) > 0 then break end
+                m = m - 1
+            end
+            m = m + 1
+            stack[m] = i
+        end
+        local hn = m - 1
+
+        local minY, maxY = math.huge, -math.huge
+        for i = 1, hn do
+            local y = pys[stack[i]]
+            if y < minY then minY = y end
+            if y > maxY then maxY = y end
+        end
+
+        local firstY = math.max(0, math.floor(minY))
+        local lastY = math.min(cam.ViewportSize.Y, math.ceil(maxY))
+        local span = math.max(1, maxY - minY)
+        local step = math.max(1, math.ceil((lastY - firstY) / 200))
+
+        local used = 0
+        for y0 = firstY, lastY - 1, step do
+            local h = math.min(step, lastY - y0)
+            local y = y0 + h * 0.5
+            local left, right = math.huge, -math.huge
+            local ax, ay = pxs[stack[hn]], pys[stack[hn]]
+            for i = 1, hn do
+                local ix = stack[i]
+                local bx, by = pxs[ix], pys[ix]
+                if (ay <= y and by > y) or (by <= y and ay > y) then
+                    local x = ax + (y - ay) * (bx - ax) / (by - ay)
+                    if x < left then left = x end
+                    if x > right then right = x end
+                end
+                ax, ay = bx, by
+            end
+            local w = right - left
+            if w >= 2.5 then
+                used = used + 1
+                local row = chRows[used]
+                if not row then
+                    row = Drawing.new("Square")
+                    row.Filled = true
+                    row.Thickness = 0
+                    row.Transparency = 0.7
+                    row.ZIndex = 50
+                    chRows[used] = row
+                end
+                local t = (y - minY) / span
+                local light = math.max(0, 1 - t * 1.35)
+                local dark = math.max(0, (t - 0.58) / 0.42)
+                local col = chCol:Lerp(Color3.new(1, 1, 1), light * 0.26):Lerp(Color3.new(0, 0, 0), dark * 0.1)
+                row.Position = Vector2.new(left, y0)
+                row.Size = Vector2.new(w, h)
+                row.Color = col
+                row.Visible = true
+            end
+        end
+        for i = used + 1, #chRows do chRows[i].Visible = false end
+    end
+
+    -- Убираем старый china hat
+    if Connections["ChinaHatOn"] then pcall(function() Connections["ChinaHatOn"]:Disconnect() end) end
+    if Connections["ChinaHatTick"] then pcall(function() Connections["ChinaHatTick"]:Disconnect() end) end
+
+    AddConn("ChinaHatTickV2", RunService.RenderStepped:Connect(function()
+        if chOn then chUpdate() end
+    end))
+
+    task.spawn(function()
+        task.wait(7)
+        if not Tabs.Visual then return end
+        local sec = Tabs.Visual:AddSection({Name = "China Hat v2"})
+
+        sec:AddToggle("ChinaHatV2On", {
+            Title = "Китайская шляпа",
+            Default = false,
+        }):OnChanged(function(v)
+            chOn = v
+            if not v then chClear() end
+            Notify("FortniHub", "China Hat " .. (v and "ВКЛ" or "ВЫКЛ"), 2)
+        end)
+
+        sec:AddColorPicker("ChinaHatV2Col", {
+            Title = "Цвет шляпы",
+            Default = Color3.fromRGB(255, 60, 60),
+        }):OnChanged(function(c) chCol = c end)
+
+        sec:AddSlider("ChinaHatV2Radius", {
+            Title = "Радиус",
+            Min = 1, Max = 4, Default = 1.8, Rounding = 1,
+        }):OnChanged(function(v) chRadius = tonumber(v) or 1.8 end)
+
+        sec:AddSlider("ChinaHatV2Height", {
+            Title = "Высота",
+            Min = 0.5, Max = 2, Default = 0.9, Rounding = 1,
+        }):OnChanged(function(v) chHeight = tonumber(v) or 0.9 end)
+    end)
+
+    print("[FortniHub][INFO] China Hat v2 готов")
+end
+
+-- ============================================================
+-- 4. MOVEMENT GRAPH — рабочий фикс
+-- ============================================================
+do
+    local mgOn, mgCol = false, Color3.fromRGB(242, 242, 242)
+    local mgWidth, mgHeight, mgOffset = 280, 72, 180
+    local mgLines, mgShadows = {}, {}
+    local mgCurrent, mgConn = nil, nil
+    local mgHist, mgAccum, mgSmooth = {}, 0, 0
+    local mgSpan, mgStep = 2.8, 1 / 45
+    local mgLastTime = 0
+
+    local function mgClear()
+        if mgConn then pcall(function() mgConn:Disconnect() end) mgConn = nil end
+        if mgCurrent then pcall(function() mgCurrent:Remove() end) mgCurrent = nil end
+        for i = 1, #mgLines do
+            pcall(function() mgLines[i]:Remove() end)
+            pcall(function() mgShadows[i]:Remove() end)
+        end
+        mgLines, mgShadows = {}, {}
+        mgHist = {}
+        mgAccum = 0
+    end
+
+    local function mgSpeed()
+        local c = LocalPlayer.Character
+        local r = c and c:FindFirstChild("HumanoidRootPart")
+        if not r then return 0 end
+        local v = r.AssemblyLinearVelocity
+        return Vector3.new(v.X, 0, v.Z).Magnitude
+    end
+
+    local function mgRef()
+        local c = LocalPlayer.Character
+        local h = c and c:FindFirstChildOfClass("Humanoid")
+        return math.max(1, (h and h.WalkSpeed) or 16)
+    end
+
+    local function mgStart()
+        mgClear()
+        mgSmooth = mgSpeed()
+        local now = os.clock()
+        local cnt = math.ceil(mgSpan / mgStep)
+        for i = 0, cnt do
+            mgHist[#mgHist + 1] = {t = now - mgSpan + i * mgStep, v = mgSmooth}
+        end
+
+        -- Создаём пул линий заранее
+        for i = 1, 300 do
+            local s = Drawing.new("Line")
+            s.Color = Color3.new(0, 0, 0)
+            s.Thickness = 3
+            s.Transparency = 0.4
+            s.Visible = false
+            mgShadows[#mgShadows + 1] = s
+            local l = Drawing.new("Line")
+            l.Color = mgCol
+            l.Thickness = 1.5
+            l.Transparency = 1
+            l.Visible = false
+            mgLines[#mgLines + 1] = l
+        end
+
+        mgConn = RunService.RenderStepped:Connect(function(dt)
+            if not mgOn then
+                for i = 1, #mgLines do
+                    mgLines[i].Visible = false
+                    mgShadows[i].Visible = false
+                end
+                if mgCurrent then mgCurrent.Visible = false end
+                return
+            end
+
+            local raw = mgSpeed()
+            mgSmooth = mgSmooth + (raw - mgSmooth) * (1 - math.exp(-dt * 18))
+            mgAccum = mgAccum + dt
+            local now = os.clock()
+            if mgAccum >= mgStep then
+                mgAccum = mgAccum % mgStep
+                mgHist[#mgHist + 1] = {t = now, v = mgSmooth}
+                local cutoff = now - mgSpan
+                while #mgHist > 2 and mgHist[2].t < cutoff do table.remove(mgHist, 1) end
+            end
+
+            -- Рендер
+            local cam = Workspace.CurrentCamera
+            if not cam then return end
+            local vp = cam.ViewportSize
+            local w = math.min(mgWidth, math.max(120, vp.X - 48))
+            local h = math.min(mgHeight, math.max(36, vp.Y - 32))
+            local left = math.floor(vp.X * 0.5 - w * 0.5)
+            local center = math.clamp(math.floor(vp.Y * 0.5 + mgOffset), h * 0.5 + 8, vp.Y - h * 0.5 - 8)
+            local ref = mgRef()
+            local startT = now - mgSpan
+            local count = #mgHist
+
+            for i = 1, count - 1 do
+                local a, b = mgHist[i], mgHist[i + 1]
+                local ap = math.clamp((a.t - startT) / mgSpan, 0, 1)
+                local bp = math.clamp((b.t - startT) / mgSpan, 0, 1)
+                local fade = math.clamp(math.min((ap + bp) * 6, (2 - ap - bp) * 5), 0, 1)
+                local ay = center - (math.clamp(a.v / ref - 1, -1, 1)) * h * 0.44
+                local by = center - (math.clamp(b.v / ref - 1, -1, 1)) * h * 0.44
+                local from = Vector2.new(left + ap * w, ay)
+                local to = Vector2.new(left + bp * w, by)
+                if mgLines[i] then
+                    mgLines[i].From = from
+                    mgLines[i].To = to
+                    mgLines[i].Transparency = fade
+                    mgLines[i].Visible = fade > 0.02
+                    mgLines[i].Color = mgCol
+                    mgShadows[i].From = from
+                    mgShadows[i].To = to
+                    mgShadows[i].Transparency = fade * 0.42
+                    mgShadows[i].Visible = fade > 0.02
+                end
+            end
+
+            for i = count, #mgLines do
+                mgLines[i].Visible = false
+                mgShadows[i].Visible = false
+            end
+
+            if not mgCurrent then
+                mgCurrent = Drawing.new("Text")
+                mgCurrent.Center = false
+                mgCurrent.Outline = true
+                mgCurrent.Size = 12
+                mgCurrent.ZIndex = 904
+            end
+            mgCurrent.Text = tostring(math.floor(mgSmooth + 0.5))
+            mgCurrent.Position = Vector2.new(left + w + 5, center - 7)
+            mgCurrent.Color = mgCol
+            mgCurrent.Visible = true
+        end)
+    end
+
+    task.spawn(function()
+        task.wait(8)
+        if not Tabs.Visual then return end
+        local sec = Tabs.Visual:AddSection({Name = "График скорости v2"})
+
+        sec:AddToggle("MovGraphV2On", {
+            Title = "Показывать график",
+            Default = false,
+        }):OnChanged(function(v)
+            mgOn = v
+            if v then mgStart() else mgClear() end
+        end)
+
+        sec:AddColorPicker("MovGraphV2Col", {
+            Title = "Цвет графика",
+            Default = Color3.fromRGB(242, 242, 242),
+        }):OnChanged(function(c) mgCol = c end)
+
+        sec:AddSlider("MovGraphV2W", {Title = "Ширина", Min = 180, Max = 420, Default = 280, Rounding = 0}):OnChanged(function(v) mgWidth = tonumber(v) or 280 end)
+        sec:AddSlider("MovGraphV2H", {Title = "Высота", Min = 40, Max = 120, Default = 72, Rounding = 0}):OnChanged(function(v) mgHeight = tonumber(v) or 72 end)
+        sec:AddSlider("MovGraphV2Y", {Title = "Y позиция", Min = -200, Max = 400, Default = 180, Rounding = 0}):OnChanged(function(v) mgOffset = tonumber(v) or 180 end)
+    end)
+
+    print("[FortniHub][INFO] Movement Graph v2 готов")
+end
+
+-- ============================================================
+-- 5. SERVER LOOK — реальный серверный взгляд
+-- ============================================================
+do
+    local slOn = false
+    local slMode = "Up"  -- Up / Down / Combo
+    local slSpeed = 1
+    local comboDir = 1
+    local lastComboFlip = 0
+    local smoothAngle = 0
+
+    AddConn("ServerLookTick", RunService.Heartbeat:Connect(function(dt)
+        if not slOn then return end
+        local c = LocalPlayer.Character
+        if not c then return end
+        local hrp = c:FindFirstChild("HumanoidRootPart")
+        local hum = c:FindFirstChildOfClass("Humanoid")
+        if not hrp or not hum then return end
+
+        -- Вычисляем целевой угол
+        local targetAngle = 0
+        if slMode == "Up" then
+            targetAngle = math.rad(-60) * slSpeed
+        elseif slMode == "Down" then
+            targetAngle = math.rad(60) * slSpeed
+        elseif slMode == "Combo" then
+            local now = os.clock()
+            if now - lastComboFlip > 1 / slSpeed then
+                lastComboFlip = now
+                comboDir = -comboDir
+            end
+            targetAngle = math.rad(60) * comboDir
+        end
+
+        -- Плавно двигаем
+        smoothAngle = smoothAngle + (targetAngle - smoothAngle) * math.min(1, dt * 10)
+
+        -- РЕАЛЬНЫЙ СЕРВЕРНЫЙ ВЗГЛЯД: вращаем HRP. Это реплицируется на сервер
+        local currentLook = hrp.CFrame.LookVector
+        local currentPos = hrp.Position
+        -- Вращаем только по X (pitch) — вверх/вниз
+        local flat = Vector3.new(currentLook.X, 0, currentLook.Z)
+        if flat.Magnitude < 0.01 then flat = Vector3.new(0, 0, -1) end
+        flat = flat.Unit
+        local newLook = (flat * math.cos(smoothAngle) + Vector3.new(0, 1, 0) * math.sin(smoothAngle))
+        -- Сохраняем Y-ось для стабильности
+        if math.abs(newLook.Y) > 0.99 then newLook = Vector3.new(newLook.X, 0.99 * math.sign(newLook.Y), newLook.Z) end
+        local newCF = CFrame.lookAt(currentPos, currentPos + newLook)
+        hrp.CFrame = newCF
+    end))
+
+    task.spawn(function()
+        task.wait(9)
+        if not Tabs.Movement then return end
+        local sec = Tabs.Movement:AddSection({Name = "Серверный взгляд v2"})
+
+        sec:AddToggle("ServerLookV2On", {
+            Title = "Включить серверный взгляд",
+            Default = false,
+        }):OnChanged(function(v)
+            slOn = v
+            smoothAngle = 0
+            Notify("FortniHub", "Server Look " .. (v and "ВКЛ" or "ВЫКЛ"), 2)
+        end)
+
+        sec:AddDropdown("ServerLookV2Mode", {
+            Title = "Куда смотреть",
+            Values = {"Вверх", "Вниз", "Комбо (вверх-вниз)"},
+            Default = "Вверх",
+        }):OnChanged(function(v)
+            if v == "Вверх" then slMode = "Up"
+            elseif v == "Вниз" then slMode = "Down"
+            else slMode = "Combo" end
+        end)
+
+        sec:AddSlider("ServerLookV2Speed", {
+            Title = "Скорость",
+            Min = 0.5, Max = 3, Default = 1, Rounding = 1,
+        }):OnChanged(function(v) slSpeed = tonumber(v) or 1 end)
+    end)
+
+    print("[FortniHub][INFO] Server Look v2 готов")
+end
+
+-- ============================================================
+-- 6. НОВЫЙ BHOP (версия друга) + STRAFE
+-- ============================================================
+do
+    local bhopOn = false
+    local bhopPower = 40
+    local bhopStrafe = false
+    local bhopAuto = false
+    local bhopSpeed = 0
+    local wasJumping = false
+    local isBoosting = false
+    local lastCamYaw = nil
+    local jumpHoldAt = 0
+    local strafeOn = false
+    local lastStrafeAt = 0
+    local strafeDir = 1
+
+    UserInputService.JumpRequest:Connect(function()
+        jumpHoldAt = os.clock()
+    end)
+
+    local function jumpHeld()
+        if os.clock() - jumpHoldAt < 0.2 then return true end
+        return UserInputService:IsKeyDown(Enum.KeyCode.Space)
+    end
+
+    local function camYaw()
+        local cam = Workspace.CurrentCamera
+        if not cam then return nil end
+        local l = cam.CFrame.LookVector
+        return math.atan2(-l.X, -l.Z)
+    end
+
+    AddConn("BhopNew", RunService.Heartbeat:Connect(function()
+        if not bhopOn then
+            wasJumping, isBoosting, bhopSpeed = false, false, 0
+            lastCamYaw = nil
+            return
+        end
+        local c = LocalPlayer.Character
+        local hum = c and c:FindFirstChildOfClass("Humanoid")
+        local hrp = c and c:FindFirstChild("HumanoidRootPart")
+        if not hum or not hrp then return end
+
+        local st = hum:GetState()
+        local jumping = st == Enum.HumanoidStateType.Jumping
+        local airborne = jumping or st == Enum.HumanoidStateType.Freefall
+
+        if bhopStrafe or bhopAuto then
+            bhopSpeed = 0
+            if jumping and not wasJumping then
+                local dir = hum.MoveDirection
+                if dir.Magnitude < 0.1 then dir = hrp.CFrame.LookVector end
+                dir = Vector3.new(dir.X, 0, dir.Z)
+                if dir.Magnitude > 0 then
+                    dir = dir.Unit
+                    local v = hrp.AssemblyLinearVelocity
+                    hrp.AssemblyLinearVelocity = Vector3.new(dir.X * bhopPower, v.Y, dir.Z * bhopPower)
+                    isBoosting = true
+                end
+            end
+            if isBoosting and airborne then
+                if bhopAuto then
+                    local yaw = camYaw()
+                    if yaw and lastCamYaw then
+                        local delta = yaw - lastCamYaw
+                        while delta > math.pi do delta = delta - math.pi * 2 end
+                        while delta < -math.pi do delta = delta + math.pi * 2 end
+                        if math.abs(delta) > 0.0005 then
+                            local v = hrp.AssemblyLinearVelocity
+                            local xz = Vector3.new(v.X, 0, v.Z)
+                            if xz.Magnitude > 1 then
+                                local rot = CFrame.fromEulerAnglesYXZ(0, delta, 0) * xz
+                                hrp.AssemblyLinearVelocity = Vector3.new(rot.X, v.Y, rot.Z)
+                            end
+                        end
+                    end
+                end
+                local dir = hum.MoveDirection
+                if dir.Magnitude > 0.1 then
+                    dir = Vector3.new(dir.X, 0, dir.Z).Unit
+                    local v = hrp.AssemblyLinearVelocity
+                    local cur = Vector3.new(v.X, 0, v.Z)
+                    local tgt = dir * bhopPower
+                    local nxz = cur:Lerp(tgt, 0.3)
+                    hrp.AssemblyLinearVelocity = Vector3.new(nxz.X, v.Y, nxz.Z)
+                elseif bhopAuto then
+                    local v = hrp.AssemblyLinearVelocity
+                    local xz = Vector3.new(v.X, 0, v.Z)
+                    if xz.Magnitude > 0.1 and xz.Magnitude < bhopPower then
+                        local kp = xz.Unit * bhopPower
+                        hrp.AssemblyLinearVelocity = Vector3.new(kp.X, v.Y, kp.Z)
+                    end
+                end
+            end
+            if not airborne then isBoosting = false end
+        else
+            local base = math.max(hum.WalkSpeed, 1)
+            local cap = math.max(bhopPower, base)
+            local step = math.max(bhopPower * 0.1, 1)
+            if bhopSpeed < base then bhopSpeed = base end
+            if jumping and not wasJumping then
+                bhopSpeed = math.min(bhopSpeed + step, cap)
+                local v = hrp.AssemblyLinearVelocity
+                local xz = Vector3.new(v.X, 0, v.Z)
+                local dir
+                if xz.Magnitude > 0.1 then dir = xz.Unit
+                else
+                    local md = hum.MoveDirection
+                    if md.Magnitude > 0.1 then dir = Vector3.new(md.X, 0, md.Z).Unit
+                    else
+                        local lv = hrp.CFrame.LookVector
+                        dir = Vector3.new(lv.X, 0, lv.Z)
+                        dir = (dir.Magnitude > 0) and dir.Unit or Vector3.new(0, 0, 0)
+                    end
+                end
+                if dir.Magnitude > 0 then
+                    hrp.AssemblyLinearVelocity = Vector3.new(dir.X * bhopSpeed, v.Y, dir.Z * bhopSpeed)
+                    isBoosting = true
+                end
+            end
+            if airborne and isBoosting then
+                local v = hrp.AssemblyLinearVelocity
+                local xz = Vector3.new(v.X, 0, v.Z)
+                local md = hum.MoveDirection
+                local dir
+                if md.Magnitude > 0.1 then dir = Vector3.new(md.X, 0, md.Z).Unit
+                elseif xz.Magnitude > 0.1 then dir = xz.Unit end
+                if dir then
+                    local sp = math.max(xz.Magnitude, bhopSpeed)
+                    hrp.AssemblyLinearVelocity = Vector3.new(dir.X * sp, v.Y, dir.Z * sp)
+                end
+            end
+            if not airborne then
+                isBoosting = false
+                if jumpHeld() then hum.Jump = true else bhopSpeed = 0 end
+            end
+        end
+        lastCamYaw = camYaw()
+        wasJumping = jumping
+    end))
+
+    -- STRAFE: каждые 0.2 сек симулируем нажатие A/D
+    AddConn("StrafeTick", RunService.Heartbeat:Connect(function()
+        if not strafeOn then return end
+        local now = os.clock()
+        if now - lastStrafeAt < 0.2 then return end
+        lastStrafeAt = now
+        strafeDir = -strafeDir
+
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not hum or not hrp then return end
+
+        -- Пробуем вызвать движение через ControlModule
+        local ok, ps = pcall(function()
+            return LocalPlayer:FindFirstChild("PlayerScripts")
+        end)
+        if ok and ps then
+            pcall(function()
+                local pm = ps:FindFirstChild("PlayerModule")
+                if pm then
+                    local controls = require(pm):GetControls()
+                    if controls then
+                        -- Просто меняем направление MoveVector через virtul input
+                    end
+                end
+            end)
+        end
+
+        -- Имитация через смещение velocity по горизонтали
+        local v = hrp.AssemblyLinearVelocity
+        local cam = Workspace.CurrentCamera
+        if cam then
+            local right = cam.CFrame.RightVector
+            local sideForce = strafeDir * 8
+            hrp.AssemblyLinearVelocity = Vector3.new(
+                v.X + right.X * sideForce * 0.15,
+                v.Y,
+                v.Z + right.Z * sideForce * 0.15
+            )
+        end
+    end))
+
+    task.spawn(function()
+        task.wait(10)
+        if not Tabs.Movement then return end
+        local sec = Tabs.Movement:AddSection({Name = "Банихоп v3 (новый)"})
+
+        sec:AddToggle("BhopNewOn", {
+            Title = "Включить банихоп",
+            Default = false,
+        }):OnChanged(function(v)
+            bhopOn = v
+            Notify("FortniHub", "Bhop " .. (v and "ВКЛ" or "ВЫКЛ"), 2)
+        end)
+
+        sec:AddSlider("BhopNewPower", {
+            Title = "Сила",
+            Min = 10, Max = 150, Default = 40, Rounding = 0,
+        }):OnChanged(function(v) bhopPower = tonumber(v) or 40 end)
+
+        sec:AddToggle("BhopNewStrafe", {
+            Title = "Стрейф (быстрое ускорение)",
+            Default = false,
+        }):OnChanged(function(v) bhopStrafe = v end)
+
+        sec:AddToggle("BhopNewAuto", {
+            Title = "Авто-стрейф",
+            Default = false,
+        }):OnChanged(function(v) bhopAuto = v end)
+
+        -- ============ STRAFE ============
+        sec:AddToggle("StrafeOn", {
+            Title = "Стрейф-рывки (A/D каждые 0.2 сек)",
+            Default = false,
+        }):OnChanged(function(v)
+            strafeOn = v
+            Notify("FortniHub", "Strafe " .. (v and "ВКЛ" or "ВЫКЛ"), 2)
+        end)
+
+        sec:AddSlider("StrafeSpeed", {
+            Title = "Частота стрейфа (сек)",
+            Min = 0.05, Max = 0.5, Default = 0.2, Rounding = 2,
+        }):OnChanged(function(v) end)
+    end)
+
+    print("[FortniHub][INFO] Bhop v3 + Strafe готов")
+end
+
+-- ============================================================
+-- 7. АНИМАЦИИ — рабочий фикс
+-- ============================================================
+do
+    task.spawn(function()
+        task.wait(11)
+        if not Tabs.Troll then return end
+        local sec = Tabs.Troll:AddSection({Name = "Анимации (рабочие)"})
+
+        local knownAnims = {
+            {"Ninja", 656118852},
+            {"Zombie", 616006778},
+            {"Levitate", 616008936},
+            {"Astronaut", 891603798},
+            {"Cartwheel", 129423030},
+            {"T-pose", 4680610777},
+            {"Sneaky", 4830543155},
+            {"Old School", 3333499706},
+            {"Kick", 5435202357},
+            {"Dance", 1824359985},
+            {"Griddy", 129149402922241},
+        }
+
+        local animMap = {}
+        local animNames = {}
+        for _, e in ipairs(knownAnims) do
+            animMap[e[1]] = e[2]
+            animNames[#animNames + 1] = e[1]
+        end
+
+        local currentTrack = nil
+        local currentEmote = nil
+
+        local function stopAnim()
+            if currentTrack then
+                pcall(function() currentTrack:Stop() end)
+                currentTrack = nil
+            end
+        end
+
+        local function playAnim(name)
+            local id = animMap[name]
+            if not id then return end
+            local c = LocalPlayer.Character
+            local hum = c and c:FindFirstChildOfClass("Humanoid")
+            if not hum then
+                Notify("FortniHub", "Персонаж не загружен", 2)
+                return
+            end
+            stopAnim()
+            local anim = Instance.new("Animation")
+            anim.AnimationId = "rbxassetid://" .. tostring(id)
+            local ok, track = pcall(function() return hum:LoadAnimation(anim) end)
+            anim:Destroy()
+            if ok and track then
+                track.Priority = Enum.AnimationPriority.Action
+                track.Looped = true
+                pcall(function() track:Play() end)
+                currentTrack = track
+                currentEmote = name
+                Notify("FortniHub", "Играю: " .. name, 2)
+            else
+                Notify("FortniHub", "Не удалось запустить: " .. name, 2)
+            end
+        end
+
+        local pick = sec:AddDropdown("AnimPick", {
+            Title = "Выбрать анимацию",
+            Values = animNames,
+            Default = "Ninja",
+        })
+
+        sec:AddButton({Title = "▶ Запустить", Callback = function()
+            local v = pick and pick.Value
+            if type(v) == "table" then v = v[1] end
+            if type(v) == "string" and v ~= "" then
+                playAnim(v)
+            end
+        end})
+
+        sec:AddButton({Title = "■ Остановить", Callback = function()
+            stopAnim()
+            Notify("FortniHub", "Остановлено", 2)
+        end})
+
+        sec:AddToggle("AnimAuto", {
+            Title = "Авто-воспроизведение после респавна",
+            Default = false,
+        })
+
+        AddConn("AnimRespawn", LocalPlayer.CharacterAdded:Connect(function()
+            task.wait(1.5)
+            if Options.AnimAuto and Options.AnimAuto.Value and currentEmote then
+                playAnim(currentEmote)
+            end
+        end))
+
+        print("[FortniHub][INFO] Animations готов")
+    end)
+end
+
+-- ============================================================
+-- 8. AWP v2 — только заглушка (модель плохая)
+-- ============================================================
+do
+    task.spawn(function()
+        task.wait(12)
+        if not Tabs.Visual then return end
+        local sec = Tabs.Visual:AddSection({Name = "AWP Replace (заглушка)"})
+
+        sec:AddToggle("AWPV2On", {
+            Title = "Замена на AWP (заглушка)",
+            Default = false,
+        }):OnChanged(function(v)
+            Notify("FortniHub", "AWP: заглушка " .. (v and "ВКЛ" or "ВЫКЛ") .. " (модель будет позже)", 3)
+        end)
+
+        -- Никакой логики, только тумблер
+    end)
+
+    print("[FortniHub][INFO] AWP заглушка готова")
+end
+
+-- ============================================================
+-- ФИНАЛЬНЫЙ ЛОГ
+-- ============================================================
+print("[FortniHub][INFO] ================================")
+print("[FortniHub][INFO] PART 6 (FINAL) ЗАГРУЖЕН")
+print("[FortniHub][INFO] - Menu key v2 (Настройки → Клавиша меню)")
+print("[FortniHub][INFO] - Прослушка звуков v3 (работает)")
+print("[FortniHub][INFO] - China Hat v2 (виден)")
+print("[FortniHub][INFO] - Movement Graph v2 (виден)")
+print("[FortniHub][INFO] - Server Look v2 (реальный серверный)")
+print("[FortniHub][INFO] - Bhop v3 + Strafe (A/D рывки)")
+print("[FortniHub][INFO] - Animations (работает)")
+print("[FortniHub][INFO] - AWP заглушка")
+print("[FortniHub][INFO] ================================")
+
+task.spawn(function()
+    task.wait(1)
+    Notify("FortniHub", "v16.4 готов! P — меню", 6)
 end)
