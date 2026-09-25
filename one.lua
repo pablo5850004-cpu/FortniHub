@@ -2254,7 +2254,6 @@ end)
 
 if _G.SHITARO_ADDON_V152_P2_LOADED then
     logWarn("Addon v15.2 Part 2/3 уже загружен")
-    return
 end
 _G.SHITARO_ADDON_V152_P2_LOADED = true
 
@@ -4602,7 +4601,6 @@ end)
 
 if _G.SHITARO_ADDON_V152_P3_LOADED then
     logWarn("Addon v15.2 Part 3/3 уже загружен")
-    return
 end
 _G.SHITARO_ADDON_V152_P3_LOADED = true
 
