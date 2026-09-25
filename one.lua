@@ -1,5 +1,5 @@
 -- ============================================================
--- FORTNIHUB v15.2 by HOTI x SHITARO
+-- FORTNIHUB v15.2 by HOTI
 -- REBUILD EDITION — 3-PART RELEASE
 -- Part 1/3: Core, UI, HUD v2, Silent Aim v15.1, Knife Silent,
 --           KillAura v2, AutoFarm v2, Combat, Movement
@@ -43,28 +43,32 @@ local VERSION = "15.2.0"
 pcall(function() if setfpscap then setfpscap(0) end end)
 
 -- ============================================================
--- SAFE RANDOM — фикс "invalid argument #2 to 'random'"
+-- SAFE RANDOM (readonly-safe)
 -- ============================================================
+-- НЕ переопределяем math.random (таблица math readonly).
+-- Вместо этого используем глобальную safeRandom.
+-- Если запускается через loader.lua — safeRandom уже определён,
+-- loader заменит все math.random( на safeRandom( в тексте скрипта.
 do
-    local orig = math.random
-    math.random = function(a, b)
-        if a == nil then return orig() end
-        if b == nil then
-            if type(a) ~= "number" or a ~= a or a < 1 then a = 1 end
-            if a > 2147483647 then a = 2147483647 end
-            return orig(math.floor(a))
+    if not getgenv().safeRandom then
+        local orig = math.random
+        local function safe(a, b)
+            if a == nil then return orig() end
+            if b == nil then
+                if type(a) ~= "number" or a ~= a or a < 1 then a = 1 end
+                if a > 2147483647 then a = 2147483647 end
+                return orig(math.floor(a))
+            end
+            a, b = tonumber(a) or 0, tonumber(b) or 0
+            if a ~= a then a = 0 end
+            if b ~= b then b = 0 end
+            if b < a then a, b = b, a end
+            if a == b then return a end
+            return orig(math.floor(a), math.floor(b))
         end
-        a, b = tonumber(a) or 0, tonumber(b) or 0
-        if a ~= a then a = 0 end
-        if b ~= b then b = 0 end
-        if b < a then a, b = b, a end
-        if a == b then return a end
-        local IMAX, IMIN = 2147483647, -2147483648
-        if a < IMIN or b > IMAX then
-            return a + (b - a) * orig()
-        end
-        return orig(math.floor(a), math.floor(b))
+        pcall(function() getgenv().safeRandom = safe end)
     end
+    safeRandom = getgenv().safeRandom
 end
 
 -- ============================================================
