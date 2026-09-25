@@ -5981,14 +5981,14 @@ do
             end)
         end
     end))
-    -- UI в Settings — ОДИН раз
+
     task.spawn(function()
         task.wait(4)
         if not Tabs.Settings then return end
 
         local sec = Tabs.Settings:AddSection({Name = "Клавиша меню"})
 
-                sec:AddKeybind("MenuKeyBindFinal", {
+        sec:AddKeybind("MenuKeyBindFinal", {
             Title = "Клавиша открытия меню",
             Default = "P",
         }):OnChanged(function(k)
@@ -5996,11 +5996,12 @@ do
             if ok and kc then
                 _G.FH_MENU_KEY = kc
                 Notify("FortniHub", "Меню: " .. tostring(kc), 2)
-            end)
+            end
         end)
+    end)
+
     print("[FortniHub][INFO] Menu key (единый) готов")
 end
-
 -- ============================================================
 -- 2. ПРОСЛУШИВАНИЕ ЗВУКОВ — рабочий фикс (без GetValue)
 -- ============================================================
