@@ -4861,7 +4861,14 @@ do
     local function killSelf()
         local c = LocalPlayer.Character
         local hum = c and c:FindFirstChildWhichIsA("Humanoid")
-        if hum then pcall(function() hum.Health = 0 end) end
+        if hum then
+            pcall(function()
+                hum:ChangeState(Enum.HumanoidStateType.Dead)
+                hum.Health = 0
+            end)
+        elseif c then
+            pcall(function() c:BreakJoints() end)
+        end
     end
 
     local function choices()
@@ -4873,19 +4880,26 @@ do
         return out
     end
 
+    -- ========================================================
+    -- NEW begin() — Dupe работает через респавн-цикл
+    -- ========================================================
     local function begin(id)
         local list = choices()
         if #list == 0 then finish() return end
+
         local entry = list[srand(1, #list)]
         spot = standPoint(entry.pad)
         dupeUsed = 0
         mark = tallyOf(entry)
+
         local c = LocalPlayer.Character
         local hrp = c and c:FindFirstChild("HumanoidRootPart")
         if not hrp then finish() return end
+
         origin = hrp.CFrame
         if not plant(spot) then finish() return end
 
+        -- если dupe выключен — просто встали и телепорт обратно
         if not dupeOn then
             task.delay(0.15, function()
                 if session ~= id then return end
@@ -4897,46 +4911,45 @@ do
             return
         end
 
-        holdConn = RunService.Heartbeat:Connect(function()
-            if session ~= id or not spot then return end
+        -- ===== DUPE ON: N респавнов с телепортом обратно =====
+        local total = math.clamp(dupeCap or 3, 1, 10)
+
+        local function finish_cycle()
+            if session ~= id then return end
             local c2 = LocalPlayer.Character
             local h2 = c2 and c2:FindFirstChild("HumanoidRootPart")
-            if not h2 then return end
-            local flat = Vector3.new(h2.Position.X - spot.X, 0, h2.Position.Z - spot.Z)
-            if flat.Magnitude > 2.5 then h2.CFrame = CFrame.new(spot) end
-        end)
+            if h2 and origin then h2.CFrame = origin end
+            finish()
+        end
 
-        tallyConn = entry.tally:GetPropertyChangedSignal("Text"):Connect(function()
-            if session ~= id or not dupeOn or not entry.info.Enabled then return end
-            local now = tallyOf(entry)
-            if now <= mark then mark = now return end
-            mark = now
-            if dupeUsed >= dupeCap then
-                dropConns()
-                task.defer(function()
-                    if session ~= id then return end
-                    local c2 = LocalPlayer.Character
-                    local h2 = c2 and c2:FindFirstChild("HumanoidRootPart")
-                    if h2 and origin then h2.CFrame = origin end
-                    finish()
-                end)
-                return
-            end
+        local function step()
+            if session ~= id or not dupeOn then finish_cycle() return end
+            if dupeUsed >= total then finish_cycle() return end
             dupeUsed = dupeUsed + 1
             killSelf()
-        end)
+        end
 
         spawnConn = LocalPlayer.CharacterAdded:Connect(function(char)
             if session ~= id or not dupeOn then return end
             local h2 = char:WaitForChild("HumanoidRootPart", 6)
-            if not h2 or session ~= id or not entry.info.Enabled or not spot then return end
-            if dupeUsed >= dupeCap then
+            if not h2 then return end
+            if dupeUsed >= total then
                 if origin then h2.CFrame = origin end
+                finish_cycle()
                 return
             end
             h2.CFrame = CFrame.new(spot)
+            task.wait(0.15)
+            step()
+        end)
+
+        -- первый шаг сразу
+        task.delay(0.15, function()
+            if session ~= id then return end
+            step()
         end)
     end
+    -- ========================================================
 
     local function settle()
         pending = false
@@ -5017,7 +5030,10 @@ do
         if not v then dropConns() end
     end)
 
-    mvSec:AddSlider("MVDupeCap", {Title = L("Max Dupe"), Min = 1, Max = 10, Default = 3, Rounding = 0}):OnChanged(function(v) dupeCap = tonumber(v) or 3 end)
+    mvSec:AddSlider("MVDupeCap", {
+        Title = L("Max Dupe") .. " (P.S. 3-5)",
+        Min = 1, Max = 10, Default = 3, Rounding = 0,
+    }):OnChanged(function(v) dupeCap = tonumber(v) or 3 end)
 
     grid = mvSec:AddDropdown("MVMaps", {
         Title = L("Priority Maps"),
@@ -5048,7 +5064,7 @@ do
         end
     end)
 
-    print("[FortniHub][INFO] Map Vote готов")
+    print("[FortniHub][INFO] Map Vote готов (dupe через респавн-цикл)")
 end
 
 -- ============================================================
@@ -6831,3 +6847,349 @@ task.spawn(function()
     task.wait(1)
     Notify("FortniHub", "v16.4 готов! P — меню", 6)
 end)
+-- ============================================================
+-- FORTNIHUB PATCH v17 — FIXES (вставлять в конец файла)
+-- ============================================================
+
+-- ============================================================
+-- 1. KEYBIND FIX — правильная обработка смены клавиш
+-- ============================================================
+do
+    -- Fluent отдаёт в .Value и в OnChanged уже EnumItem (Enum.KeyCode / Enum.UserInputType).
+    -- Проблема твоя: старый OnChanged пытался сделать Enum.KeyCode[k], а k — уже EnumItem.
+    -- Решение: не трогать OnChanged, а просто синхронизировать .Value с нашими переменными
+    -- через polling (Fluent не даёт нормального hook-API для уже созданных keybind-ов).
+
+    local syncMap = {
+        {opt = "SilentBind",       apply = function(v) silent.bindKey = v; _G.FH_SILENT_BIND = v end, label = "Silent bind"},
+        {opt = "MenuKeyBindFinal", apply = function(v) _G.FH_MENU_KEY = v end,                            label = "Menu key"},
+        {opt = "FreezeUpKey",      apply = function(v) S.freezeUpKey = v end,                             label = "Freeze up"},
+        {opt = "FreezeDownKey",    apply = function(v) S.freezeDownKey = v end,                           label = "Freeze down"},
+    }
+
+    -- стартовая синхронизация + polling
+    task.spawn(function()
+        while true do
+            task.wait(0.15)
+            for _, entry in ipairs(syncMap) do
+                local opt = Options[entry.opt]
+                if opt then
+                    local v = opt.Value
+                    -- поддержка KeyCode и UserInputType
+                    if typeof(v) == "EnumItem" then
+                        local ok, changed = pcall(function()
+                            local old
+                            if entry.opt == "SilentBind" then old = silent.bindKey
+                            elseif entry.opt == "MenuKeyBindFinal" then old = _G.FH_MENU_KEY
+                            elseif entry.opt == "FreezeUpKey" then old = S.freezeUpKey
+                            elseif entry.opt == "FreezeDownKey" then old = S.freezeDownKey
+                            end
+                            if old ~= v then
+                                entry.apply(v)
+                                return true
+                            end
+                            return false
+                        end)
+                        if ok and changed then
+                            Notify("FortniHub", entry.label .. ": " .. tostring(v.Name or v), 2)
+                        end
+                    end
+                end
+            end
+        end
+    end)
+
+    -- старый InputBegan-обработчик читает silent.bindKey каждый раз заново,
+    -- а мы его обновляем через polling выше. Плюс поддержка мыши.
+    AddConn("SilentBindV2", UserInputService.InputBegan:Connect(function(input, gpe)
+        if gpe then return end
+        local bound = silent.bindKey
+        if not bound then return end
+
+        local match = false
+        if bound.EnumType == Enum.KeyCode and input.UserInputType == Enum.UserInputType.Keyboard then
+            match = input.KeyCode == bound
+        elseif bound.EnumType == Enum.UserInputType then
+            match = input.UserInputType == bound
+        end
+
+        if match then
+            -- вызываем ручной выстрел, если он есть (manualShoot из Part 1)
+            -- но он локальный, поэтому просто жмём клик и активируем пушку
+            local char = LocalPlayer.Character
+            if char then
+                local gun = char:FindFirstChild("Gun")
+                if not gun then
+                    local bp = LocalPlayer:FindFirstChildOfClass("Backpack")
+                    gun = bp and bp:FindFirstChild("Gun")
+                    if gun then
+                        local hum = char:FindFirstChildOfClass("Humanoid")
+                        if hum then hum:EquipTool(gun) end
+                        task.wait(0.05)
+                    end
+                end
+                if gun then
+                    pcall(function() gun:Activate() end)
+                    pcall(function() VirtualUser:ClickButton1(Vector2.new(0, 0)) end)
+                end
+            end
+        end
+    end))
+
+    print("[FortniHub][PATCH] Keybind fix готов")
+end
+
+-- ============================================================
+-- 2. AUTOFARM — глушит Combat и Movement при включении
+-- ============================================================
+do
+    local killList = {
+        -- Combat
+        "SilentEnabled", "SilentAuto", "SilentForce",
+        "KAOn", "KnifeSilentOn", "KnifeInsta",
+        -- Movement
+        "SpeedToggle", "FlyToggle", "Noclip", "Spinbot",
+        "InfJump", "JumpPowerToggle", "BhopNewOn",
+        "SpeedGlitchOn",
+    }
+
+    local function silenceAll()
+        for _, name in ipairs(killList) do
+            local opt = Options[name]
+            if opt and opt.SetValue then
+                pcall(function()
+                    if opt.Value then opt:SetValue(false) end
+                end)
+            end
+        end
+    end
+
+    -- слушаем изменения FarmV4On / FarmOn (какой есть)
+    local watched = { Options.FarmV4On, Options.FarmOn }
+    task.spawn(function()
+        local last = {}
+        while true do
+            task.wait(0.25)
+            for i, opt in ipairs(watched) do
+                if opt then
+                    local v = opt.Value
+                    if v ~= last[i] then
+                        last[i] = v
+                        if v then
+                            silenceAll()
+                            Notify("FortniHub", "Автофарм: комбат и мув вырублены", 2)
+                        end
+                    end
+                end
+            end
+        end
+    end)
+
+    print("[FortniHub][PATCH] AutoFarm silencer готов")
+end
+
+-- ============================================================
+-- 3. SPEED GLITCH — буст только в прыжке (по совету друга)
+-- ============================================================
+do
+    local sg_on     = false
+    local sg_power  = 90
+    local sg_accel  = 0.6
+    local sg_ground = 16
+
+    AddConn("SpeedGlitchPatch", RunService.Heartbeat:Connect(function()
+        if not sg_on then return end
+        local c = LocalPlayer.Character
+        local h = c and c:FindFirstChildOfClass("Humanoid")
+        local hrp = c and c:FindFirstChild("HumanoidRootPart")
+        if not h or not hrp then return end
+
+        local st = h:GetState()
+        local air = st == Enum.HumanoidStateType.Jumping
+                 or st == Enum.HumanoidStateType.Freefall
+
+        if air then
+            local v = hrp.AssemblyLinearVelocity
+            local flat = Vector3.new(v.X, 0, v.Z)
+            local dir = flat.Magnitude > 0.1
+                and flat.Unit
+                or (function()
+                    local lv = hrp.CFrame.LookVector
+                    return Vector3.new(lv.X, 0, lv.Z).Unit
+                end)()
+            local cur = flat.Magnitude
+            local target = math.max(cur, sg_power)
+            local new_mag = cur + (target - cur) * sg_accel
+            hrp.AssemblyLinearVelocity = Vector3.new(dir.X * new_mag, v.Y, dir.Z * new_mag)
+        else
+            local v = hrp.AssemblyLinearVelocity
+            local flat = Vector3.new(v.X, 0, v.Z)
+            if flat.Magnitude > sg_ground then
+                local dir = flat.Unit
+                hrp.AssemblyLinearVelocity = Vector3.new(dir.X * sg_ground, v.Y, dir.Z * sg_ground)
+            end
+        end
+    end))
+
+    task.spawn(function()
+        task.wait(3)
+        if not Tabs.Movement then return end
+        local sec = Tabs.Movement:AddSection({Name = "Speed Glitch"})
+
+        sec:AddToggle("SpeedGlitchOn", {Title = "Включить спидглитч", Default = false})
+            :OnChanged(function(v)
+                sg_on = v
+                Notify("FortniHub", "SpeedGlitch " .. (v and "ВКЛ" or "ВЫКЛ"), 2)
+            end)
+
+        sec:AddSlider("SpeedGlitchPower", {Title = "Скорость в прыжке", Min = 30, Max = 250, Default = 90, Rounding = 0})
+            :OnChanged(function(v) sg_power = tonumber(v) or 90 end)
+
+        sec:AddSlider("SpeedGlitchAccel", {Title = "Разгон (0-1)", Min = 0.1, Max = 1, Default = 0.6, Rounding = 2})
+            :OnChanged(function(v) sg_accel = tonumber(v) or 0.6 end)
+
+        sec:AddSlider("SpeedGlitchGround", {Title = "Скорость на земле", Min = 8, Max = 50, Default = 16, Rounding = 0})
+            :OnChanged(function(v) sg_ground = tonumber(v) or 16 end)
+    end)
+
+    print("[FortniHub][PATCH] Speed Glitch готов")
+end
+
+-- ============================================================
+-- 4. KILL SOUND — гарантированная замена звука убийства
+-- ============================================================
+do
+    local SoundService = game:GetService("SoundService")
+
+    -- Встроенные fallback-звуки (если своя папка не готова)
+    local FALLBACK = {
+        sheriff = "rbxassetid://9114254776",  -- neverlose-ish
+        murder  = "rbxassetid://9114254776",
+    }
+
+    local function playSound(id, vol)
+        if not id or id == "" then return end
+        local s = Instance.new("Sound")
+        s.SoundId = id
+        s.Volume = vol or 1
+        s.Parent = SoundService
+        s:Play()
+        task.delay(6, function() pcall(function() s:Destroy() end) end)
+    end
+
+    -- Определяем какой звук сейчас выбран в UI
+    local function currentId(kind)
+        local opt = Options[kind == "sheriff" and "SndSheriffName" or "SndMurderName"]
+        local name = opt and opt.Value
+        if type(name) == "table" then name = name[1] end
+
+        -- пытаемся достать из твоей системы кэша, если она уже инициализирована
+        local cached = getgenv()._FH_SND_CACHE
+        if cached and name and cached[name] then
+            return cached[name]
+        end
+
+        -- иначе fallback
+        return FALLBACK[kind]
+    end
+
+    local function currentVol(kind)
+        local opt = Options[kind == "sheriff" and "SndSheriffVol" or "SndMurderVol"]
+        return opt and tonumber(opt.Value) or 1
+    end
+
+    -- Хукаем появление любого звука в Handle и глушим оригинал
+    local hookedSounds = {}
+
+    local function hookSound(snd, kind)
+        if hookedSounds[snd] then return end
+        hookedSounds[snd] = true
+
+        local origVol = snd.Volume
+
+        local function fire()
+            local opt = Options[kind == "sheriff" and "SndSheriff" or "SndMurder"]
+            if not (opt and opt.Value) then return end
+
+            -- гасим оригинал
+            pcall(function()
+                snd.Volume = 0
+                snd:Stop()
+            end)
+
+            -- играем свой
+            local id = currentId(kind)
+            if id then
+                playSound(id, currentVol(kind))
+            end
+        end
+
+        snd.Played:Connect(fire)
+        snd:GetPropertyChangedSignal("Playing"):Connect(function()
+            if snd.Playing then fire() end
+        end)
+    end
+
+    local function scanTool(tool)
+        if not tool:IsA("Tool") then return end
+        local kind
+        if tool.Name == "Gun" or tool:FindFirstChild("Shoot") then kind = "sheriff"
+        elseif tool.Name == "Knife" or tool:FindFirstChild("Events") then kind = "murder"
+        else return end
+
+        local handle = tool:FindFirstChild("Handle")
+        if not handle then return end
+        for _, ch in ipairs(handle:GetChildren()) do
+            if ch:IsA("Sound") and (ch.Name == "GunKill" or ch.Name == "Kill") then
+                hookSound(ch, kind)
+            end
+        end
+    end
+
+    local function scanAll()
+        for _, root in ipairs({ LocalPlayer.Character, LocalPlayer:FindFirstChildOfClass("Backpack") }) do
+            if root then
+                for _, tool in ipairs(root:GetChildren()) do
+                    pcall(scanTool, tool)
+                end
+            end
+        end
+    end
+
+    -- слушаем новые тулзы
+    local function watchContainer(root)
+        if not root then return end
+        AddConn("KillSndWatch_" .. tostring(root), root.ChildAdded:Connect(function(c)
+            task.wait(0.1)
+            pcall(scanTool, c)
+        end))
+        AddConn("KillSndDesc_" .. tostring(root), root.DescendantAdded:Connect(function(d)
+            if d:IsA("Sound") and (d.Name == "GunKill" or d.Name == "Kill") then
+                local tool = d.Parent and d.Parent.Parent
+                pcall(scanTool, tool or {})
+            end
+        end))
+    end
+
+    task.spawn(function()
+        while true do
+            task.wait(1)
+            pcall(scanAll)
+        end
+    end)
+
+    LocalPlayer.CharacterAdded:Connect(function(c)
+        task.wait(1)
+        watchContainer(c)
+        watchContainer(LocalPlayer:FindFirstChildOfClass("Backpack"))
+        pcall(scanAll)
+    end)
+    watchContainer(LocalPlayer:FindFirstChildOfClass("Backpack"))
+
+    print("[FortniHub][PATCH] Kill Sound hook готов")
+end
+
+-- ============================================================
+-- КОНЕЦ ПАТЧА v17
+-- ============================================================
+print("[FortniHub][PATCH] v17 загружен — Keybind, AutoFarm, SpeedGlitch, KillSound")
