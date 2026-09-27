@@ -5377,3 +5377,187 @@ task.spawn(function()
     task.wait(1)
     Notify("FortniHub", "Часть 2/2 v18 загружена! P — меню", 6)
 end)
+-- ============================================================
+-- FH PATCH v18.1 — Chams для ВСЕХ игроков
+-- Обход лимита Highlight (~31 слот).
+-- Использует ForceField-материал (рендерится сквозь стены, без лимита)
+-- + SelectionBox (обводка, без лимита).
+-- ВСТАВИТЬ В САМЫЙ КОНЕЦ СКРИПТА.
+-- ============================================================
+task.spawn(function()
+    local Players           = game:GetService("Players")
+    local RunService        = game:GetService("RunService")
+    local Workspace         = game:GetService("Workspace")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+    local LocalPlayer = Players.LocalPlayer
+    local esp = _G.FH_ESP
+    if not esp then
+        warn("[FH Patch] _G.FH_ESP не найден — ESP не инициализирован. Патч не загружен.")
+        return
+    end
+
+    -- ---------- определение роли (копия логики) ----------
+    local roundModule = nil
+    local function getRoundData()
+        if not roundModule then
+            local ok, m = pcall(function()
+                return require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("CurrentRoundClient"))
+            end)
+            if ok and type(m) == "table" then roundModule = m end
+        end
+        return roundModule and roundModule.PlayerData or nil
+    end
+
+    local function classifyRole(p)
+        local d = getRoundData()
+        if type(d) == "table" then
+            local info = d[p.Name]
+            if type(info) == "table" and not info.Dead then
+                if info.Role == "Murderer" then return "Mur" end
+                if info.Role == "Sheriff"  then return "Shf" end
+                if info.Role == "Hero"     then return "Hero" end
+                return "Inno"
+            end
+        end
+        local c = p.Character
+        if c then
+            local bp = p:FindFirstChild("Backpack")
+            if c:FindFirstChild("Knife") or (bp and bp:FindFirstChild("Knife")) then
+                return "Mur"
+            end
+            if c:FindFirstChild("Gun") or (bp and bp:FindFirstChild("Gun")) then
+                local allData = getRoundData()
+                if allData then
+                    for _, info in pairs(allData) do
+                        if type(info) == "table" and info.Role == "Sheriff" and info.Dead then
+                            return "Hero"
+                        end
+                    end
+                end
+                return "Shf"
+            end
+        end
+        return "Inno"
+    end
+
+    -- ---------- контейнеры ----------
+    local rootFolder = Instance.new("Folder")
+    rootFolder.Name = "FH_ChamsPatch_v18_1"
+    rootFolder.Parent = Workspace
+
+    local boxFolder = Instance.new("Folder")
+    boxFolder.Name = "Boxes"
+    boxFolder.Parent = rootFolder
+
+    -- ---------- состояние ----------
+    local orig     = {}   -- [part] = {m, c, t} оригинальные свойства
+    local selBoxes = {}   -- [player] = SelectionBox
+
+    -- ---------- очистка ----------
+    local function clearPlayer(p)
+        local box = selBoxes[p]
+        if box then pcall(function() box:Destroy() end) selBoxes[p] = nil end
+    end
+
+    local function clearAll()
+        for p in pairs(selBoxes) do clearPlayer(p) end
+        for part, d in pairs(orig) do
+            if part and part.Parent then
+                pcall(function()
+                    part.Material     = d.m
+                    part.Color        = d.c
+                    part.Transparency = d.t
+                end)
+            end
+        end
+        orig = {}
+    end
+
+    -- ---------- применение чамса ----------
+    local function applyChams(p, roleKey)
+        local char = p.Character
+        if not char then return end
+
+        local fillCol    = esp["chamsF" .. roleKey][1]
+        local fillAlpha  = esp["chamsF" .. roleKey][2]
+        local outlineCol = esp["chamsO" .. roleKey][1]
+        local outlineAlp = esp["chamsO" .. roleKey][2]
+
+        -- 1) ForceField на всех частях — рендерится сквозь стены, без лимита
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                if not orig[part] then
+                    orig[part] = {
+                        m = part.Material,
+                        c = part.Color,
+                        t = part.Transparency,
+                    }
+                end
+                pcall(function()
+                    part.Material     = Enum.Material.ForceField
+                    part.Color        = fillCol
+                    part.Transparency = math.clamp(fillAlpha, 0, 1)
+                end)
+            end
+        end
+
+        -- 2) SelectionBox — обводка, тоже без лимита
+        local rootPart = char:FindFirstChild("HumanoidRootPart")
+            or char:FindFirstChild("UpperTorso")
+            or char:FindFirstChild("Torso")
+
+        if rootPart then
+            local box = selBoxes[p]
+            if not box or not box.Parent then
+                box = Instance.new("SelectionBox")
+                box.Name               = "FHBox_" .. p.Name
+                box.LineThickness      = 0.06
+                box.SurfaceTransparency = 1
+                box.SurfaceColor3      = Color3.new(0, 0, 0)
+                box.Parent             = boxFolder
+                selBoxes[p]            = box
+            end
+            box.Adornee      = rootPart
+            box.Color3       = outlineCol
+            box.Transparency = math.clamp(outlineAlp, 0, 1)
+        end
+    end
+
+    -- ---------- основной цикл ----------
+    RunService.RenderStepped:Connect(function()
+        if not esp.chams then
+            if next(selBoxes) or next(orig) then clearAll() end
+            return
+        end
+
+        local seen = {}
+
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character then
+                local hum = p.Character:FindFirstChildOfClass("Humanoid")
+                if hum and hum.Health > 0 then
+                    seen[p] = true
+                    local roleKey = classifyRole(p)
+                    pcall(applyChams, p, roleKey)
+                else
+                    if selBoxes[p] then clearPlayer(p) end
+                end
+            else
+                if selBoxes[p] then clearPlayer(p) end
+            end
+        end
+
+        -- чистим тех, кто ушёл / умер / ресетнулся
+        for p in pairs(selBoxes) do
+            if not seen[p] then clearPlayer(p) end
+        end
+    end)
+
+    -- ---------- очистка при выходе игрока ----------
+    Players.PlayerRemoving:Connect(function(p)
+        if selBoxes[p] then clearPlayer(p) end
+    end)
+
+    print("[FH Patch] Chams Fix v18.1 — все игроки рендерятся (ForceField + SelectionBox)")
+end)
