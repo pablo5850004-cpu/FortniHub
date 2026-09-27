@@ -1304,6 +1304,110 @@ task.spawn(function()
     Notify("FortniHub", "Часть 1/2 v18.1 FIXED загружена! Меню — по своей кнопке", 5)
 end)
 -- ============================================================
+-- ПАТЧ 18.2 — ФИКС КНОПКИ МЕНЮ (вставить в самый конец части 1)
+-- Перебивает старый сломанный бинд. Работает с Ctrl/Alt/Shift.
+-- ============================================================
+task.spawn(function()
+    -- ждём, пока Fluent достроит окно
+    task.wait(2)
+
+    local UIS = game:GetService("UserInputService")
+    local CoreGuiSvc = game:GetService("CoreGui")
+    local LocalPlr = game:GetService("Players").LocalPlayer
+
+    local PatchKey = Enum.KeyCode.P
+    local fluentGui = nil
+
+    -- ищем ScreenGui Fluent (кэшируем, чтобы не сканить каждый раз)
+    local function findGui()
+        if fluentGui and fluentGui.Parent then return fluentGui end
+        local parents = {CoreGuiSvc, LocalPlr:FindFirstChild("PlayerGui")}
+        -- сначала ищем по имени, Fluent обычно называет свою гуишку
+        for _, p in ipairs(parents) do
+            if p then
+                for _, g in ipairs(p:GetChildren()) do
+                    if g:IsA("ScreenGui") and g.Name ~= "FH_HUD_v18" then
+                        local nm = g.Name:lower()
+                        if nm:find("fluent") or nm:find("window") or nm:find("main") then
+                            fluentGui = g
+                            return g
+                        end
+                    end
+                end
+            end
+        end
+        -- фоллбэк — любая чужая ScreenGui с UIPadding/Window
+        for _, p in ipairs(parents) do
+            if p then
+                for _, g in ipairs(p:GetChildren()) do
+                    if g:IsA("ScreenGui") and g.Name ~= "FH_HUD_v18" then
+                        fluentGui = g
+                        return g
+                    end
+                end
+            end
+        end
+        return nil
+    end
+
+    -- три способа тогла, от официального к грубому
+    local function doToggle()
+        local ok1 = pcall(function()
+            if type(Window.ToggleMinimize) == "function" then
+                Window:ToggleMinimize()
+            end
+        end)
+        if ok1 then return end
+
+        local ok2 = pcall(function()
+            if type(Window.Minimize) == "function" then
+                Window:Minimize()
+            end
+        end)
+        if ok2 then return end
+
+        local g = findGui()
+        if g then g.Enabled = not g.Enabled end
+    end
+
+    -- перебиваем наш собственный бинд (НЕ игнорируем gameProcessedEvent!)
+    UIS.InputBegan:Connect(function(input, gpe)
+        if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+        if input.KeyCode ~= PatchKey then return end
+        pcall(doToggle)
+    end)
+
+    -- подписываемся на опцию в настройках, чтобы менять ключ на лету
+    task.spawn(function()
+        while not Options or not Options.MenuKeyBind do task.wait(0.2) end
+        Options.MenuKeyBind:OnChanged(function(k)
+            if typeof(k) == "EnumItem" then
+                PatchKey = k
+                if Fluent and Fluent.Notify then
+                    pcall(function()
+                        Fluent:Notify({Title = "FH", Content = "Меню: " .. tostring(k), Duration = 2})
+                    end)
+                end
+            end
+        end)
+        -- синхронизируем текущее значение, если оно уже было выставлено
+        pcall(function()
+            local v = Options.MenuKeyBind.Value
+            if typeof(v) == "EnumItem" then PatchKey = v end
+        end)
+    end)
+
+    -- если старый сломанный бинд всё ещё жрёт Ctrl — обнулим эффект,
+    -- принудительно выключив у Fluent его MinimizeKey
+    pcall(function()
+        if Window then
+            Window.MinimizeKey = Enum.KeyCode.Unknown
+        end
+    end)
+
+    print("[FH][PATCH 18.2] Menu key handler re-bound. Default: P")
+end)
+-- ============================================================
 -- FORTNIHUB v18.1 — ЧАСТЬ 2/2: Visuals + Effects + Farm + Tools + Anti + Sounds + Anim + Vote + Configs
 -- FIXED BUILD — by Bean
 -- ============================================================
