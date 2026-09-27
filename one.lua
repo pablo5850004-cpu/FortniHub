@@ -1304,81 +1304,387 @@ task.spawn(function()
     Notify("FortniHub", "Часть 1/2 v18.1 FIXED загружена! Меню — по своей кнопке", 5)
 end)
 -- ============================================================
--- ПАТЧ 18.3 — ФИНАЛЬНЫЙ ФИКС КНОПКИ МЕНЮ
--- Перебиваем СЛОМАННЫЕ методы Fluent (Minimize, Toggle и т.д.)
--- своими безопасными версиями. Ошибок больше не будет.
+-- ПАТЧ 19.0 — FINAL FIX: ауры, эмоции, silent aim type, кнопка меню
+-- Вставить В САМЫЙ КОНЕЦ one.lua. Заменяет все прошлые патчи.
+-- Работает через локальные Window/Tabs/Options/Fluent (они в scope файла).
 -- ============================================================
 task.spawn(function()
-    task.wait(2)
+    task.wait(3)
+
+    -- Локальные алиасы (в scope файла, доступны как upvalues)
+    local _Window  = Window
+    local _Tabs    = Tabs
+    local _Options = Options
+    local _Fluent  = Fluent
+
+    if not _Window or not _Tabs or not _Fluent then
+        print("[FH][PATCH 19.0] ОШИБКА: Window/Tabs/Fluent = nil")
+        return
+    end
 
     local UIS = game:GetService("UserInputService")
-    local CoreGuiSvc = game:GetService("CoreGui")
-    local LocalPlr = game:GetService("Players").LocalPlayer
-    local PatchKey = Enum.KeyCode.P
-    local fluentGui = nil
+    local RS = game:GetService("RunService")
+    local CG = game:GetService("CoreGui")
+    local LP = LocalPlayer
 
-    local function findGui()
-        if fluentGui and fluentGui.Parent then return fluentGui end
-        local parents = {CoreGuiSvc, LocalPlr:FindFirstChild("PlayerGui")}
-        for _, p in ipairs(parents) do
-            if p then
-                for _, g in ipairs(p:GetChildren()) do
-                    if g:IsA("ScreenGui") and g.Name ~= "FH_HUD_v18" then
-                        local hasMain = g:FindFirstChild("Main", true)
-                            or g:FindFirstChild("Window", true)
-                            or g:FindFirstChildWhichIsA("Frame", true)
-                        if hasMain then
-                            fluentGui = g
-                            return g
+    -- ========================================================
+    -- [1] АУРЫ — программные, без ассетов
+    -- ========================================================
+    do
+        local targetTab = _Tabs.Visual or _Tabs.Visuals
+        if targetTab then
+            local auraSec = targetTab:AddSection({Name = "Ауры (Procedural v2)"})
+
+            local active = {}
+            local col = Color3.fromRGB(133, 220, 255)
+            local folder = nil
+            local charConn = nil
+
+            local presets = {
+                Angel   = {rate=30, speed=2,   size=NumberSequence.new({NumberSequenceKeypoint.new(0,0.5), NumberSequenceKeypoint.new(1,2)}),   bright=4,  range=10, tex="rbxasset://textures/particles/sparkles_main.dds"},
+                Fire    = {rate=60, speed=5,   size=NumberSequence.new({NumberSequenceKeypoint.new(0,2),   NumberSequenceKeypoint.new(1,0)}),   bright=3,  range=10, tex="rbxasset://textures/particles/fire_main.dds"},
+                Sakura  = {rate=20, speed=1.5, size=NumberSequence.new({NumberSequenceKeypoint.new(0,0.4), NumberSequenceKeypoint.new(1,0.9)}), bright=2,  range=6,  tex="rbxasset://textures/particles/sparkles_main.dds"},
+                Star    = {rate=40, speed=3,   size=NumberSequence.new({NumberSequenceKeypoint.new(0,0.6), NumberSequenceKeypoint.new(1,0.1)}), bright=3,  range=8,  tex="rbxasset://textures/particles/sparkles_main.dds"},
+                Wind    = {rate=50, speed=8,   size=NumberSequence.new({NumberSequenceKeypoint.new(0,1),   NumberSequenceKeypoint.new(1,3)}),   bright=1,  range=5,  tex="rbxasset://textures/particles/smoke_main.dds"},
+                Void    = {rate=25, speed=0.5, size=NumberSequence.new({NumberSequenceKeypoint.new(0,3),   NumberSequenceKeypoint.new(1,0)}),   bright=0,  range=0,  tex="rbxasset://textures/particles/smoke_main.dds"},
+                Flow    = {rate=45, speed=4,   size=NumberSequence.new({NumberSequenceKeypoint.new(0,0.8), NumberSequenceKeypoint.new(1,1.5)}), bright=2,  range=7,  tex="rbxasset://textures/particles/sparkles_main.dds"},
+                Heavenly= {rate=35, speed=2.5, size=NumberSequence.new({NumberSequenceKeypoint.new(0,1),   NumberSequenceKeypoint.new(1,2.5)}), bright=5,  range=12, tex="rbxasset://textures/particles/sparkles_main.dds"},
+            }
+
+            local function cleanup()
+                if folder and folder.Parent then folder:Destroy() end
+                folder = nil
+            end
+
+            local function build()
+                cleanup()
+                local char = LP.Character
+                if not char then return end
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if not hrp then return end
+
+                local any = false
+                for _, v in pairs(active) do if v then any = true break end end
+                if not any then return end
+
+                folder = Instance.new("Folder")
+                folder.Name = "FH_Auras"
+                folder.Parent = hrp
+
+                for name, on in pairs(active) do
+                    if on then
+                        local p = presets[name]
+                        if p then
+                            local att = Instance.new("Attachment")
+                            att.Name = name .. "_Att"
+                            att.Parent = folder
+
+                            local em = Instance.new("ParticleEmitter")
+                            em.Texture = p.tex
+                            em.Rate = p.rate
+                            em.Speed = NumberRange.new(p.speed)
+                            em.Lifetime = NumberRange.new(1.5, 2.5)
+                            em.SpreadAngle = Vector2.new(180, 180)
+                            em.Rotation = NumberRange.new(0, 360)
+                            em.RotSpeed = NumberRange.new(-180, 180)
+                            em.Size = p.size
+                            em.Color = ColorSequence.new({
+                                ColorSequenceKeypoint.new(0, col),
+                                ColorSequenceKeypoint.new(1, Color3.new(1,1,1)),
+                            })
+                            em.Transparency = NumberSequence.new({
+                                NumberSequenceKeypoint.new(0, 0.1),
+                                NumberSequenceKeypoint.new(1, 1),
+                            })
+                            em.LightEmission = 1
+                            em.LightInfluence = 0     -- ВАЖНО: без этого эмиттер бледный
+                            em.ZOffset = 1
+                            em.Parent = att
+
+                            if p.bright > 0 then
+                                local light = Instance.new("PointLight")
+                                light.Brightness = p.bright
+                                light.Range = p.range
+                                light.Color = col
+                                light.Parent = att
+                            end
                         end
                     end
                 end
             end
+
+            local drop = auraSec:AddDropdown("AuraProcedural", {
+                Title = "Аура (мультивыбор)",
+                Values = {"Angel","Fire","Sakura","Star","Wind","Void","Flow","Heavenly"},
+                Multi = true,
+                Default = {},
+            })
+            drop:OnChanged(function(v)
+                active = {}
+                if type(v) == "table" then
+                    for _, n in ipairs(v) do active[n] = true end
+                elseif type(v) == "string" then
+                    active[v] = true
+                end
+                build()
+            end)
+
+            auraSec:AddColorPicker("AuraProcCol", {Title = "Цвет", Default = col}):OnChanged(function(c)
+                col = c
+                build()
+            end)
+
+            auraSec:AddButton({Title = "Обновить ауру", Callback = build})
+
+            if charConn then charConn:Disconnect() end
+            charConn = LP.CharacterAdded:Connect(function()
+                task.wait(0.6)
+                build()
+            end)
+
+            print("[FH][PATCH 19.0] Ауры готовы")
+        else
+            print("[FH][PATCH 19.0] Tabs.Visual не найден — ауры пропущены")
         end
-        return nil
     end
 
-    -- Перебиваем сломанные методы Fluent СВОИМИ безопасными
-    if Window then
-        local function safeToggle()
-            local g = findGui()
-            if g then g.Enabled = not g.Enabled end
-        end
-        Window.Minimize = safeToggle
-        Window.ToggleMinimize = safeToggle
-        Window.Toggle = safeToggle
-        Window.Open = function() local g = findGui(); if g then g.Enabled = true end end
-        Window.Close = function() local g = findGui(); if g then g.Enabled = false end end
-        Window.Show = Window.Open
-        Window.Hide = Window.Close
+    -- ========================================================
+    -- [2] ЭМОЦИИ / АНИМАЦИИ (R6 + R15)
+    -- ========================================================
+    do
+        local targetTab = _Tabs.Troll or _Tabs.Visual
+        if targetTab then
+            local eSec = targetTab:AddSection({Name = "Эмоции (R6/R15)"})
 
-        -- отрубаем встроенный бинд Fluent, чтобы не конфликтовал
-        pcall(function() Window.MinimizeKey = Enum.KeyCode.Unknown end)
-    end
+            local track = nil
 
-    -- наш собственный обработчик
-    UIS.InputBegan:Connect(function(input, gpe)
-        if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
-        if input.KeyCode ~= PatchKey then return end
-        local g = findGui()
-        if g then g.Enabled = not g.Enabled end
-    end)
+            -- ID, которые играются и на R6, и на R15 (встроенные Roblox)
+            local anims = {
+                Wave    = 128777973,
+                Point   = 128853357,
+                Dance   = 507771019,
+                Laugh   = 129423030,
+                Cheer   = 129423030,
+                Salute  = 12888162088,
+                Applaud = 12888160997,
+                Tilt    = 12888159317,
+            }
 
-    -- синхронизация с настройкой "Клавиша открытия меню"
-    task.spawn(function()
-        while not Options or not Options.MenuKeyBind do task.wait(0.2) end
-        Options.MenuKeyBind:OnChanged(function(k)
-            if typeof(k) == "EnumItem" then
-                PatchKey = k
+            local animNames = {}
+            for k in pairs(anims) do animNames[#animNames+1] = k end
+            table.sort(animNames)
+
+            local function stopTrack()
+                if track then
+                    pcall(function() track:Stop(0.2) end)
+                    pcall(function() track:Destroy() end)
+                    track = nil
+                end
             end
-        end)
-        pcall(function()
-            local v = Options.MenuKeyBind.Value
-            if typeof(v) == "EnumItem" then PatchKey = v end
-        end)
-    end)
 
-    print("[FH][PATCH 18.3] Menu key override done, default P")
+            local function rigType()
+                local c = LP.Character
+                local h = c and c:FindFirstChildOfClass("Humanoid")
+                if not h then return "R15" end
+                local ok, rt = pcall(function() return h.RigType end)
+                if ok and rt then
+                    return tostring(rt):gsub("Enum.RigType%.", "")
+                end
+                return "R15"
+            end
+
+            local function ensureAnimator()
+                local c = LP.Character
+                local h = c and c:FindFirstChildOfClass("Humanoid")
+                if not h then return nil end
+                local a = h:FindFirstChildOfClass("Animator")
+                if not a then
+                    a = Instance.new("Animator")
+                    a.Parent = h
+                end
+                return a
+            end
+
+            local function play(id, name)
+                stopTrack()
+                local a = ensureAnimator()
+                if not a then
+                    if _Fluent.Notify then pcall(function()
+                        _Fluent:Notify({Title="FH", Content="Animator не найден", Duration=2})
+                    end) end
+                    return
+                end
+                local anim = Instance.new("Animation")
+                anim.AnimationId = "rbxassetid://" .. tostring(id)
+                local ok, t = pcall(function() return a:LoadAnimation(anim) end)
+                anim:Destroy()
+                if not ok or not t then
+                    if _Fluent.Notify then pcall(function()
+                        _Fluent:Notify({Title="FH", Content="Не грузится: " .. name, Duration=2})
+                    end) end
+                    return
+                end
+                t.Priority = Enum.AnimationPriority.Action4
+                t.Looped = true
+                pcall(function() t:Play(0.2) end)
+                track = t
+            end
+
+            local drop = eSec:AddDropdown("EmoteR6R15", {
+                Title = "Выбрать эмоцию",
+                Values = animNames,
+                Default = "Wave",
+            })
+
+            eSec:AddButton({Title = "▶ Запустить", Callback = function()
+                local v = drop.Value
+                if type(v) == "table" then v = v[1] end
+                local id = anims[v]
+                if id then
+                    play(id, v)
+                    if _Fluent.Notify then pcall(function()
+                        _Fluent:Notify({Title="FH", Content="Эмоция: " .. v .. " ("..rigType()..")", Duration=2})
+                    end) end
+                end
+            end})
+
+            eSec:AddButton({Title = "■ Остановить", Callback = stopTrack})
+
+            LP.CharacterAdded:Connect(function()
+                task.wait(1)
+                track = nil
+            end)
+
+            print("[FH][PATCH 19.0] Эмоции готовы (rig: " .. rigType() .. ")")
+        else
+            print("[FH][PATCH 19.0] Tabs.Troll/Visual не найден — эмоции пропущены")
+        end
+    end
+
+    -- ========================================================
+    -- [3] SILENT AIM TYPE (Advanced / Simple) — вернуть в Бой
+    -- ========================================================
+    do
+        _G.FH_SILENT = _G.FH_SILENT or {aimType = "Advanced"}
+
+        if _Tabs.Combat then
+            local aimSec = _Tabs.Combat:AddSection({Name = "Silent Aim — тип"})
+            aimSec:AddDropdown("SilentAimTypeV3", {
+                Title = "Тип прицеливания",
+                Values = {"Advanced", "Simple"},
+                Default = _G.FH_SILENT.aimType or "Advanced",
+            }):OnChanged(function(v)
+                _G.FH_SILENT.aimType = v
+                if _Fluent.Notify then pcall(function()
+                    _Fluent:Notify({Title="FH", Content="Silent: " .. v, Duration=2})
+                end) end
+            end)
+            print("[FH][PATCH 19.0] Silent Aim Type готов")
+        end
+    end
+
+    -- ========================================================
+    -- [4] КНОПКА МЕНЮ — поллинг через IsKeyDown (не глотается)
+    -- ========================================================
+    do
+        local MenuKey = Enum.KeyCode.P
+        local lastDown = false
+        local cachedGui = nil
+
+        local function findGui()
+            if cachedGui and cachedGui.Parent then return cachedGui end
+            cachedGui = nil
+            -- 1) пробуем через Window.Instance если есть
+            if _Window.Instance and _Window.Instance.Parent then
+                cachedGui = _Window.Instance
+                return cachedGui
+            end
+            -- 2) сканим CoreGui и PlayerGui
+            local parents = {CG, LP:FindFirstChild("PlayerGui")}
+            for _, parent in ipairs(parents) do
+                if parent then
+                    for _, g in ipairs(parent:GetChildren()) do
+                        if g:IsA("ScreenGui") and g.Name ~= "FH_HUD_v18" then
+                            local nm = g.Name:lower()
+                            if nm:find("fluent") or nm:find("fortni") or nm:find("hub") then
+                                cachedGui = g
+                                return g
+                            end
+                        end
+                    end
+                end
+            end
+            -- 3) совсем фоллбэк — первый чужой ScreenGui с CanvasGroup/Frame
+            for _, parent in ipairs(parents) do
+                if parent then
+                    for _, g in ipairs(parent:GetChildren()) do
+                        if g:IsA("ScreenGui") and g.Name ~= "FH_HUD_v18" then
+                            for _, c in ipairs(g:GetChildren()) do
+                                if c:IsA("CanvasGroup") or c:IsA("Frame") then
+                                    cachedGui = g
+                                    return g
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+            return nil
+        end
+
+        local function toggle()
+            local g = findGui()
+            if g then
+                g.Enabled = not g.Enabled
+                print("[FH][PATCH 19.0] Меню: " .. tostring(g.Enabled))
+            else
+                print("[FH][PATCH 19.0] ScreenGui Fluent не найден")
+            end
+        end
+
+        -- Перебиваем сломанные методы Fluent
+        pcall(function() _Window.Minimize = toggle end)
+        pcall(function() _Window.ToggleMinimize = toggle end)
+        pcall(function() _Window.Toggle = toggle end)
+        pcall(function() _Window.Open = function() local g = findGui(); if g then g.Enabled = true end end end)
+        pcall(function() _Window.Close = function() local g = findGui(); if g then g.Enabled = false end end end)
+        pcall(function() _Window.MinimizeKey = Enum.KeyCode.Unknown end)
+
+        _G.FH_ToggleMenu = toggle
+        _G.FH_SetKey = function(k)
+            if typeof(k) == "EnumItem" then MenuKey = k end
+        end
+
+        -- Синхронизация с опцией настроек
+        task.spawn(function()
+            while not _Options or not _Options.MenuKeyBind do task.wait(0.2) end
+            pcall(function()
+                local v = _Options.MenuKeyBind.Value
+                if typeof(v) == "EnumItem" then MenuKey = v end
+            end)
+            pcall(function()
+                _Options.MenuKeyBind:OnChanged(function(k)
+                    if typeof(k) == "EnumItem" then
+                        MenuKey = k
+                        print("[FH][PATCH 19.0] Клавиша: " .. tostring(k))
+                    end
+                end)
+            end)
+        end)
+
+        -- Поллинг — работает с LeftControl/RightControl/LeftAlt
+        RS.Heartbeat:Connect(function()
+            local down = UIS:IsKeyDown(MenuKey)
+            if down and not lastDown then
+                toggle()
+            end
+            lastDown = down
+        end)
+
+        print("[FH][PATCH 19.0] Кнопка меню: поллинг активен (дефолт P)")
+    end
+
+    print("[FH][PATCH 19.0] === ВСЁ ГОТОВО ===")
 end)
 -- ============================================================
 -- FORTNIHUB v18.1 — ЧАСТЬ 2/2: Visuals + Effects + Farm + Tools + Anti + Sounds + Anim + Vote + Configs
