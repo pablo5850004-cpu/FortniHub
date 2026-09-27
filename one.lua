@@ -1304,21 +1304,19 @@ task.spawn(function()
     Notify("FortniHub", "Часть 1/2 v18.1 FIXED загружена! Меню — по своей кнопке", 5)
 end)
 -- ============================================================
--- ПАТЧ 19.0 — FINAL FIX: ауры, эмоции, silent aim type, кнопка меню
--- Вставить В САМЫЙ КОНЕЦ one.lua. Заменяет все прошлые патчи.
--- Работает через локальные Window/Tabs/Options/Fluent (они в scope файла).
+-- ПАТЧ 19.1 — Ауры (одиночный выбор) + Menu key = LeftControl (hardcoded)
+-- Вставить В САМЫЙ КОНЕЦ one.lua. Заменяет патч 19.0.
 -- ============================================================
 task.spawn(function()
     task.wait(3)
 
-    -- Локальные алиасы (в scope файла, доступны как upvalues)
     local _Window  = Window
     local _Tabs    = Tabs
     local _Options = Options
     local _Fluent  = Fluent
 
     if not _Window or not _Tabs or not _Fluent then
-        print("[FH][PATCH 19.0] ОШИБКА: Window/Tabs/Fluent = nil")
+        print("[FH][PATCH 19.1] ОШИБКА: Window/Tabs/Fluent = nil")
         return
     end
 
@@ -1328,14 +1326,14 @@ task.spawn(function()
     local LP = LocalPlayer
 
     -- ========================================================
-    -- [1] АУРЫ — программные, без ассетов
+    -- [1] АУРЫ — одиночный выбор
     -- ========================================================
     do
         local targetTab = _Tabs.Visual or _Tabs.Visuals
         if targetTab then
-            local auraSec = targetTab:AddSection({Name = "Ауры (Procedural v2)"})
+            local auraSec = targetTab:AddSection({Name = "Ауры (одиночная)"})
 
-            local active = {}
+            local active = nil       -- имя активной ауры или nil
             local col = Color3.fromRGB(133, 220, 255)
             local folder = nil
             local charConn = nil
@@ -1358,78 +1356,68 @@ task.spawn(function()
 
             local function build()
                 cleanup()
+                if not active then return end
                 local char = LP.Character
                 if not char then return end
                 local hrp = char:FindFirstChild("HumanoidRootPart")
                 if not hrp then return end
 
-                local any = false
-                for _, v in pairs(active) do if v then any = true break end end
-                if not any then return end
+                local p = presets[active]
+                if not p then return end
 
                 folder = Instance.new("Folder")
-                folder.Name = "FH_Auras"
+                folder.Name = "FH_Aura"
                 folder.Parent = hrp
 
-                for name, on in pairs(active) do
-                    if on then
-                        local p = presets[name]
-                        if p then
-                            local att = Instance.new("Attachment")
-                            att.Name = name .. "_Att"
-                            att.Parent = folder
+                local att = Instance.new("Attachment")
+                att.Name = active .. "_Att"
+                att.Parent = folder
 
-                            local em = Instance.new("ParticleEmitter")
-                            em.Texture = p.tex
-                            em.Rate = p.rate
-                            em.Speed = NumberRange.new(p.speed)
-                            em.Lifetime = NumberRange.new(1.5, 2.5)
-                            em.SpreadAngle = Vector2.new(180, 180)
-                            em.Rotation = NumberRange.new(0, 360)
-                            em.RotSpeed = NumberRange.new(-180, 180)
-                            em.Size = p.size
-                            em.Color = ColorSequence.new({
-                                ColorSequenceKeypoint.new(0, col),
-                                ColorSequenceKeypoint.new(1, Color3.new(1,1,1)),
-                            })
-                            em.Transparency = NumberSequence.new({
-                                NumberSequenceKeypoint.new(0, 0.1),
-                                NumberSequenceKeypoint.new(1, 1),
-                            })
-                            em.LightEmission = 1
-                            em.LightInfluence = 0     -- ВАЖНО: без этого эмиттер бледный
-                            em.ZOffset = 1
-                            em.Parent = att
+                local em = Instance.new("ParticleEmitter")
+                em.Texture = p.tex
+                em.Rate = p.rate
+                em.Speed = NumberRange.new(p.speed)
+                em.Lifetime = NumberRange.new(1.5, 2.5)
+                em.SpreadAngle = Vector2.new(180, 180)
+                em.Rotation = NumberRange.new(0, 360)
+                em.RotSpeed = NumberRange.new(-180, 180)
+                em.Size = p.size
+                em.Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, col),
+                    ColorSequenceKeypoint.new(1, Color3.new(1,1,1)),
+                })
+                em.Transparency = NumberSequence.new({
+                    NumberSequenceKeypoint.new(0, 0.1),
+                    NumberSequenceKeypoint.new(1, 1),
+                })
+                em.LightEmission = 1
+                em.LightInfluence = 0
+                em.ZOffset = 1
+                em.Parent = att
 
-                            if p.bright > 0 then
-                                local light = Instance.new("PointLight")
-                                light.Brightness = p.bright
-                                light.Range = p.range
-                                light.Color = col
-                                light.Parent = att
-                            end
-                        end
-                    end
+                if p.bright > 0 then
+                    local light = Instance.new("PointLight")
+                    light.Brightness = p.bright
+                    light.Range = p.range
+                    light.Color = col
+                    light.Parent = att
                 end
             end
 
-            local drop = auraSec:AddDropdown("AuraProcedural", {
-                Title = "Аура (мультивыбор)",
-                Values = {"Angel","Fire","Sakura","Star","Wind","Void","Flow","Heavenly"},
-                Multi = true,
-                Default = {},
-            })
-            drop:OnChanged(function(v)
-                active = {}
-                if type(v) == "table" then
-                    for _, n in ipairs(v) do active[n] = true end
-                elseif type(v) == "string" then
-                    active[v] = true
+            auraSec:AddDropdown("AuraSingle", {
+                Title = "Аура (одна)",
+                Values = {"Нет", "Angel","Fire","Sakura","Star","Wind","Void","Flow","Heavenly"},
+                Default = "Нет",
+            }):OnChanged(function(v)
+                if v == "Нет" or type(v) == "table" then
+                    active = nil
+                else
+                    active = v
                 end
                 build()
             end)
 
-            auraSec:AddColorPicker("AuraProcCol", {Title = "Цвет", Default = col}):OnChanged(function(c)
+            auraSec:AddColorPicker("AuraSingleCol", {Title = "Цвет", Default = col}):OnChanged(function(c)
                 col = c
                 build()
             end)
@@ -1442,9 +1430,9 @@ task.spawn(function()
                 build()
             end)
 
-            print("[FH][PATCH 19.0] Ауры готовы")
+            print("[FH][PATCH 19.1] Ауры (одиночная) готовы")
         else
-            print("[FH][PATCH 19.0] Tabs.Visual не найден — ауры пропущены")
+            print("[FH][PATCH 19.1] Tabs.Visual не найден — ауры пропущены")
         end
     end
 
@@ -1458,7 +1446,6 @@ task.spawn(function()
 
             local track = nil
 
-            -- ID, которые играются и на R6, и на R15 (встроенные Roblox)
             local anims = {
                 Wave    = 128777973,
                 Point   = 128853357,
@@ -1555,14 +1542,14 @@ task.spawn(function()
                 track = nil
             end)
 
-            print("[FH][PATCH 19.0] Эмоции готовы (rig: " .. rigType() .. ")")
+            print("[FH][PATCH 19.1] Эмоции готовы (rig: " .. rigType() .. ")")
         else
-            print("[FH][PATCH 19.0] Tabs.Troll/Visual не найден — эмоции пропущены")
+            print("[FH][PATCH 19.1] Tabs.Troll/Visual не найден — эмоции пропущены")
         end
     end
 
     -- ========================================================
-    -- [3] SILENT AIM TYPE (Advanced / Simple) — вернуть в Бой
+    -- [3] SILENT AIM TYPE
     -- ========================================================
     do
         _G.FH_SILENT = _G.FH_SILENT or {aimType = "Advanced"}
@@ -1579,27 +1566,25 @@ task.spawn(function()
                     _Fluent:Notify({Title="FH", Content="Silent: " .. v, Duration=2})
                 end) end
             end)
-            print("[FH][PATCH 19.0] Silent Aim Type готов")
+            print("[FH][PATCH 19.1] Silent Aim Type готов")
         end
     end
 
     -- ========================================================
-    -- [4] КНОПКА МЕНЮ — поллинг через IsKeyDown (не глотается)
+    -- [4] КНОПКА МЕНЮ — ЖЁСТКО LeftControl, поллинг
     -- ========================================================
     do
-        local MenuKey = Enum.KeyCode.P
+        local MenuKey = Enum.KeyCode.LeftControl   -- hardcoded
         local lastDown = false
         local cachedGui = nil
 
         local function findGui()
             if cachedGui and cachedGui.Parent then return cachedGui end
             cachedGui = nil
-            -- 1) пробуем через Window.Instance если есть
             if _Window.Instance and _Window.Instance.Parent then
                 cachedGui = _Window.Instance
                 return cachedGui
             end
-            -- 2) сканим CoreGui и PlayerGui
             local parents = {CG, LP:FindFirstChild("PlayerGui")}
             for _, parent in ipairs(parents) do
                 if parent then
@@ -1614,7 +1599,6 @@ task.spawn(function()
                     end
                 end
             end
-            -- 3) совсем фоллбэк — первый чужой ScreenGui с CanvasGroup/Frame
             for _, parent in ipairs(parents) do
                 if parent then
                     for _, g in ipairs(parent:GetChildren()) do
@@ -1636,13 +1620,13 @@ task.spawn(function()
             local g = findGui()
             if g then
                 g.Enabled = not g.Enabled
-                print("[FH][PATCH 19.0] Меню: " .. tostring(g.Enabled))
+                print("[FH][PATCH 19.1] Меню: " .. tostring(g.Enabled))
             else
-                print("[FH][PATCH 19.0] ScreenGui Fluent не найден")
+                print("[FH][PATCH 19.1] ScreenGui Fluent не найден")
             end
         end
 
-        -- Перебиваем сломанные методы Fluent
+        -- перебиваем сломанные методы Fluent
         pcall(function() _Window.Minimize = toggle end)
         pcall(function() _Window.ToggleMinimize = toggle end)
         pcall(function() _Window.Toggle = toggle end)
@@ -1650,29 +1634,16 @@ task.spawn(function()
         pcall(function() _Window.Close = function() local g = findGui(); if g then g.Enabled = false end end end)
         pcall(function() _Window.MinimizeKey = Enum.KeyCode.Unknown end)
 
-        _G.FH_ToggleMenu = toggle
-        _G.FH_SetKey = function(k)
-            if typeof(k) == "EnumItem" then MenuKey = k end
-        end
-
-        -- Синхронизация с опцией настроек
-        task.spawn(function()
-            while not _Options or not _Options.MenuKeyBind do task.wait(0.2) end
-            pcall(function()
-                local v = _Options.MenuKeyBind.Value
-                if typeof(v) == "EnumItem" then MenuKey = v end
-            end)
-            pcall(function()
-                _Options.MenuKeyBind:OnChanged(function(k)
-                    if typeof(k) == "EnumItem" then
-                        MenuKey = k
-                        print("[FH][PATCH 19.0] Клавиша: " .. tostring(k))
-                    end
-                end)
-            end)
+        -- принудительно выставляем опцию в LeftControl (на случай, если осталась старая)
+        pcall(function()
+            if _Options and _Options.MenuKeyBind then
+                _Options.MenuKeyBind:SetValue(Enum.KeyCode.LeftControl)
+            end
         end)
 
-        -- Поллинг — работает с LeftControl/RightControl/LeftAlt
+        _G.FH_ToggleMenu = toggle
+        _G.FH_SetKey = function() end   -- заглушка, чтобы старые вызовы не крашили
+
         RS.Heartbeat:Connect(function()
             local down = UIS:IsKeyDown(MenuKey)
             if down and not lastDown then
@@ -1681,14 +1652,14 @@ task.spawn(function()
             lastDown = down
         end)
 
-        print("[FH][PATCH 19.0] Кнопка меню: поллинг активен (дефолт P)")
+        print("[FH][PATCH 19.1] Меню намертво: LeftControl (поллинг активен)")
     end
 
-    print("[FH][PATCH 19.0] === ВСЁ ГОТОВО ===")
+    print("[FH][PATCH 19.1] === ВСЁ ГОТОВО ===")
 end)
 -- ============================================================
 -- FORTNIHUB v18.1 — ЧАСТЬ 2/2: Visuals + Effects + Farm + Tools + Anti + Sounds + Anim + Vote + Configs
--- FIXED BUILD — by Bean
+-- FIXED BUILD 
 -- ============================================================
 
 -- ============================================================
