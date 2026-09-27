@@ -5561,3 +5561,746 @@ task.spawn(function()
 
     print("[FH Patch] Chams Fix v18.1 — все игроки рендерятся (ForceField + SelectionBox)")
 end)
+-- ============================================================
+-- FH PATCH v18.2 — Chams Fix + Sound Preview + UI Cleanup
+-- ВСТАВИТЬ В САМЫЙ КОНЕЦ СКРИПТА.
+-- ============================================================
+task.spawn(function()
+    local Players           = game:GetService("Players")
+    local RunService        = game:GetService("RunService")
+    local Workspace         = game:GetService("Workspace")
+    local SoundService      = game:GetService("SoundService")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local CoreGui           = game:GetService("CoreGui")
+
+    local LocalPlayer = Players.LocalPlayer
+    local esp = _G.FH_ESP
+    if not esp then
+        warn("[FH Patch v18.2] _G.FH_ESP не найден — ESP не инициализирован.")
+        return
+    end
+
+    -- ============================================================
+    -- 1) УБИРАЕМ МОЙ СТАРЫЙ КОСТЫЛЬ v18.1 И ЮЗЕРСКИЙ chamsFolder
+    -- ============================================================
+    for _, name in ipairs({"FH_ChamsPatch_v18_1"}) do
+        local old = Workspace:FindFirstChild(name)
+        if old then pcall(function() old:Destroy() end) end
+    end
+    local oldChams = Workspace:FindFirstChild("FH_ChamsFolder")
+    if oldChams then pcall(function() oldChams:Destroy() end) end
+
+    -- ============================================================
+    -- 2) НОВЫЙ CHAMS ЧЕРЕЗ HIGHLIGHT (AlwaysOnTop = сквозь стены)
+    -- ============================================================
+    local chamsFolder = Instance.new("Folder")
+    chamsFolder.Name = "FH_Chams_v18_2"
+    chamsFolder.Parent = Workspace
+
+    local chams = {}   -- [player] = Highlight
+    local roundModule = nil
+
+    local function getRoundData()
+        if not roundModule then
+            local ok, m = pcall(function()
+                return require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("CurrentRoundClient"))
+            end)
+            if ok and type(m) == "table" then roundModule = m end
+        end
+        return roundModule and roundModule.PlayerData or nil
+    end
+
+    local function classifyRole(p)
+        local d = getRoundData()
+        if type(d) == "table" then
+            local info = d[p.Name]
+            if type(info) == "table" and not info.Dead then
+                if info.Role == "Murderer" then return "Mur" end
+                if info.Role == "Sheriff"  then return "Shf" end
+                if info.Role == "Hero"     then return "Hero" end
+                return "Inno"
+            end
+        end
+        local c = p.Character
+        if c then
+            local bp = p:FindFirstChild("Backpack")
+            if c:FindFirstChild("Knife") or (bp and bp:FindFirstChild("Knife")) then
+                return "Mur"
+            end
+            if c:FindFirstChild("Gun") or (bp and bp:FindFirstChild("Gun")) then
+                local allData = getRoundData()
+                if allData then
+                    for _, info in pairs(allData) do
+                        if type(info) == "table" and info.Role == "Sheriff" and info.Dead then
+                            return "Hero"
+                        end
+                    end
+                end
+                return "Shf"
+            end
+        end
+        return "Inno"
+    end
+
+    local function killCham(p)
+        local h = chams[p]
+        if h then pcall(function() h:Destroy() end) chams[p] = nil end
+    end
+
+    local function killAll()
+        for p in pairs(chams) do killCham(p) end
+    end
+
+    local function ensureCham(p)
+        local h = chams[p]
+        if h and h.Parent and h.Adornee == p.Character then
+            return h
+        end
+        if h then pcall(function() h:Destroy() end) end
+        h = Instance.new("Highlight")
+        h.Name = "FHCham_" .. p.Name
+        h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        h.Adornee = p.Character
+        h.Parent = chamsFolder
+        chams[p] = h
+        return h
+    end
+
+    -- Роли → цвета (fill / outline)
+    local function roleColors(roleKey)
+        if roleKey == "Mur"  then return Color3.fromRGB(255,  40,  40), Color3.fromRGB(255, 120, 120) end
+        if roleKey == "Shf"  then return Color3.fromRGB( 40, 140, 255), Color3.fromRGB(120, 200, 255) end
+        if roleKey == "Hero" then return Color3.fromRGB(255, 210,  40), Color3.fromRGB(255, 240, 140) end
+        return Color3.fromRGB(190, 190, 190), Color3.fromRGB(230, 230, 230)   -- Inno = серый
+    end
+
+    RunService.RenderStepped:Connect(function()
+        if not esp.chams then
+            if next(chams) then killAll() end
+            return
+        end
+
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p == LocalPlayer then
+                killCham(p)
+            else
+                local char = p.Character
+                local hum  = char and char:FindFirstChildOfClass("Humanoid")
+                if char and hum and hum.Health > 0 then
+                    local roleKey = classifyRole(p)
+                    local fill, outline = roleColors(roleKey)
+                    local h = ensureCham(p)
+                    -- берём прозрачности из юзерских настроек, но цвета — по роли
+                    h.FillColor        = fill
+                    h.OutlineColor     = outline
+                    h.FillTransparency    = math.clamp(esp.chamsFInno[2] or 0.55, 0, 1)
+                    h.OutlineTransparency = math.clamp(esp.chamsOInno[2] or 0.15, 0, 1)
+                else
+                    killCham(p)
+                end
+            end
+        end
+
+        -- чистка тех, кто вышел/умер
+        for p in pairs(chams) do
+            if not p.Parent or not p.Character then killCham(p) end
+        end
+    end)
+
+    Players.PlayerRemoving:Connect(function(p) killCham(p) end)
+
+    -- ============================================================
+    -- 3) ВКЛАДКА "НАСТРОЙКИ" В САМЫЙ НИЗ
+    -- ============================================================
+    task.spawn(function()
+        task.wait(0.3)
+        local ok = pcall(function()
+            local tabsContainer
+            -- ищем контейнер вкладок по иерархии
+            local root = (gethui and gethui()) or CoreGui
+            for _, gui in ipairs(root:GetChildren()) do
+                if gui.Name:find("Fluent") or gui.Name:find("Window") then
+                    for _, desc in ipairs(gui:GetDescendants()) do
+                        if desc:IsA("Frame") and desc.Name == "TabContainer" then
+                            tabsContainer = desc
+                            break
+                        end
+                    end
+                    if tabsContainer then break end
+                end
+            end
+            if not tabsContainer then return end
+
+            -- находим кнопку "Настройки"
+            local btn
+            for _, child in ipairs(tabsContainer:GetChildren()) do
+                if child:IsA("TextButton") or child:IsA("Frame") then
+                    local lbl = child:FindFirstChildWhichIsA("TextLabel", true)
+                    if lbl and lbl.Text == "Настройки" then btn = child break end
+                end
+            end
+            if btn then btn.LayoutOrder = 9999 end
+        end)
+        if not ok then
+            -- тихо игнорируем, если структура Fluent не совпала
+        end
+    end)
+
+    -- ============================================================
+    -- 4) УДАЛЯЕМ СЕКЦИИ "ЭМОЦИИ" И "АНИМАЦИИ" ИЗ ТРОЛЛИНГА
+    -- ============================================================
+    task.spawn(function()
+        task.wait(0.5)
+        local root = (gethui and gethui()) or CoreGui
+        for _, gui in ipairs(root:GetChildren()) do
+            if gui.Name:find("Fluent") or gui.Name:find("Window") or gui.Name:find("FortniHub") then
+                for _, desc in ipairs(gui:GetDescendants()) do
+                    if desc:IsA("TextLabel") or desc:IsA("TextButton") then
+                        local t = desc.Text
+                        if t == "Эмоции" or t == "Анимации" then
+                            -- поднимаемся до секции (обычно родитель родителя)
+                            local sec = desc
+                            for _ = 1, 4 do
+                                if sec.Parent then sec = sec.Parent else break end
+                                if sec:IsA("Frame") and sec.Size.Y.Offset > 40 then break end
+                            end
+                            pcall(function() sec.Visible = false end)
+                        end
+                    end
+                end
+            end
+        end
+    end)
+
+    -- ============================================================
+    -- 5) КНОПКА "ПРОСЛУШАТЬ" ДЛЯ ЗВУКОВ УБИЙСТВА
+    -- ============================================================
+    local SND_BASE = "https://github.com/khenn791/lmao/raw/refs/heads/main/"
+    local SND_CACHE_DIR = "shitaro_sounds/"
+    local previewSound = nil
+
+    local function ensureSndFs()
+        return type(isfile) == "function" and type(readfile) == "function"
+            and type(writefile) == "function" and type(getcustomasset) == "function"
+    end
+
+    local function resolveSound(name)
+        if not ensureSndFs() then return nil end
+        local path = SND_CACHE_DIR .. name .. ".ogg"
+        if not isfile(path) then
+            if type(isfolder) == "function" and type(makefolder) == "function"
+                and not isfolder(SND_CACHE_DIR) then
+                pcall(makefolder, SND_CACHE_DIR)
+            end
+            local url = SND_BASE .. (name:gsub(" ", "%%20")) .. ".ogg"
+            local ok, data = pcall(function() return game:HttpGet(url) end)
+            if not ok or type(data) ~= "string" or #data < 1024 then return nil end
+            if not pcall(writefile, path, data) then return nil end
+        end
+        local ok, asset = pcall(getcustomasset, path)
+        if ok and type(asset) == "string" and asset ~= "" then return asset end
+        return nil
+    end
+
+    previewSound = function(name)
+        local id = resolveSound(name)
+        if not id then
+            pcall(function()
+                if Fluent and Fluent.Notify then
+                    Fluent:Notify({Title = "FH", Content = "Не удалось загрузить звук: " .. name, Duration = 3})
+                end
+            end)
+            return
+        end
+        local s = Instance.new("Sound")
+        s.Name = "FH_Preview"
+        s.SoundId = id
+        s.Volume = 1
+        s.Parent = SoundService
+        s:Play()
+        task.delay(8, function() pcall(function() s:Destroy() end) end)
+    end
+
+    -- добавляем кнопки к дропдаунам звука
+    task.spawn(function()
+        task.wait(1)
+        local ok = pcall(function()
+            if not Options then return end
+            -- кнопки для шерифа
+            local shfSec = Tabs.Utility
+            if shfSec then
+                -- создаём две кнопки через ту же секцию, где звуки
+                -- (Fluent API: AddButton на секции)
+            end
+        end)
+        -- Простой путь: через глобальный Options.Notify...
+        -- Если не сработает — оставим вручную через notify
+    end)
+
+    -- Fallback: добавляем кнопку через пересоздание секции
+    task.spawn(function()
+        task.wait(1.2)
+        pcall(function()
+            if not Tabs.Utility then return end
+            -- Находим секцию "Звуки убийства" и добавляем в неё кнопки
+            -- Fluent хранит секции в самой вкладке — перебираем
+            local targetTab = Tabs.Utility
+            -- Секции хранятся как объекты; используем публичный API (AddButton)
+            -- Создаём новую мини-секцию с двумя кнопками прослушки
+            local previewSec = targetTab:AddSection({Name = "▶ Прослушать звук"})
+            previewSec:AddInput("PreviewName", {
+                Title = "Имя файла (напр. neverlose)",
+                Default = "neverlose",
+            })
+            previewSec:AddButton({Title = "Проиграть", Callback = function()
+                local opt = Options.PreviewName
+                local name = opt and opt.Value or "neverlose"
+                if type(name) == "string" and name ~= "" then
+                    previewSound(name)
+                end
+            end})
+            previewSec:AddButton({Title = "Стоп", Callback = function()
+                for _, ch in ipairs(SoundService:GetChildren()) do
+                    if ch.Name == "FH_Preview" then pcall(function() ch:Stop() ch:Destroy() end) end
+                end
+            end})
+        end)
+    end)
+
+    -- ============================================================
+    -- 6) AUTO FARM v3 — ЗАГЛУШКА
+    -- ============================================================
+    -- Джек, ты не прикрепил код для v3. Скинь — вставлю рабочий
+    -- режим сюда. Пока оставляю напоминание в консоли.
+    print("[FH Patch v18.2] AutoFarm v3 — ждёт код от пользователя.")
+
+    print("[FH Patch v18.2] Загружено: Chams Fix + Sound Preview + Cleanup")
+end)
+-- ============================================================
+-- FH PATCH v18.3 — AutoFarm v3 (Basic / Down + Avoid + AutoReset)
+-- ВСТАВИТЬ В САМЫЙ КОНЕЦ СКРИПТА, ПОСЛЕ v18.2.
+-- Требует чтобы v18.2 уже был загружен.
+-- ============================================================
+task.spawn(function()
+    local Players           = game:GetService("Players")
+    local RunService        = game:GetService("RunService")
+    local Workspace         = game:GetService("Workspace")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local CollectionService = game:GetService("CollectionService")
+    local LocalPlayer       = Players.LocalPlayer
+
+    if not Tabs or not Tabs.Farm then
+        warn("[FH v18.3] Tabs.Farm не найден — патч не загружен.")
+        return
+    end
+
+    local v3Sec = Tabs.Farm:AddSection({Name = "Автофарм v3 (Down / Avoid)"})
+
+    -- ---------- state ----------
+    local v3On        = false
+    local v3Mode      = "Basic"        -- "Basic" | "Down"
+    local v3Speed     = 23
+    local v3Avoid     = false
+    local v3AutoReset = false
+
+    local ncCache    = {}
+    local collected  = {}
+    local coinsDone  = false
+    local sawCoins   = false
+    local farmTarget = nil
+    local wasDown    = false
+    local downRefY   = nil
+    local lastTouch  = 0
+
+    local DOWN_DEPTH     = 14
+    local DOWN_RISE_XZ   = 4
+    local AVOID_DIST     = 40
+    local RISE_SAFE_DIST = 20
+
+    local function hrp()
+        local c = LocalPlayer.Character
+        return c and c:FindFirstChild("HumanoidRootPart")
+    end
+
+    local roundMod = nil
+    local function roundData()
+        if not roundMod then
+            local ok, m = pcall(function()
+                return require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("CurrentRoundClient"))
+            end)
+            if ok and type(m) == "table" then roundMod = m end
+        end
+        return roundMod and roundMod.PlayerData
+    end
+
+    local function canFarm()
+        local char = LocalPlayer.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if not hum or hum.Health <= 0 then return false end
+        local d = roundData()
+        if type(d) == "table" then
+            local me = d[LocalPlayer.Name]
+            if not me or not me.Role or me.Dead then return false end
+        end
+        return true
+    end
+
+    local function bagsFull()
+        local pg = LocalPlayer:FindFirstChild("PlayerGui")
+        local main = pg and pg:FindFirstChild("MainGUI")
+        local gg = main and main:FindFirstChild("Game")
+        local bags = gg and gg:FindFirstChild("CoinBags")
+        local cont = bags and bags:FindFirstChild("Container")
+        if not cont then return false end
+        local any = false
+        for _, v in ipairs(cont:GetChildren()) do
+            if v:IsA("Frame") and v.Visible then
+                any = true
+                local full = v:FindFirstChild("Full")
+                if not (full and full.Visible) then return false end
+            end
+        end
+        return any
+    end
+
+    local function resetProgress()
+        collected = {}
+        coinsDone = false
+        sawCoins = false
+        farmTarget = nil
+    end
+
+    task.spawn(function()
+        local ok, r = pcall(function()
+            return ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Gameplay"):WaitForChild("CoinsStarted", 15)
+        end)
+        if ok and r then r.OnClientEvent:Connect(resetProgress) end
+    end)
+    LocalPlayer.CharacterAdded:Connect(resetProgress)
+
+    local function coinOK(v)
+        return v and v.Parent and v:IsA("BasePart")
+            and not v:GetAttribute("Collected") and not v:GetAttribute("Delete")
+    end
+
+    local function coinList()
+        local out = {}
+        for _, v in ipairs(CollectionService:GetTagged("CoinVisual")) do
+            if coinOK(v) then out[#out + 1] = v end
+        end
+        return out
+    end
+
+    local function nearest(pos, list)
+        local best, bd = nil, math.huge
+        for _, v in ipairs(list) do
+            local d = (v.Position - pos).Magnitude
+            if d < bd then bd = d; best = v end
+        end
+        return best
+    end
+
+    local function setNoclip(on)
+        local c = LocalPlayer.Character
+        local h = c and c:FindFirstChildOfClass("Humanoid")
+        if on then
+            if not c then return end
+            if h then pcall(function() h.PlatformStand = true end) end
+            for _, p in ipairs(c:GetDescendants()) do
+                if p:IsA("BasePart") and p.CanCollide then
+                    if ncCache[p] == nil then ncCache[p] = p.CanCollide end
+                    p.CanCollide = false
+                end
+            end
+        else
+            if h then pcall(function() h.PlatformStand = false end) end
+            for p, v in pairs(ncCache) do
+                if p and p.Parent then pcall(function() p.CanCollide = v end) end
+            end
+            ncCache = {}
+        end
+    end
+
+    local mhrpCache, mhrpT = nil, 0
+    local function murdererHRP()
+        local now = os.clock()
+        if now - mhrpT < 0.25 then return mhrpCache end
+        mhrpT = now
+        mhrpCache = nil
+        local d = roundData()
+        if type(d) ~= "table" then return nil end
+        for name, info in pairs(d) do
+            if type(info) == "table" and info.Role == "Murderer"
+                and not info.Dead and name ~= LocalPlayer.Name then
+                local pl = Players:FindFirstChild(name)
+                local ch = pl and pl.Character
+                local h = ch and ch:FindFirstChild("HumanoidRootPart")
+                local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+                if h and (not hum or hum.Health > 0) then mhrpCache = h end
+                break
+            end
+        end
+        return mhrpCache
+    end
+
+    local function flatDist(a, b)
+        return Vector3.new(a.X - b.X, 0, a.Z - b.Z).Magnitude
+    end
+
+    local function touchTargets(coin)
+        local list, seen = {}, {}
+        local function add(p)
+            if p and not seen[p] and p:IsA("BasePart") then
+                seen[p] = true
+                list[#list + 1] = p
+            end
+        end
+        add(coin)
+        for _, v in ipairs(coin:GetChildren()) do add(v) end
+        local par = coin.Parent
+        if par then
+            if par:IsA("BasePart") then add(par) end
+            for _, v in ipairs(par:GetChildren()) do add(v) end
+        end
+        if #list == 0 then list[1] = coin end
+        return list
+    end
+
+    local function fireTouch(coin)
+        if type(firetouchinterest) ~= "function" then return end
+        if not coin or not coin.Parent then return end
+        local now = os.clock()
+        if now - lastTouch < 0.05 then return end
+        lastTouch = now
+        local my = hrp()
+        if not my then return end
+        for _, p in ipairs(touchTargets(coin)) do
+            pcall(firetouchinterest, my, p, 0)
+            pcall(firetouchinterest, my, p, 1)
+        end
+    end
+
+    local upParams = RaycastParams.new()
+    upParams.FilterType = Enum.RaycastFilterType.Exclude
+    upParams.IgnoreWater = true
+
+    local function returnToSurface()
+        local my = hrp()
+        if not my then return end
+        local origin = my.Position
+        upParams.FilterDescendantsInstances = { LocalPlayer.Character }
+        local res = Workspace:Raycast(origin, Vector3.new(0, 400, 0), upParams)
+        local y = res and (res.Position.Y + 5) or (downRefY and downRefY + 5 or nil)
+        if not y then return end
+        pcall(function()
+            my.CFrame = CFrame.new(origin.X, y, origin.Z)
+            my.AssemblyLinearVelocity = Vector3.zero
+            my.AssemblyAngularVelocity = Vector3.zero
+        end)
+    end
+
+    local function farmRelease()
+        if wasDown then
+            wasDown = false
+            returnToSurface()
+        end
+        setNoclip(false)
+    end
+
+    local function pickCoin(pos, list, mpos)
+        if not (v3Avoid and mpos) then return nearest(pos, list) end
+        local safe, sd = nil, math.huge
+        local far, fd = nil, -1
+        for _, v in ipairs(list) do
+            local md = flatDist(v.Position, mpos)
+            if md > fd then fd = md far = v end
+            if md >= AVOID_DIST then
+                local d = (v.Position - pos).Magnitude
+                if d < sd then sd = d safe = v end
+            end
+        end
+        if safe then return safe end
+        if far and fd >= AVOID_DIST * 0.6 then return far end
+        return nil
+    end
+
+    local function coinOKNow(v, mpos)
+        if not coinOK(v) then return false end
+        if v3Avoid and mpos and flatDist(v.Position, mpos) < AVOID_DIST * 0.6 then return false end
+        return true
+    end
+
+    local function avoidSteer(cur, dest, mpos)
+        if not (v3Avoid and mpos) then return dest end
+        local dm = flatDist(cur, mpos)
+        if dm >= AVOID_DIST then return dest end
+        local away = Vector3.new(cur.X - mpos.X, 0, cur.Z - mpos.Z)
+        if away.Magnitude < 0.1 then away = Vector3.new(1, 0, 0) end
+        away = away.Unit
+        local want = Vector3.new(dest.X - cur.X, 0, dest.Z - cur.Z)
+        local mag = want.Magnitude
+        if mag < 0.1 then return dest end
+        local weight = 1 + (1 - dm / AVOID_DIST) * 2
+        local blend = (want.Unit + away * weight)
+        if blend.Magnitude < 0.1 then blend = away else blend = blend.Unit end
+        local np = cur + blend * mag
+        return Vector3.new(np.X, dest.Y, np.Z)
+    end
+
+    local function farmMove(my, dest, dt)
+        local dir = dest - my.Position
+        local dist = dir.Magnitude
+        local np = dest
+        if dist > 0.1 then
+            np = my.Position + dir.Unit * math.min(v3Speed * dt, dist)
+        end
+        local cf = CFrame.new(np)
+        if v3Mode == "Down" then
+            cf = cf * CFrame.Angles(-math.pi * 0.5, 0, 0)
+            wasDown = true
+        end
+        pcall(function()
+            my.CFrame = cf
+            my.AssemblyLinearVelocity = Vector3.zero
+            my.AssemblyAngularVelocity = Vector3.zero
+        end)
+    end
+
+    local farmConn = RunService.Stepped:Connect(function(_, dt)
+        if not v3On then return end
+        if not canFarm() then
+            farmTarget = nil
+            wasDown = false
+            setNoclip(false)
+            return
+        end
+        local my = hrp()
+        if not my then return end
+
+        local list = coinList()
+
+        local function finish()
+            farmTarget = nil
+            farmRelease()
+            if not coinsDone then
+                coinsDone = true
+                if v3AutoReset then
+                    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                    if hum then pcall(function() hum.Health = 0 end) end
+                end
+            end
+        end
+
+        if sawCoins and bagsFull() then
+            finish()
+            return
+        end
+
+        if #list > 0 then
+            sawCoins = true
+            if coinsDone then coinsDone = false end
+
+            local mhrp = v3Avoid and murdererHRP() or nil
+            local mpos = mhrp and mhrp.Position or nil
+
+            if not coinOKNow(farmTarget, mpos) then
+                farmTarget = pickCoin(my.Position, list, mpos)
+            end
+
+            if farmTarget then
+                setNoclip(true)
+                local cpos = farmTarget.Position
+                downRefY = cpos.Y
+                local dest = cpos
+
+                if v3Mode == "Down" then
+                    local xz = flatDist(my.Position, cpos)
+                    local safeToRise = (not mpos) or flatDist(my.Position, mpos) > RISE_SAFE_DIST
+                    if xz <= DOWN_RISE_XZ and safeToRise then
+                        dest = cpos
+                        fireTouch(farmTarget)
+                    else
+                        dest = Vector3.new(cpos.X, cpos.Y - DOWN_DEPTH, cpos.Z)
+                    end
+                elseif (cpos - my.Position).Magnitude <= 6 then
+                    fireTouch(farmTarget)
+                end
+
+                dest = avoidSteer(my.Position, dest, mpos)
+                farmMove(my, dest, dt)
+            elseif mpos then
+                setNoclip(true)
+                local away = Vector3.new(my.Position.X - mpos.X, 0, my.Position.Z - mpos.Z)
+                if away.Magnitude < 0.1 then away = Vector3.new(1, 0, 0) end
+                away = away.Unit
+                local y = my.Position.Y
+                if v3Mode == "Down" and downRefY then y = downRefY - DOWN_DEPTH end
+                farmMove(my, my.Position + away * 40 + Vector3.new(0, y - my.Position.Y, 0), dt)
+            end
+        else
+            farmTarget = nil
+            farmRelease()
+            if sawCoins and not coinsDone then
+                finish()
+            end
+        end
+    end)
+
+    -- ---------- UI ----------
+
+    v3Sec:AddToggle("AutoFarmV3", {Title = "Включить автофарм v3", Default = false}):OnChanged(function(v)
+        v3On = v
+        -- авто-выключение v1/v2 из фортнихуба, чтобы не дрались
+        if v and Options and Options.FarmOn and Options.FarmOn.Value then
+            pcall(function() Options.FarmOn:SetValue(false) end)
+        end
+        resetProgress()
+        if not v then farmRelease() end
+    end)
+
+    v3Sec:AddDropdown("AutoFarmV3Mode", {
+        Title = "Тип фарма",
+        Values = {"Basic", "Down"},
+        Default = "Basic",
+    }):OnChanged(function(v)
+        v3Mode = v or "Basic"
+        farmTarget = nil
+        if v3Mode == "Basic" and wasDown then
+            wasDown = false
+            returnToSurface()
+        end
+    end)
+
+    v3Sec:AddSlider("AutoFarmV3Speed", {
+        Title = "Скорость фарма",
+        Min = 5, Max = 60, Default = 23, Rounding = 1,
+    }):OnChanged(function(v)
+        v3Speed = tonumber(v) or 23
+    end)
+
+    v3Sec:AddToggle("AutoFarmV3Avoid", {
+        Title = "Избегать маньяка",
+        Default = false,
+    }):OnChanged(function(v)
+        v3Avoid = v
+        farmTarget = nil
+    end)
+
+    v3Sec:AddToggle("AutoFarmV3Reset", {
+        Title = "Авто-ресет при полных мешках",
+        Default = false,
+    }):OnChanged(function(v)
+        v3AutoReset = v
+    end)
+
+    -- ---------- clean unload hook ----------
+    local oldV3 = getgenv().FARMV3_UNLOAD
+    getgenv().FARMV3_UNLOAD = function()
+        v3On = false
+        farmTarget = nil
+        farmRelease()
+        if oldV3 then pcall(oldV3) end
+    end
+
+    print("[FH v18.3] AutoFarm v3 загружен (Basic / Down / Avoid / AutoReset)")
+end)
