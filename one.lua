@@ -4998,7 +4998,14 @@ do
     plist:OnChanged(on_pick)
 
     local ss = tT:AddSection({Name = "Действия"})
-    info = ss:AddLabel and ss:AddLabel("target: none", false) or nil
+   local info_ok, info_res = pcall(function()
+    if type(ss.AddLabel) == "function" then
+        return ss:AddLabel("target: none", false)
+    end
+    return nil
+end)
+info = info_ok and info_res or nil
+if not info then info = { SetValue = function() end } end
     if not info then
         -- fallback if AddLabel не работает
         info = { SetValue = function() end }
