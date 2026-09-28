@@ -6304,3 +6304,364 @@ task.spawn(function()
 
     print("[FH v18.3] AutoFarm v3 загружен (Basic / Down / Avoid / AutoReset)")
 end)
+-- ============================================================
+-- FH PATCH v18.4 — China Hat fix + Settings reorder + Keybind remove + Aim jumper fix
+-- ВСТАВИТЬ В САМЫЙ КОНЕЦ СКРИПТА (после v18.3).
+-- ============================================================
+task.spawn(function()
+    local Players           = game:GetService("Players")
+    local RunService        = game:GetService("RunService")
+    local Workspace         = game:GetService("Workspace")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local CoreGui           = game:GetService("CoreGui")
+    local LocalPlayer       = Players.LocalPlayer
+
+    local function uiRoot()
+        return (gethui and gethui()) or CoreGui
+    end
+
+    -- ============================================================
+    -- 1) НАСТРОЙКИ — В САМЫЙ НИЗ
+    -- ============================================================
+    task.spawn(function()
+        task.wait(1.2)
+        local root = uiRoot()
+        for _, gui in ipairs(root:GetChildren()) do
+            local nm = gui.Name
+            if nm:find("Fluent") or nm:find("Window") or nm:find("FortniHub") then
+                for _, desc in ipairs(gui:GetDescendants()) do
+                    if (desc:IsA("TextLabel") or desc:IsA("TextButton")) and desc.Text == "Настройки" then
+                        local btn = desc
+                        -- поднимаемся кнопку вверх до прямого ребёнка контейнера вкладок
+                        for _ = 1, 4 do
+                            if btn.Parent and btn.Parent ~= gui and btn.Parent:IsA("GuiObject") then
+                                btn = btn.Parent
+                            else
+                                break
+                            end
+                        end
+                        pcall(function() btn.LayoutOrder = 9999 end)
+                        pcall(function() desc.LayoutOrder = 9999 end)
+                    end
+                end
+            end
+        end
+    end)
+
+    -- ============================================================
+    -- 2) УДАЛИТЬ КНОПКУ СМЕНЫ КЛАВИШИ МЕНЮ
+    -- ============================================================
+    task.spawn(function()
+        task.wait(1.5)
+        local root = uiRoot()
+        for _, gui in ipairs(root:GetChildren()) do
+            local nm = gui.Name
+            if nm:find("Fluent") or nm:find("Window") or nm:find("FortniHub") then
+                for _, desc in ipairs(gui:GetDescendants()) do
+                    if desc:IsA("TextLabel") and desc.Text == "Клавиша открытия меню" then
+                        local node = desc
+                        for _ = 1, 3 do
+                            if node and node.Parent and node.Parent ~= gui then
+                                node = node.Parent
+                            else
+                                break
+                            end
+                        end
+                        pcall(function()
+                            node.Visible = false
+                            node.Size = UDim2.new(0, 0, 0, 0)
+                        end)
+                    end
+                end
+            end
+        end
+    end)
+
+    -- ============================================================
+    -- 3) CHINA HAT — screen gui версия (гарантированно рендерит)
+    -- ============================================================
+    local chGui = Instance.new("ScreenGui")
+    chGui.Name = "FH_ChinaHat_v18_4"
+    chGui.ResetOnSpawn = false
+    chGui.IgnoreGuiInset = true
+    chGui.DisplayOrder = 999
+    chGui.Parent = uiRoot()
+
+    local chHolder = Instance.new("Frame")
+    chHolder.Name = "Holder"
+    chHolder.Size = UDim2.fromScale(1, 1)
+    chHolder.BackgroundTransparency = 1
+    chHolder.BorderSizePixel = 0
+    chHolder.Parent = chGui
+
+    local chRows = {}
+    local CH_MAX_ROWS = 120
+    local CH_SEGMENTS = 36
+    local CH_RADIUS = 1.6
+    local CH_HEIGHT = 0.9
+    local CH_DROP = 0.02
+    local CH_ALPHA = 0.28   -- прозрачность заливки
+
+    local chOn = false
+    local chCol = Color3.fromRGB(170, 85, 255)
+
+    local function ensureRows(n)
+        for i = #chRows + 1, n do
+            local f = Instance.new("Frame")
+            f.BorderSizePixel = 0
+            f.BackgroundTransparency = CH_ALPHA
+            f.Visible = false
+            f.ZIndex = 5
+            f.Parent = chHolder
+            chRows[i] = f
+        end
+    end
+
+    local function hideAll()
+        for _, f in ipairs(chRows) do
+            if f.Visible then f.Visible = false end
+        end
+    end
+
+    local function proj(camera, p3d)
+        local sp, onScreen = camera:WorldToViewportPoint(p3d)
+        if sp.Z <= 0 then return nil, false end
+        return Vector2.new(sp.X, sp.Y), true
+    end
+
+    local function cross(o, a, b)
+        return (a.X - o.X) * (b.Y - o.Y) - (a.Y - o.Y) * (b.X - o.X)
+    end
+
+    local function convexHull(pts)
+        table.sort(pts, function(a, b)
+            if a.X == b.X then return a.Y < b.Y end
+            return a.X < b.X
+        end)
+        local lower = {}
+        for _, p in ipairs(pts) do
+            while #lower >= 2 and cross(lower[#lower - 1], lower[#lower], p) <= 0 do
+                table.remove(lower)
+            end
+            lower[#lower + 1] = p
+        end
+        local upper = {}
+        for i = #pts, 1, -1 do
+            local p = pts[i]
+            while #upper >= 2 and cross(upper[#upper - 1], upper[#upper], p) <= 0 do
+                table.remove(upper)
+            end
+            upper[#upper + 1] = p
+        end
+        table.remove(lower)
+        table.remove(upper)
+        local hull = {}
+        for _, p in ipairs(lower) do hull[#hull + 1] = p end
+        for _, p in ipairs(upper) do hull[#hull + 1] = p end
+        return hull
+    end
+
+    RunService.RenderStepped:Connect(function()
+        if not chOn then
+            hideAll()
+            return
+        end
+        local char = LocalPlayer.Character
+        local head = char and char:FindFirstChild("Head")
+        if not head or not head:IsA("BasePart") then hideAll() return end
+        local cam = Workspace.CurrentCamera
+        if not cam then hideAll() return end
+
+        local base = Vector3.new(head.Position.X, head.Position.Y + head.Size.Y * 0.5 - CH_DROP, head.Position.Z)
+        local apex3D = base + Vector3.new(0, CH_HEIGHT, 0)
+        local apex2D, apexOk = proj(cam, apex3D)
+        if not apexOk then hideAll() return end
+
+        local pts = { apex2D }
+        for i = 1, CH_SEGMENTS do
+            local a = (i - 1) / CH_SEGMENTS * math.pi * 2
+            local p3d = base + Vector3.new(math.cos(a) * CH_RADIUS, 0, math.sin(a) * CH_RADIUS)
+            local p2d, ok = proj(cam, p3d)
+            if not ok then hideAll() return end
+            pts[#pts + 1] = p2d
+        end
+
+        local hull = convexHull(pts)
+        local hn = #hull
+        if hn < 3 then hideAll() return end
+
+        local minY, maxY = math.huge, -math.huge
+        for _, p in ipairs(hull) do
+            if p.Y < minY then minY = p.Y end
+            if p.Y > maxY then maxY = p.Y end
+        end
+        minY = math.max(0, math.floor(minY))
+        maxY = math.min(cam.ViewportSize.Y, math.ceil(maxY))
+        if maxY - minY < 2 then hideAll() return end
+
+        local span = math.max(1, maxY - minY)
+        local step = math.max(1, math.ceil((maxY - minY) / CH_MAX_ROWS))
+        ensureRows(CH_MAX_ROWS)
+
+        local used = 0
+        for y0 = minY, maxY - 1, step do
+            local h = math.min(step, maxY - y0)
+            local y = y0 + h * 0.5
+            local left, right = math.huge, -math.huge
+            local ax, ay = hull[hn].X, hull[hn].Y
+            for i = 1, hn do
+                local bx, by = hull[i].X, hull[i].Y
+                if (ay <= y and by > y) or (by <= y and ay > y) then
+                    local x = ax + (y - ay) * (bx - ax) / (by - ay)
+                    if x < left then left = x end
+                    if x > right then right = x end
+                end
+                ax, ay = bx, by
+            end
+            local w = right - left
+            if w >= 2 then
+                used = used + 1
+                local t = (y - minY) / span
+                local light = math.max(0, 1 - t * 1.35)
+                local dark = math.max(0, (t - 0.58) / 0.42)
+                local col = chCol:Lerp(Color3.new(1, 1, 1), light * 0.26):Lerp(Color3.new(0, 0, 0), dark * 0.12)
+                local f = chRows[used]
+                f.Position = UDim2.fromOffset(left, y0)
+                f.Size = UDim2.fromOffset(w, h)
+                f.BackgroundColor3 = col
+                f.BackgroundTransparency = CH_ALPHA
+                f.Visible = true
+            end
+        end
+        for i = used + 1, #chRows do
+            if chRows[i].Visible then chRows[i].Visible = false end
+        end
+    end)
+
+    -- подцепляемся к существующему тогглу "Китайская шляпа" в UI
+    task.spawn(function()
+        task.wait(1.6)
+        if Options and Options.ChinaHatOn then
+            if Options.ChinaHatOn.Value then chOn = true end
+            pcall(function()
+                Options.ChinaHatOn:OnChanged(function(v) chOn = v end)
+            end)
+        end
+        if Options and Options.ChinaHatCol then
+            if Options.ChinaHatCol.Value then chCol = Options.ChinaHatCol.Value end
+            pcall(function()
+                Options.ChinaHatCol:OnChanged(function(c) chCol = c end)
+            end)
+        end
+    end)
+
+    getgenv().FH_CHINA_HAT_SET = function(on, col)
+        chOn = on and true or false
+        if typeof(col) == "Color3" then chCol = col end
+    end
+    getgenv().FH_CHINA_HAT_UNLOAD = function()
+        chOn = false
+        hideAll()
+        if chGui then pcall(function() chGui:Destroy() end) end
+    end
+
+    -- ============================================================
+    -- 4) AIM JUMPER FIX — прижимаем прицел к текущей Y цели,
+    --    если цель в воздухе и поднимается.
+    -- ============================================================
+    local hooked = false
+    local hookedGetScreen = false
+
+    local function findWeaponSvc()
+        local ok, m = pcall(function()
+            return require(ReplicatedStorage:WaitForChild("ClientServices"):WaitForChild("WeaponService"))
+        end)
+        if ok and type(m) == "table" then return m end
+        return nil
+    end
+
+    local function getAimInfo()
+        local dbg = getgenv().SILENT_DBG
+        if type(dbg) ~= "function" then return nil end
+        local ok, info = pcall(dbg)
+        if not ok or type(info) ~= "table" then return nil end
+        return info
+    end
+
+    local function getTargetHRP(info)
+        if not info then return nil end
+        local pName = info.target
+        if type(pName) ~= "string" or pName == "none" then return nil end
+        local tp = Players:FindFirstChild(pName)
+        local ch = tp and tp.Character
+        local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+        if hrp and hrp:IsA("BasePart") then return hrp end
+        return nil
+    end
+
+    -- проверяет: цель в воздухе и летит вверх?
+    local function risingAirborne(info)
+        if not info then return false end
+        if not info.airborne then return false end
+        local v = info.vel_fresh
+        if typeof(v) ~= "Vector3" then return false end
+        return v.Y > 3  -- порог, чтобы не триггерить на мелкие колебания
+    end
+
+    local function patchCF(cf)
+        if typeof(cf) ~= "CFrame" then return cf end
+        local info = getAimInfo()
+        if not risingAirborne(info) then return cf end
+        local hrp = getTargetHRP(info)
+        if not hrp then return cf end
+        -- Прижимаем Y: не выше текущего Y цели минус 1 (страховка вниз)
+        local floorY = hrp.Position.Y - 1
+        if cf.Position.Y > floorY then
+            cf = CFrame.new(cf.Position.X, floorY, cf.Position.Z)
+        end
+        return cf
+    end
+
+    local function installAimFix()
+        if hooked then return end
+        local m = findWeaponSvc()
+        if not m then return end
+
+        pcall(function() setreadonly(m, false) end)
+
+        if type(m.GetMouseTargetCFrame) == "function" then
+            local prev = m.GetMouseTargetCFrame
+            m.GetMouseTargetCFrame = function(self, ...)
+                local cf = prev(self, ...)
+                return patchCF(cf)
+            end
+            hooked = true
+        end
+
+        if type(m.GetTargetPosition) == "function" then
+            local prev2 = m.GetTargetPosition
+            m.GetTargetPosition = function(self, x, y, ...)
+                local cf = prev2(self, x, y, ...)
+                return patchCF(cf)
+            end
+            hookedGetScreen = true
+        end
+    end
+
+    -- повторная попытка установки пока silent не активируется
+    task.spawn(function()
+        while true do
+            task.wait(0.5)
+            if getgenv().SILENT_AIM_ACTIVE and not hooked then
+                pcall(installAimFix)
+            end
+        end
+    end)
+
+    getgenv().AIMFIX_UNLOAD = function()
+        hooked = false
+        hookedGetScreen = false
+    end
+
+    print("[FH v18.4] China Hat fix + Settings reorder + Keybind remove + Aim jumper fix loaded")
+end)
