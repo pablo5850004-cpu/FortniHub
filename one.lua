@@ -6665,3 +6665,540 @@ task.spawn(function()
 
     print("[FH v18.4] China Hat fix + Settings reorder + Keybind remove + Aim jumper fix loaded")
 end)
+-- ============================================================
+-- FH PATCH v18.5 — Settings reorder (harsh) + Title rename + Chance remove
+--                 + MapVote dupe fix + Invisibility + Mobile HUD tap
+-- ВСТАВИТЬ В САМЫЙ КОНЕЦ СКРИПТА.
+-- ============================================================
+task.spawn(function()
+    local Players           = game:GetService("Players")
+    local RunService        = game:GetService("RunService")
+    local UserInputService  = game:GetService("UserInputService")
+    local Workspace         = game:GetService("Workspace")
+    local CoreGui           = game:GetService("CoreGui")
+    local TweenService      = game:GetService("TweenService")
+    local LocalPlayer       = Players.LocalPlayer
+
+    local function uiRoot()
+        return (gethui and gethui()) or CoreGui
+    end
+
+    -- ============================================================
+    -- 1) НАСТРОЙКИ — В САМЫЙ НИЗ (жёстко, через LayoutOrder ВСЕХ вкладок)
+    -- ============================================================
+    task.spawn(function()
+        task.wait(2)
+        local root = uiRoot()
+
+        local function isFluentGui(g)
+            local n = g.Name
+            return n:find("Fluent") or n:find("Window") or n:find("FortniHub") or n:find("Window")
+        end
+
+        -- ищем контейнер вкладок (левая колонка кнопок)
+        local container = nil
+        for _, gui in ipairs(root:GetChildren()) do
+            if isFluentGui(gui) then
+                for _, desc in ipairs(gui:GetDescendants()) do
+                    if desc:IsA("Frame") and (desc.Name == "TabContainer" or desc.Name == "Tabs" or desc.Name == "Sidebar") then
+                        container = desc
+                        break
+                    end
+                end
+                if container then break end
+            end
+        end
+        if not container then return end
+
+        -- собираем кнопки вкладок
+        local buttons = {}
+        for _, child in ipairs(container:GetChildren()) do
+            if child:IsA("TextButton") or (child:IsA("Frame") and child:FindFirstChildWhichIsA("TextLabel", true)) then
+                local lbl = child:FindFirstChildWhichIsA("TextLabel", true)
+                if lbl and lbl.Text ~= "" then
+                    buttons[#buttons + 1] = { obj = child, text = lbl.Text }
+                end
+            end
+        end
+
+        -- назначаем LayoutOrder по текущему визуальному порядку, потом Настройки в конец
+        for i, b in ipairs(buttons) do
+            pcall(function() b.obj.LayoutOrder = i end)
+        end
+        for _, b in ipairs(buttons) do
+            if b.text == "Настройки" then
+                pcall(function() b.obj.LayoutOrder = 9999 end)
+            end
+        end
+    end)
+
+    -- ============================================================
+    -- 2) ПОДЗАГОЛОВОК — "REWRITE" -> "by HOTI and Ve315"
+    -- ============================================================
+    task.spawn(function()
+        task.wait(1.5)
+        local root = uiRoot()
+        for _, gui in ipairs(root:GetChildren()) do
+            local nm = gui.Name
+            if nm:find("Fluent") or nm:find("Window") or nm:find("FortniHub") then
+                for _, desc in ipairs(gui:GetDescendants()) do
+                    if desc:IsA("TextLabel") and type(desc.Text) == "string"
+                        and desc.Text:find("REWRITE") then
+                        desc.Text = desc.Text:gsub("REWRITE", "- by HOTI and Ve315")
+                    end
+                end
+            end
+        end
+    end)
+
+    -- ============================================================
+    -- 3) УДАЛИТЬ СЛАЙДЕР "ШАНС ПОПАДАНИЯ" ИЗ SILENT AIM
+    -- ============================================================
+    task.spawn(function()
+        task.wait(2)
+        local root = uiRoot()
+        for _, gui in ipairs(root:GetChildren()) do
+            local nm = gui.Name
+            if nm:find("Fluent") or nm:find("Window") or nm:find("FortniHub") then
+                for _, desc in ipairs(gui:GetDescendants()) do
+                    if desc:IsA("TextLabel") and type(desc.Text) == "string"
+                        and desc.Text == "Шанс попадания (%)" then
+                        local node = desc
+                        for _ = 1, 4 do
+                            if node and node.Parent and node.Parent ~= gui then
+                                node = node.Parent
+                            else
+                                break
+                            end
+                        end
+                        pcall(function()
+                            node.Visible = false
+                            node.Size = UDim2.new(0, 0, 0, 0)
+                        end)
+                    end
+                end
+            end
+        end
+    end)
+
+    -- ============================================================
+    -- 4) FIX MULTI-VOTE (дубликат голоса в голосовании за карту)
+    --    В твоём скрипте опечатка: dupeOn (кнопка) vs dupe_on (begin).
+    --    Ставим свой обработчик поверх и вызываем правильные функции.
+    -- ============================================================
+    task.spawn(function()
+        task.wait(2.5)
+        -- ставим оба варианта переменной чтобы begin() увидел
+        if rawget(getfenv(), "dupeOn") ~= nil then
+            rawset(getfenv(), "dupe_on", true)
+        end
+        -- Хук на кнопку ищем по тексту
+        local root = uiRoot()
+        for _, gui in ipairs(root:GetChildren()) do
+            local nm = gui.Name
+            if nm:find("Fluent") or nm:find("Window") or nm:find("FortniHub") then
+                for _, desc in ipairs(gui:GetDescendants()) do
+                    if desc:IsA("TextButton") or desc:IsA("TextLabel") then
+                        if type(desc.Text) == "string" and desc.Text:find("Дюпнуть голос") then
+                            -- находим сам кликабельный элемент
+                            local btn = desc:IsA("TextButton") and desc or desc.Parent
+                            if btn and btn:IsA("TextButton") then
+                                -- заменяем callback: склеиваем с ручным "правильным" вариантом
+                                -- Просто активируем кнопку несколько раз с задержкой,
+                                -- так как кнопка сама делает respawn->tp, если dupe_on true.
+                                -- Но из-за опечатки это не работает. Мы триггерим через
+                                -- прямое выставление обоих переменных и повторный клик.
+                                -- (Логика begin - длинная, восстановим её сами.)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end)
+
+    -- Полноценный самостоятельный multi-vote (не зависит от багов их кода).
+    do
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local function getMapsFolder()
+            local root = Workspace:FindFirstChild("SummerLobby")
+                or Workspace:FindFirstChild("Lobby")
+                or Workspace:FindFirstChild("RegularLobby")
+            return root and root:FindFirstChild("VotePads")
+        end
+
+        local function collectPads()
+            local pads, folder = {}, getMapsFolder()
+            if not folder then return pads end
+            for _, model in ipairs(folder:GetChildren()) do
+                local pad   = model:FindFirstChild("Pad")
+                local info  = model:FindFirstChild("MapInfoGui")
+                local vote  = model:FindFirstChild("VoteInfoGui")
+                local icon  = info and info:FindFirstChild("MapIcon")
+                local box   = vote and vote:FindFirstChild("Container")
+                local title = box  and box:FindFirstChild("MapName")
+                local tally = box  and box:FindFirstChild("Votes")
+                if pad and info and icon and title and tally then
+                    pads[#pads + 1] = {
+                        pad = pad, info = info, icon = icon,
+                        title = title, tally = tally, model = model,
+                    }
+                end
+            end
+            return pads
+        end
+
+        local function standY(pad)
+            local prm = RaycastParams.new()
+            prm.FilterType = Enum.RaycastFilterType.Exclude
+            prm.FilterDescendantsInstances = { LocalPlayer.Character }
+            local hit = Workspace:Raycast(pad.Position + Vector3.new(0, 8, 0), Vector3.new(0, -40, 0), prm)
+            return hit and (hit.Position.Y + 3.2) or pad.Position.Y
+        end
+
+        local function killSelf()
+            local char = LocalPlayer.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                pcall(function() hum.Health = 0 end)
+                pcall(function() hum:ChangeState(Enum.HumanoidStateType.Dead) end)
+            end
+            if char then
+                pcall(function() char:BreakJoints() end)
+            end
+        end
+
+        local function getPickedNames()
+            -- берём значения из дропдауна "Приоритетные карты" через Options
+            local out = {}
+            if not Options then return out end
+            local opt = Options.MVMaps
+            if not opt then return out end
+            local v = opt.Value
+            if type(v) == "table" then
+                for _, name in ipairs(v) do
+                    if type(name) == "string" and name ~= "" then out[#out + 1] = name end
+                end
+            elseif type(v) == "string" and v ~= "" then
+                out[1] = v
+            end
+            return out
+        end
+
+        local function runMultiVote(times)
+            task.spawn(function()
+                local char = LocalPlayer.Character
+                if not char or not char:FindFirstChild("HumanoidRootPart") then
+                    if Fluent and Fluent.Notify then
+                        Fluent:Notify({ Title = "FH", Content = "Сначала заспавнись", Duration = 3 })
+                    end
+                    return
+                end
+
+                local pads = collectPads()
+                if #pads == 0 then
+                    if Fluent and Fluent.Notify then
+                        Fluent:Notify({ Title = "FH", Content = "Голосовалка не открыта", Duration = 3 })
+                    end
+                    return
+                end
+
+                local pickedNames = getPickedNames()
+                local chosen = nil
+                for _, name in ipairs(pickedNames) do
+                    for _, pad in ipairs(pads) do
+                        if pad.info.Enabled and pad.title.Text == name then
+                            chosen = pad
+                            break
+                        end
+                    end
+                    if chosen then break end
+                end
+                if not chosen then
+                    for _, pad in ipairs(pads) do
+                        if pad.info.Enabled and pad.title.Text ~= "" and pad.title.Text ~= "MAP NAME" then
+                            chosen = pad
+                            break
+                        end
+                    end
+                end
+                if not chosen then
+                    if Fluent and Fluent.Notify then
+                        Fluent:Notify({ Title = "FH", Content = "Нет активных карт", Duration = 3 })
+                    end
+                    return
+                end
+
+                local spot = Vector3.new(chosen.pad.Position.X, standY(chosen.pad), chosen.pad.Position.Z)
+
+                if Fluent and Fluent.Notify then
+                    Fluent:Notify({ Title = "FH", Content = "Мульти-голос: " .. tostring(times) .. " раз за «"..chosen.title.Text.."»", Duration = 3 })
+                end
+
+                for i = 1, times do
+                    local ch = LocalPlayer.Character
+                    local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+                    local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+                    if not (hum and hrp) then
+                        -- ждём респавн
+                        ch = LocalPlayer.CharacterAdded:Wait()
+                        hum = ch:WaitForChild("Humanoid", 5)
+                        hrp = ch:WaitForChild("HumanoidRootPart", 5)
+                    end
+                    if hrp and hum then
+                        pcall(function()
+                            hrp.CFrame = CFrame.new(spot)
+                            hrp.AssemblyLinearVelocity = Vector3.zero
+                            hrp.AssemblyAngularVelocity = Vector3.zero
+                        end)
+                        -- стоим на пэде, чтобы засчитался голос
+                        task.wait(0.35)
+                    end
+                    -- убиваемся для следующего голоса
+                    if i < times then
+                        killSelf()
+                        -- ждём респавн (макс 6 сек)
+                        local ok, _ = pcall(function()
+                            LocalPlayer.CharacterAdded:Wait()
+                        end)
+                        task.wait(0.1)
+                    end
+                end
+
+                if Fluent and Fluent.Notify then
+                    Fluent:Notify({ Title = "FH", Content = "Мульти-голос завершён", Duration = 3 })
+                end
+            end)
+        end
+
+        -- Ищем кнопку дюпа в UI и хукаем
+        task.spawn(function()
+            task.wait(3)
+            local root = uiRoot()
+            for _, gui in ipairs(root:GetChildren()) do
+                local nm = gui.Name
+                if nm:find("Fluent") or nm:find("Window") or nm:find("FortniHub") then
+                    for _, desc in ipairs(gui:GetDescendants()) do
+                        if desc:IsA("TextButton") and type(desc.Text) == "string"
+                            and desc.Text:find("Дюпнуть голос") then
+                            -- заменяем callback через пере-подключение клика
+                            local orig = desc.Activated
+                            -- Поскольку Fluent юзает Activated, вешаем свой
+                            desc.Activated:Connect(function()
+                                task.wait(0.05)
+                                local cap = 3
+                                if Options and Options.MVDupeCap then
+                                    cap = tonumber(Options.MVDupeCap.Value) or 3
+                                end
+                                runMultiVote(math.clamp(math.floor(cap), 1, 10))
+                            end)
+                            break
+                        end
+                    end
+                end
+            end
+        end)
+
+        -- Экспортируем наружу для своих кнопок (если надо)
+        getgenv().FH_RUN_MULTIVOTE = runMultiVote
+    end
+
+    -- ============================================================
+    -- 5) INVISIBILITY — hitbox за карту, клиент полупрозрачный на месте
+    -- ============================================================
+    do
+        local active = false
+        local savedCF = nil
+        local savedLTM = {}   -- [part] = orig LocalTransparencyModifier
+        local savedDecal = {} -- [decal] = orig Transparency
+        local thread = nil
+        local FALLEN_ORIG = nil
+
+        local function collectCharParts()
+            local char = LocalPlayer.Character
+            if not char then return {} end
+            local parts, decals = {}, {}
+            for _, v in ipairs(char:GetDescendants()) do
+                if v:IsA("BasePart") then parts[#parts + 1] = v end
+                if v:IsA("Decal") or v:IsA("Texture") then decals[#decals + 1] = v end
+            end
+            return parts, decals
+        end
+
+        local function beginInvis()
+            local char = LocalPlayer.Character
+            local hrp  = char and char:FindFirstChild("HumanoidRootPart")
+            local hum  = char and char:FindFirstChild("Humanoid")
+            if not (hrp and hum) then return end
+
+            savedCF = hrp.CFrame
+            savedLTM = {}
+            savedDecal = {}
+
+            local parts, decals = collectCharParts()
+            for _, p in ipairs(parts) do
+                savedLTM[p] = p.LocalTransparencyModifier or 0
+                p.LocalTransparencyModifier = 0.5
+            end
+            for _, d in ipairs(decals) do
+                savedDecal[d] = d.Transparency
+                d.Transparency = 0.5
+            end
+
+            -- сглаживание
+            pcall(function()
+                hum:ChangeState(Enum.HumanoidStateType.Physics)
+            end)
+            pcall(function()
+                if setfflag then setfflag("S2PhysicsSenderRate", "200") end
+            end)
+
+            -- lock position per frame
+            thread = task.spawn(function()
+                while active do
+                    local c = LocalPlayer.Character
+                    local h = c and c:FindFirstChild("HumanoidRootPart")
+                    if h and savedCF then
+                        -- swap: fake to server, back to client
+                        local realNow = savedCF
+                        pcall(function() h.CFrame = CFrame.new(0, 50000, 0) end)
+                        RunService.RenderStepped:Wait()
+                        pcall(function() h.CFrame = realNow end)
+                    end
+                    RunService.Heartbeat:Wait()
+                end
+            end)
+        end
+
+        local function endInvis()
+            active = false
+            if thread then pcall(function() task.cancel(thread) end) thread = nil end
+
+            local char = LocalPlayer.Character
+            if char then
+                for p, v in pairs(savedLTM) do
+                    if p and p.Parent then pcall(function() p.LocalTransparencyModifier = v end) end
+                end
+                for d, v in pairs(savedDecal) do
+                    if d and d.Parent then pcall(function() d.Transparency = v end) end
+                end
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if hum then
+                    pcall(function() hum:ChangeState(Enum.HumanoidStateType.Running) end)
+                end
+            end
+            savedLTM = {}
+            savedDecal = {}
+
+            -- телепорт на сохранённую позицию
+            if savedCF then
+                local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    pcall(function()
+                        hrp.CFrame = savedCF
+                        hrp.AssemblyLinearVelocity = Vector3.zero
+                        hrp.AssemblyAngularVelocity = Vector3.zero
+                    end)
+                end
+            end
+            savedCF = nil
+
+            pcall(function()
+                if setfflag then setfflag("S2PhysicsSenderRate", "60") end
+            end)
+        end
+
+        local invisSection = nil
+        if Tabs and Tabs.Utility then
+            invisSection = Tabs.Utility:AddSection({ Name = "Невидимость" })
+        elseif Tabs and Tabs.Movement then
+            invisSection = Tabs.Movement:AddSection({ Name = "Невидимость" })
+        elseif Tabs and Tabs.Settings then
+            invisSection = Tabs.Settings:AddSection({ Name = "Невидимость" })
+        end
+
+        if invisSection then
+            invisSection:AddToggle("InvisOn", {
+                Title = "Невидимость (hitbox за карту)",
+                Default = false,
+            }):OnChanged(function(v)
+                if v then
+                    active = true
+                    beginInvis()
+                else
+                    endInvis()
+                end
+            end)
+            invisSection:AddLabel("Хитбокс улетает за карту, тело остаётся у тебя (полупрозрачное)", true)
+        end
+
+        getgenv().INVIS_UNLOAD = function()
+            if active then endInvis() end
+        end
+    end
+
+    -- ============================================================
+    -- 6) MOBILE — тап по "FortniHub" в HUD открывает/закрывает меню
+    -- ============================================================
+    task.spawn(function()
+        task.wait(2)
+        local root = uiRoot()
+        local hud = root:FindFirstChild("FH_HUD_v18")
+        if not hud then return end
+
+        local logoTap = nil
+        for _, desc in ipairs(hud:GetDescendants()) do
+            if desc:IsA("TextLabel") and desc.Text == "FortniHub" then
+                logoTap = desc
+                break
+            end
+        end
+        if not logoTap then return end
+
+        -- делаем "кликабельным" (у TextLabel нет Activated, юзаем InputBegan)
+        logoTap.Active = true
+
+        local function findFluentGui()
+            for _, gui in ipairs(root:GetChildren()) do
+                if gui:IsA("ScreenGui") then
+                    local nm = gui.Name
+                    if nm:find("Fluent") or nm:find("Window") or nm:find("FortniHub") then
+                        -- пропускаем наш HUD
+                        if gui ~= hud then return gui end
+                    end
+                end
+            end
+            return nil
+        end
+
+        local function toggleMenu()
+            local fg = findFluentGui()
+            if fg then
+                fg.Enabled = not fg.Enabled
+            end
+        end
+
+        logoTap.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.Touch
+                or input.UserInputType == Enum.UserInputType.MouseButton1 then
+                toggleMenu()
+            end
+        end)
+
+        -- На всякий: у нас в HUD есть Pill (родитель). Тоже сделаем активным,
+        -- чтобы тап по всей плашке работал.
+        local pill = logoTap.Parent
+        while pill and pill.Name ~= "Pill" do pill = pill.Parent end
+        if pill then
+            pill.Active = true
+            pill.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.Touch
+                    or input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    toggleMenu()
+                end
+            end)
+        end
+    end)
+
+    print("[FH v18.5] Settings reorder + Title + Chance-removed + MapVote dupe fix + Invisibility + Mobile tap loaded")
+end)
