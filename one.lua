@@ -974,7 +974,6 @@ do
         wasJumping = jumping
     end))
 
-    -- SpeedGlitch
     local sgOn, sgPower, sgAccel, sgGround = false, 90, 0.6, 16
     mvSec:AddToggle("SpeedGlitchOn", {Title = "Спидглитч", Default = false}):OnChanged(function(v) sgOn = v end)
     mvSec:AddSlider("SpeedGlitchPower", {Title = "Скорость в прыжке", Min = 30, Max = 250, Default = 90, Rounding = 0}):OnChanged(function(v) sgPower = tonumber(v) or 90 end)
@@ -1003,7 +1002,6 @@ do
         end
     end))
 
-    -- Fly logic
     local flyGrav = Workspace.Gravity
     if Options.FlyToggle then
         Options.FlyToggle:OnChanged(function(v)
@@ -1105,14 +1103,13 @@ do
 end
 
 -- ============================================================
--- BINDS
+-- BINDS (исправлено: без AddLabel, категории через AddButton)
 -- ============================================================
 do
     local tB = Window:AddTab({Title = "Бинды"})
     Tabs.Binds = tB
 
     local BIND_LIST = {
-        -- ===== БОЙ =====
         {id = "SilentEnabled",  title = "Тихий выстрел — вкл/выкл",         cat = "Бой",       opt = "SilentEnabled"},
         {id = "SilentShoot",    title = "Выстрел тихого выстрела (Shoot)",  cat = "Бой",       action = "ShootSilent"},
         {id = "KnifeSilentOn",  title = "Тихий бросок ножа — вкл/выкл",     cat = "Бой",       opt = "KnifeSilentOn"},
@@ -1120,7 +1117,6 @@ do
         {id = "KAOn",           title = "Килл Аура — вкл/выкл",             cat = "Бой",       opt = "KAOn"},
         {id = "AutoGrabGun",    title = "Авто-подбор пистолета — вкл/выкл", cat = "Бой",       opt = "AutoGrabGun"},
 
-        -- ===== ДВИЖЕНИЕ =====
         {id = "SpeedToggle",    title = "Скорость — вкл/выкл",              cat = "Движение",  opt = "SpeedToggle"},
         {id = "Noclip",         title = "Noclip — вкл/выкл",                cat = "Движение",  opt = "Noclip"},
         {id = "Spinbot",        title = "Спинбот — вкл/выкл",               cat = "Движение",  opt = "Spinbot"},
@@ -1241,7 +1237,10 @@ do
     for _, def in ipairs(BIND_LIST) do
         if def.cat ~= currentCat then
             currentCat = def.cat
-            listSec:AddLabel("— " .. currentCat .. " —")
+            -- заголовок категории через кнопку-заглушку (AddLabel в Fluent нет)
+            pcall(function()
+                listSec:AddButton({Title = "=== " .. currentCat .. " ===", Callback = function() end})
+            end)
         end
 
         local st = BindState[def.id]
@@ -1407,7 +1406,6 @@ do
         Notify("FH", "Скрипт выгружен", 3)
     end})
 
-    -- Configs
     local cfgSec = tS:AddSection({Name = "Конфиги"})
     local CONFIG_DIR = "FortniHub_Configs/"
     local CONFIG_EXT = ".txt"
