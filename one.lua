@@ -4920,3 +4920,274 @@ end)
 print("[FH] ============================================")
 print("[FH] Part 2/2 — FortniHub v18.4.0 — " .. CREDITS)
 print("[FH] ============================================")
+-- ============================================================
+-- FortniHub PATCH — Silent Aim fix + Invis bind
+-- by HOTI and Ve315
+-- ============================================================
+task.wait(2)
+
+do
+    -- ============================================================
+    -- 1. FIX SILENT AIM — стреляем в убийцу, а не в мышь
+    -- ============================================================
+    local Players           = game:GetService("Players")
+    local RunService        = game:GetService("RunService")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+    local LocalPlayer = Players.LocalPlayer
+    local Options     = getgenv().Options or (getgenv().FH_Window and getgenv().FH_Window.Options)
+    local Notify      = getgenv().FH_Notify or function() end
+
+    -- Ищем силу/оффсет из старого блока через глобалы — но их нет.
+    -- Поэтому весь Silent пере-инициализируем с нуля — забираем оружие и стреляем в убийцу.
+    local weaponService, oldMouse, oldScreen, oldTargetCF, oldAimPos
+
+    local function getRoleFromData(p)
+        if not p then return "lobby" end
+        local ok, m = pcall(function()
+            return require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("CurrentRoundClient"))
+        end)
+        if ok and type(m) == "table" and type(m.PlayerData) == "table" then
+            local d = m.PlayerData[p.Name]
+            if d and not d.Dead then
+                if d.Role == "Murderer" then return "murderer" end
+                if d.Role == "Sheriff"  then return "sheriff" end
+                if d.Role == "Hero"     then return "hero" end
+                return "innocent"
+            end
+        end
+        return "innocent"
+    end
+
+    local function findMurderer()
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and getRoleFromData(p) == "murderer" then
+                return p
+            end
+        end
+        return nil
+    end
+
+    local function getTargetPart()
+        local t = findMurderer()
+        if not t or not t.Character then return nil end
+        return t.Character:FindFirstChild("HumanoidRootPart")
+            or t.Character:FindFirstChild("UpperTorso")
+            or t.Character:FindFirstChild("Torso")
+            or t.Character:FindFirstChild("Head")
+    end
+
+    local function getMyGunOrigin()
+        local c = LocalPlayer.Character
+        if not c then return nil end
+        local hrp = c:FindFirstChild("HumanoidRootPart")
+        if not hrp then return nil end
+        local att = hrp:FindFirstChild("GunRaycastAttachment")
+        if att then return att.WorldPosition end
+        return hrp.Position
+    end
+
+    local function getWeaponService()
+        if weaponService then return weaponService end
+        local ok, m = pcall(function()
+            return require(ReplicatedStorage:WaitForChild("ClientServices"):WaitForChild("WeaponService"))
+        end)
+        if ok and type(m) == "table" then weaponService = m end
+        return weaponService
+    end
+
+    local function resolveShotCFrame()
+        local part = getTargetPart()
+        if not part then return nil end
+        local origin = getMyGunOrigin()
+        if not origin then return nil end
+        return CFrame.lookAt(origin, part.Position), part.Position
+    end
+
+    local function installHooks()
+        local m = getWeaponService()
+        if not m then
+            Notify("FH-PATCH", "WeaponService не найден", 4)
+            return
+        end
+        pcall(function() setreadonly(m, false) end)
+
+        -- Перехватываем ВСЕ методы прицела, которые могут быть у WeaponService
+        if type(m.GetMouseTargetCFrame) == "function" then
+            if not oldMouse then oldMouse = m.GetMouseTargetCFrame end
+            local old = oldMouse
+            m.GetMouseTargetCFrame = function(self, ...)
+                if Options and Options.SilentEnabled and Options.SilentEnabled.Value then
+                    local cf = resolveShotCFrame()
+                    if cf then return cf end
+                end
+                return old(self, ...)
+            end
+        end
+
+        if type(m.GetTargetPosition) == "function" then
+            if not oldScreen then oldScreen = m.GetTargetPosition end
+            local old = oldScreen
+            m.GetTargetPosition = function(self, ...)
+                if Options and Options.SilentEnabled and Options.SilentEnabled.Value then
+                    local cf, pos = resolveShotCFrame()
+                    if cf and pos then return pos end
+                end
+                return old(self, ...)
+            end
+        end
+
+        if type(m.GetTargetCFrame) == "function" then
+            if not oldTargetCF then oldTargetCF = m.GetTargetCFrame end
+            local old = oldTargetCF
+            m.GetTargetCFrame = function(self, ...)
+                if Options and Options.SilentEnabled and Options.SilentEnabled.Value then
+                    local cf = resolveShotCFrame()
+                    if cf then return cf end
+                end
+                return old(self, ...)
+            end
+        end
+
+        if type(m.GetAimPosition) == "function" then
+            if not oldAimPos then oldAimPos = m.GetAimPosition end
+            local old = oldAimPos
+            m.GetAimPosition = function(self, ...)
+                if Options and Options.SilentEnabled and Options.SilentEnabled.Value then
+                    local cf, pos = resolveShotCFrame()
+                    if pos then return pos end
+                end
+                return old(self, ...)
+            end
+        end
+
+        Notify("FH-PATCH",
+            "Silent hooks: mouse="..tostring(oldMouse~=nil)..
+            " pos="..tostring(oldScreen~=nil)..
+            " cf="..tostring(oldTargetCF~=nil)..
+            " aim="..tostring(oldAimPos~=nil), 5)
+    end
+
+    -- Ставим сразу и переставляем раз в 3 секунды (если скрипт загрузил оружие позже)
+    task.spawn(function()
+        task.wait(0.5)
+        installHooks()
+        while true do
+            task.wait(3)
+            if Options and Options.SilentEnabled and Options.SilentEnabled.Value then
+                installHooks()
+            end
+        end
+    end)
+
+    getgenv().FH_PATCH_SilentFix = installHooks
+
+    -- ============================================================
+    -- 2. ДОБАВИТЬ НЕВИДИМОСТЬ В БИНДЫ
+    -- ============================================================
+    task.wait(1)
+
+    local Tabs = getgenv().FH_Tabs
+    if Tabs and Tabs.Binds then
+        -- Проверяем, есть ли уже бинд на невидимость, чтобы не дублировать
+        local already = Options and Options.BIND_KEY_InvisOn
+        if not already then
+            local bSec = Tabs.Binds:AddSection({Name = "Утилиты"})
+
+            bSec:AddKeybind("BIND_KEY_InvisOn", {
+                Title = "Невидимость",
+                Default = "Unknown",
+            }):OnChanged(function(k)
+                if typeof(k) == "EnumItem" then
+                    Notify("FH-PATCH", "Невидимость → " .. tostring(k), 2)
+                end
+            end)
+
+            -- Тумблер сенсорной кнопки для невидимости
+            local touchGui = getgenv().FH_TouchGui
+            local btn = Instance.new("TextButton")
+            btn.Name = "FH_BTN_InvisOn"
+            btn.Size = UDim2.fromOffset(150, 34)
+            btn.Position = UDim2.fromOffset(200, 90)
+            btn.BackgroundColor3 = Color3.fromRGB(28, 22, 42)
+            btn.BorderSizePixel = 0
+            btn.Text = "Невидимость"
+            btn.TextColor3 = Color3.fromRGB(235, 225, 255)
+            btn.Font = Enum.Font.GothamSemibold
+            btn.TextSize = 13
+            btn.Active = true
+            btn.ZIndex = 3
+            btn.Visible = false
+            btn.Parent = (gethui and gethui()) or game:GetService("CoreGui")
+            Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+            local stroke = Instance.new("UIStroke", btn)
+            stroke.Color = Color3.fromRGB(138, 92, 246)
+            stroke.Thickness = 1
+            stroke.Transparency = 0.35
+
+            local function fireInvis()
+                if Options and Options.InvisOn then
+                    Options.InvisOn:SetValue(not Options.InvisOn.Value)
+                    Notify("FH-PATCH", "Невидимость: " .. tostring(Options.InvisOn.Value), 1.5)
+                elseif getgenv().FH_ToggleInvis then
+                    pcall(getgenv().FH_ToggleInvis)
+                    Notify("FH-PATCH", "Невидимость переключена", 1.5)
+                else
+                    Notify("FH-PATCH", "Невидимость ещё не загружена", 2)
+                end
+            end
+
+            local dragging, dragStart, posStart, moved = false, nil, nil, false
+            btn.InputBegan:Connect(function(i)
+                if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+                    dragging = true moved = false
+                    dragStart = i.Position posStart = btn.Position
+                end
+            end)
+            game:GetService("UserInputService").InputChanged:Connect(function(i)
+                if not dragging then return end
+                if i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch then
+                    local d = i.Position - dragStart
+                    if math.abs(d.X) > 4 or math.abs(d.Y) > 4 then moved = true end
+                    if moved then
+                        btn.Position = UDim2.new(posStart.X.Scale, posStart.X.Offset + d.X, posStart.Y.Scale, posStart.Y.Offset + d.Y)
+                    end
+                end
+            end)
+            game:GetService("UserInputService").InputEnded:Connect(function(i)
+                if i.UserInputType ~= Enum.UserInputType.MouseButton1 and i.UserInputType ~= Enum.UserInputType.Touch then return end
+                if not dragging then return end
+                local wasTap = not moved
+                dragging = false
+                if wasTap then fireInvis() end
+            end)
+
+            bSec:AddToggle("BIND_TCH_InvisOn", {Title = "  Кнопка: Невидимость", Default = false}):OnChanged(function(v)
+                btn.Visible = v
+            end)
+
+            Notify("FH-PATCH", "Невидимость добавлена в Бинды", 3)
+        end
+
+        -- Хук: срабатывание бинда на клавишу
+        local UserInputService = game:GetService("UserInputService")
+        UserInputService.InputBegan:Connect(function(input, gpe)
+            if gpe then return end
+            if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+            if Options and Options.BIND_KEY_InvisOn and Options.BIND_KEY_InvisOn.Value then
+                if input.KeyCode == Options.BIND_KEY_InvisOn.Value then
+                    if Options.InvisOn then
+                        Options.InvisOn:SetValue(not Options.InvisOn.Value)
+                    elseif getgenv().FH_ToggleInvis then
+                        pcall(getgenv().FH_ToggleInvis)
+                    end
+                end
+            end
+        end)
+    else
+        Notify("FH-PATCH", "Tabs.Binds не найден", 4)
+    end
+
+    Notify("FH-PATCH", "Патч загружен: Silent fix + Invis bind", 5)
+    print("[FH-PATCH] Silent Aim fix + Invis bind applied")
+end
