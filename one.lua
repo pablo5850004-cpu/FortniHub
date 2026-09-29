@@ -1236,9 +1236,9 @@ do
         local st = BindState[def.id]
 
         listSec:AddKeybind("BIND_KEY_" .. def.id, {
-            Title = def.title,
-            Default = nil,
-        }):OnChanged(function(k)
+    Title = def.title,
+    Default = "Unknown",
+}):OnChanged(function(k)
             if typeof(k) == "EnumItem" then
                 st.key = k
                 Notify("FH", "Бинд: " .. def.title .. " → " .. tostring(k), 2)
