@@ -5587,3 +5587,1295 @@ end)
 print("[FH] ============================================")
 print("[FH] Part 2/2 — FortniHub v18.3.0 — " .. CREDITS)
 print("[FH] ============================================")
+-- ============================================================
+-- FortniHub MM2 v18.4.0 — Part 1/2
+-- by HOTI and Ve315
+-- Core • Helpers • HUD • Combat • Movement • Settings • Configs
+-- ============================================================
+
+local Players           = game:GetService("Players")
+local RunService        = game:GetService("RunService")
+local UserInputService  = game:GetService("UserInputService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local CoreGui           = game:GetService("CoreGui")
+local Workspace         = game:GetService("Workspace")
+local Lighting          = game:GetService("Lighting")
+local HttpService       = game:GetService("HttpService")
+local TeleportService   = game:GetService("TeleportService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VirtualUser       = game:GetService("VirtualUser")
+local TweenService      = game:GetService("TweenService")
+local Stats             = game:GetService("Stats")
+local CollectionService = game:GetService("CollectionService")
+local SoundService      = game:GetService("SoundService")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera      = Workspace.CurrentCamera
+local VERSION     = "18.4.0"
+local CREDITS     = "by HOTI and Ve315"
+
+-- ============================================================
+-- STATE
+-- ============================================================
+local S = {
+    frozen        = false,
+    freezeUpKey   = Enum.KeyCode.Space,
+    freezeDownKey = Enum.KeyCode.LeftAlt,
+}
+
+local silent = {
+    enabled   = false,
+    predict   = true,
+    force     = false,
+    bindKey   = Enum.KeyCode.E,
+    standoff  = 15,
+    lastShot  = 0,
+}
+
+local knifeSilent = {
+    enabled    = false,
+    bindKey    = Enum.KeyCode.R,
+    radius     = 20,
+    fov        = 120,
+    showFov    = true,
+    checkWalls = false,
+    instaKill  = true,
+    predict    = true,
+}
+
+local kaV1 = { on = false, dist = 30, lastHit = 0 }
+local kaV2 = { on = false, dist = 30, lastHit = 0 }
+local killAuraVersion = "v2"
+
+-- ============================================================
+-- HELPERS
+-- ============================================================
+local Connections = {}
+local function AddConn(name, conn)
+    if Connections[name] then pcall(function() Connections[name]:Disconnect() end) end
+    Connections[name] = conn
+end
+
+local Cache = { hrp = nil, hum = nil, cacheTime = 0 }
+local function refreshChar()
+    if tick() - Cache.cacheTime < 0.5 then return end
+    Cache.cacheTime = tick()
+    local c = LocalPlayer.Character
+    if c then
+        Cache.hrp = c:FindFirstChild("HumanoidRootPart")
+        Cache.hum = c:FindFirstChildOfClass("Humanoid")
+    else
+        Cache.hrp, Cache.hum = nil, nil
+    end
+end
+local function getHRP() refreshChar() return Cache.hrp end
+local function getHum() refreshChar() return Cache.hum end
+
+local function getRoundData()
+    local ok, m = pcall(function()
+        return require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("CurrentRoundClient"))
+    end)
+    if ok and type(m) == "table" then return m.PlayerData end
+    return nil
+end
+
+local function getRoleFromData(p)
+    if not p then return "lobby" end
+    local ok, m = pcall(function()
+        return require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("CurrentRoundClient"))
+    end)
+    if ok and type(m) == "table" and type(m.PlayerData) == "table" then
+        local d = m.PlayerData[p.Name]
+        if d and not d.Dead then
+            if d.Role == "Murderer" then return "murderer" end
+            if d.Role == "Sheriff"  then return "sheriff" end
+            if d.Role == "Hero"     then return "hero" end
+            return "innocent"
+        end
+    end
+    local c = p.Character
+    if c then
+        local bp = p:FindFirstChild("Backpack")
+        if c:FindFirstChild("Knife") or (bp and bp:FindFirstChild("Knife")) then return "murderer" end
+        if c:FindFirstChild("Gun") or (bp and bp:FindFirstChild("Gun")) then
+            local allData = getRoundData()
+            if allData then
+                for _, info in pairs(allData) do
+                    if type(info) == "table" and info.Role == "Sheriff" and info.Dead then
+                        return "hero"
+                    end
+                end
+            end
+            return "sheriff"
+        end
+    end
+    return "innocent"
+end
+
+local function isMurderer()
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and getRoleFromData(p) == "murderer" then return p end
+    end
+    return nil
+end
+
+local function srand(a, b)
+    local _orig = math.random
+    if a == nil then return _orig() end
+    if b == nil then
+        if type(a) ~= "number" or a ~= a or a < 1 then a = 1 end
+        if a > 2147483647 then a = 2147483647 end
+        return _orig(math.floor(a))
+    end
+    a, b = tonumber(a) or 0, tonumber(b) or 0
+    if b < a then a, b = b, a end
+    if a == b then return a end
+    return _orig(math.floor(a), math.floor(b))
+end
+
+-- ============================================================
+-- FLUENT
+-- ============================================================
+local Fluent
+do
+    print("[FH] Загружаю Fluent UI...")
+    local urls = {
+        "https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua",
+        "https://raw.githubusercontent.com/dawid-scripts/Fluent/main/src/init.lua",
+        "https://raw.githubusercontent.com/dawid-scripts/Fluent/master/src/init.lua",
+    }
+    local body
+    for _, u in ipairs(urls) do
+        local ok, b = pcall(function() return game:HttpGet(u, true) end)
+        if ok and type(b) == "string" and #b > 1000 and not b:find("<html") then
+            body = b; break
+        end
+    end
+    if not body then error("[FH] Не удалось загрузить Fluent UI") end
+    local fn = loadstring(body, "@Fluent")
+    Fluent = fn and fn()
+    if type(Fluent) ~= "table" then error("[FH] Fluent не таблица") end
+    print("[FH] Fluent загружен")
+end
+
+local function adaptTab(tab)
+    if not tab then return tab end
+    for _, name in ipairs({"AddToggle","AddSlider","AddDropdown","AddInput",
+                            "AddButton","AddLabel","AddKeybind","AddColorpicker","AddColorPicker"}) do
+        local orig = tab[name]
+        if type(orig) == "function" and not rawget(tab, "__" .. name) then
+            rawset(tab, "__" .. name, true)
+            tab[name] = function(self, ...)
+                local r = orig(self, ...)
+                if type(r) == "table" and r.Option == nil then r.Option = r end
+                return r
+            end
+        end
+    end
+    if type(tab.AddColorpicker) == "function" and type(tab.AddColorPicker) ~= "function" then
+        tab.AddColorPicker = tab.AddColorpicker
+    end
+    if type(tab.AddSection) == "function" and not rawget(tab, "__AS") then
+        rawset(tab, "__AS", true)
+        local origAS = tab.AddSection
+        tab.AddSection = function(self, arg)
+            if type(arg) == "table" then arg = arg.Name or arg.name or "Секция" end
+            if arg == nil then arg = "Секция" end
+            local sec = origAS(self, arg)
+            if sec then
+                if sec.Option == nil then sec.Option = sec end
+                adaptTab(sec)
+            end
+            return sec
+        end
+    end
+    return tab
+end
+
+local Window, Options, Tabs = nil, nil, {}
+
+do
+    Window = Fluent:CreateWindow({
+        Title = "FortniHub MM2",
+        SubTitle = "v" .. VERSION .. " — " .. CREDITS,
+        TabWidth = 130,
+        Size = UDim2.fromOffset(520, 400),
+        Theme = "Darker",
+        MinimizeKey = Enum.KeyCode.P,
+    })
+    Options = Fluent.Options
+    getgenv().FH_Window = Window
+    local origAddTab = Window.AddTab
+    Window.AddTab = function(self, ...)
+        local tab = origAddTab(self, ...)
+        return adaptTab(tab)
+    end
+end
+
+-- ============================================================
+-- NOTIFY
+-- ============================================================
+local lastNotify = {}
+local function Notify(title, content, dur)
+    local k = tostring(title) .. "|" .. tostring(content)
+    if lastNotify[k] and (tick() - lastNotify[k]) < 0.5 then return end
+    lastNotify[k] = tick()
+    pcall(function()
+        Fluent:Notify({Title = title, Content = content, Duration = dur or 3})
+    end)
+end
+getgenv().FH_Notify = Notify
+
+-- ============================================================
+-- HUD
+-- ============================================================
+local HUDGui, FPSLabel, PingLabel, Pill
+do
+    pcall(function()
+        for _, name in ipairs({"FH_HUD_v18","FH_HUD","FH_HUD_v182","FH_HUD_v1821","FH_HUD_v183"}) do
+            local old = CoreGui:FindFirstChild(name)
+            if old then old:Destroy() end
+        end
+    end)
+
+    HUDGui = Instance.new("ScreenGui")
+    HUDGui.Name = "FH_HUD_v184"
+    HUDGui.ResetOnSpawn = false
+    HUDGui.IgnoreGuiInset = true
+    HUDGui.DisplayOrder = 500
+    HUDGui.Parent = CoreGui
+
+    Pill = Instance.new("Frame")
+    Pill.Name = "Pill"
+    Pill.AnchorPoint = Vector2.new(0.5, 0)
+    Pill.Position = UDim2.new(0.5, 0, 0, 12)
+    Pill.Size = UDim2.fromOffset(400, 40)
+    Pill.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+    Pill.BorderSizePixel = 0
+    Pill.Active = true
+    Pill.Parent = HUDGui
+    Instance.new("UICorner", Pill).CornerRadius = UDim.new(1, 0)
+    local stroke = Instance.new("UIStroke", Pill)
+    stroke.Color = Color3.fromRGB(138, 92, 246)
+    stroke.Thickness = 1
+    stroke.Transparency = 0.5
+
+    local grad = Instance.new("UIGradient", Pill)
+    grad.Rotation = 45
+    grad.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(40, 30, 60)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(20, 20, 28)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(40, 30, 60)),
+    })
+
+    local dragging, dragStart, posStart, dragMoved = false, nil, nil, false
+    local TAP_THRESHOLD = 6
+
+    local function simulateMenuToggle()
+        local w = getgenv().FH_Window
+        if w and type(w.Toggle) == "function" then
+            local ok = pcall(function() w:Toggle() end)
+            if ok then return end
+        end
+        pcall(function()
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.P, false, game)
+            task.wait(0.02)
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.P, false, game)
+        end)
+    end
+
+    Pill.InputBegan:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+            dragging = true; dragMoved = false
+            dragStart = i.Position; posStart = Pill.Position
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(i)
+        if not dragging then return end
+        if i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch then
+            local delta = i.Position - dragStart
+            if math.abs(delta.X) > TAP_THRESHOLD or math.abs(delta.Y) > TAP_THRESHOLD then dragMoved = true end
+            if dragMoved then
+                Pill.Position = UDim2.new(posStart.X.Scale, posStart.X.Offset + delta.X, posStart.Y.Scale, posStart.Y.Offset + delta.Y)
+            end
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(i)
+        if i.UserInputType ~= Enum.UserInputType.MouseButton1 and i.UserInputType ~= Enum.UserInputType.Touch then return end
+        if not dragging then return end
+        local wasTap = not dragMoved
+        dragging = false
+        if wasTap then simulateMenuToggle() end
+    end)
+
+    local function seg(x, w)
+        local f = Instance.new("Frame")
+        f.BackgroundTransparency = 1
+        f.Position = UDim2.fromOffset(x, 0)
+        f.Size = UDim2.fromOffset(w, 40)
+        f.Parent = Pill
+        return f
+    end
+    local function div(x)
+        local d = Instance.new("Frame")
+        d.BackgroundColor3 = Color3.fromRGB(70, 70, 85)
+        d.BorderSizePixel = 0
+        d.Position = UDim2.new(0, x, 0.5, -10)
+        d.Size = UDim2.fromOffset(1, 20)
+        d.Parent = Pill
+    end
+
+    local s1 = seg(8, 130)
+    local logoIcon = Instance.new("TextLabel")
+    logoIcon.BackgroundTransparency = 1
+    logoIcon.Size = UDim2.fromOffset(24, 40)
+    logoIcon.Position = UDim2.fromOffset(6, 0)
+    logoIcon.Font = Enum.Font.GothamBold
+    logoIcon.Text = "⚡"
+    logoIcon.TextSize = 20
+    logoIcon.TextColor3 = Color3.fromRGB(178, 152, 255)
+    logoIcon.TextXAlignment = Enum.TextXAlignment.Left
+    logoIcon.Parent = s1
+
+    local logoText = Instance.new("TextLabel")
+    logoText.BackgroundTransparency = 1
+    logoText.Size = UDim2.fromOffset(96, 40)
+    logoText.Position = UDim2.fromOffset(32, 0)
+    logoText.Font = Enum.Font.GothamBold
+    logoText.Text = "FortniHub"
+    logoText.TextSize = 15
+    logoText.TextColor3 = Color3.fromRGB(240, 240, 250)
+    logoText.TextXAlignment = Enum.TextXAlignment.Left
+    logoText.Parent = s1
+    div(142)
+
+    local s2 = seg(146, 120)
+    local fpsIcon = Instance.new("TextLabel")
+    fpsIcon.BackgroundTransparency = 1
+    fpsIcon.Size = UDim2.fromOffset(20, 40)
+    fpsIcon.Position = UDim2.fromOffset(6, 0)
+    fpsIcon.Font = Enum.Font.GothamBold
+    fpsIcon.Text = "◉"
+    fpsIcon.TextSize = 14
+    fpsIcon.TextColor3 = Color3.fromRGB(80, 240, 120)
+    fpsIcon.TextXAlignment = Enum.TextXAlignment.Left
+    fpsIcon.Parent = s2
+
+    FPSLabel = Instance.new("TextLabel")
+    FPSLabel.BackgroundTransparency = 1
+    FPSLabel.Size = UDim2.fromOffset(60, 40)
+    FPSLabel.Position = UDim2.fromOffset(26, 0)
+    FPSLabel.Font = Enum.Font.GothamBold
+    FPSLabel.Text = "60"
+    FPSLabel.TextSize = 15
+    FPSLabel.TextColor3 = Color3.fromRGB(80, 240, 120)
+    FPSLabel.TextXAlignment = Enum.TextXAlignment.Left
+    FPSLabel.Parent = s2
+    div(270)
+
+    local s3 = seg(274, 110)
+    local pingIcon = Instance.new("TextLabel")
+    pingIcon.BackgroundTransparency = 1
+    pingIcon.Size = UDim2.fromOffset(20, 40)
+    pingIcon.Position = UDim2.fromOffset(6, 0)
+    pingIcon.Font = Enum.Font.GothamBold
+    pingIcon.Text = "◆"
+    pingIcon.TextSize = 14
+    pingIcon.TextColor3 = Color3.fromRGB(80, 240, 120)
+    pingIcon.TextXAlignment = Enum.TextXAlignment.Left
+    pingIcon.Parent = s3
+
+    PingLabel = Instance.new("TextLabel")
+    PingLabel.BackgroundTransparency = 1
+    PingLabel.Size = UDim2.fromOffset(60, 40)
+    PingLabel.Position = UDim2.fromOffset(26, 0)
+    PingLabel.Font = Enum.Font.GothamBold
+    PingLabel.Text = "0"
+    PingLabel.TextSize = 15
+    PingLabel.TextColor3 = Color3.fromRGB(80, 240, 120)
+    PingLabel.TextXAlignment = Enum.TextXAlignment.Left
+    PingLabel.Parent = s3
+
+    local function lockLabels()
+        if FPSLabel and FPSLabel.Parent then
+            local ok, cur = pcall(function() return FPSLabel.Text end)
+            if not ok or type(cur) ~= "string" or not tonumber(cur) then FPSLabel.Text = "60" end
+        end
+        if PingLabel and PingLabel.Parent then
+            local ok, cur = pcall(function() return PingLabel.Text end)
+            if not ok or type(cur) ~= "string" or not tonumber(cur) then PingLabel.Text = "0" end
+        end
+    end
+
+    local fc, lastSec = 0, os.clock()
+    AddConn("HUD_FPS", RunService.Heartbeat:Connect(function()
+        fc = fc + 1
+        local now = os.clock()
+        if now - lastSec >= 1 then
+            local cur = fc; fc = 0; lastSec = now
+            local c = cur < 30 and Color3.fromRGB(255, 80, 80) or (cur < 60 and Color3.fromRGB(255, 200, 80) or Color3.fromRGB(80, 240, 120))
+            if FPSLabel and FPSLabel.Parent then FPSLabel.Text = tostring(cur) FPSLabel.TextColor3 = c end
+            if fpsIcon and fpsIcon.Parent then fpsIcon.TextColor3 = c end
+        end
+    end))
+
+    local lastPing = 0
+    AddConn("HUD_PING", RunService.Heartbeat:Connect(function()
+        local now = os.clock()
+        if now - lastPing < 0.4 then return end
+        lastPing = now
+        local ok, p = pcall(function()
+            local v = LocalPlayer:GetNetworkPing() * 1000
+            if v ~= v or v < 0 then v = 0 end
+            return math.floor(v)
+        end)
+        if ok and PingLabel and PingLabel.Parent then
+            local c = p < 60 and Color3.fromRGB(80, 240, 120) or (p < 120 and Color3.fromRGB(255, 200, 80) or Color3.fromRGB(255, 80, 80))
+            PingLabel.Text = tostring(p)
+            PingLabel.TextColor3 = c
+            if pingIcon and pingIcon.Parent then pingIcon.TextColor3 = c end
+        end
+    end))
+
+    task.spawn(function()
+        while true do task.wait(0.5) lockLabels() end
+    end)
+    task.delay(0.5, lockLabels)
+end
+
+-- ============================================================
+-- SILENT AIM (без изменений — та же логика что была)
+-- ============================================================
+do
+    local MAX_RANGE = 300
+    local snap_t = table.create(48, 0)
+    local snap_p = table.create(48, Vector3.zero)
+    local snap_n, snap_i = 0, 0
+    local TRK = { target=nil, char=nil, part=nil, hum=nil, pos=nil, time=0, vel=Vector3.zero, gap=0, ready=false, fresh=Vector3.zero, air=false, air_since=0, jumping=false, jump_v=0, fresh_ok=false, turn=0, spoof=0, clr=0, air_edge=0, jump_fresh=false }
+    local SK = { vt=table.create(48,0), dx=table.create(48,0), dz=table.create(48,0), vn=0, vi=0 }
+    local EC = { ping=0, rtt=0, jitter=0, seen=false, step=0, step_seen=false }
+    local P = { snap=48, ring=48, hit_r=2.1, pad=2.6, min_span=5, max_span=90, acc_t=0.15, acc_max=280, acc_min=40, speed_floor=26, speed_head=1.3 }
+    local KIN = { ok=false, ax=0, az=0, smax=0 }
+    local GC = { base=0, seen=false }
+    local JL = { v=0, seen=false }
+    local HY = { pos={}, w={}, n=0, weight=0, primary=nil, stamp=0, conf=0 }
+
+    local function step_push(dt) if dt <= 0 or dt > 0.5 then return end if EC.step_seen then EC.step = EC.step*0.85 + dt*0.15 else EC.step = dt EC.step_seen = true end end
+    local function sample_span() local span = math.max(EC.step, TRK.gap) if span <= 0 then return 0 end return span end
+    local function snap_push(now, pos) snap_i = snap_i%P.snap+1 snap_t[snap_i]=now snap_p[snap_i]=pos if snap_n<P.snap then snap_n=snap_n+1 end end
+    local function snap_get(k) local idx = (snap_i-k-1)%P.snap+1 return snap_t[idx], snap_p[idx] end
+    local function fit_velocity() if snap_n<3 then return nil,0 end local newest = select(1, snap_get(0)) local used, sum_d = 0,0 local win = math.max(sample_span()*4, 0.08) for k=0,snap_n-1 do local t = select(1, snap_get(k)) if newest-t>win then break end used=used+1 sum_d=sum_d+(t-newest) end if used<3 then return nil,0 end local mean_d = sum_d/used local num, den = Vector3.zero, 0 for k=0,used-1 do local t,p = snap_get(k) local d = (t-newest)-mean_d num=num+p*d den=den+d*d end if den<1e-8 then return nil,0 end return num/den, -mean_d end
+    local function recent_velocity() if snap_n<2 then return nil,nil end local newest, head = snap_get(0) local fallback, fallback_age = nil,nil local target_span = sample_span()*2 local max_span = target_span*2 for k=1,snap_n-1 do local t,p = snap_get(k) local dt = newest-t if dt>max_span then break end if dt>0 then fallback=(head-p)/dt fallback_age=dt*0.5 if dt>=target_span then return fallback, fallback_age end end end return fallback, fallback_age end
+    local function fit_kin() if snap_n<5 then return nil end local t0 = snap_get(0) local win = math.max(sample_span()*5, 0.12) local scale = win local n,s1,s2,s3,s4 = 0,0,0,0,0 local bx0,bx1,bx2=0,0,0 local bz0,bz1,bz2=0,0,0 for k=0,snap_n-1 do local t,p = snap_get(k) local age = t0-t if age>win then break end local u = -age/scale local u2 = u*u n=n+1 s1=s1+u s2=s2+u2 s3=s3+u2*u s4=s4+u2*u2 bx0=bx0+p.X bx1=bx1+p.X*u bx2=bx2+p.X*u2 bz0=bz0+p.Z bz1=bz1+p.Z*u bz2=bz2+p.Z*u2 end if n<5 then return nil end local det = n*(s2*s4-s3*s3)-s1*(s1*s4-s3*s2)+s2*(s1*s3-s2*s2) if math.abs(det)<1e-9 then return nil end local function solve(b0,b1,b2) local d1 = n*(b1*s4-s3*b2)-b0*(s1*s4-s3*s2)+s2*(s1*b2-b1*s2) local d2 = n*(s2*b2-b1*s3)-s1*(s1*b2-b1*s2)+b0*(s1*s3-s2*s2) return d1/det, d2/det end local cx1,cx2 = solve(bx0,bx1,bx2) local cz1,cz2 = solve(bz0,bz1,bz2) local vx,vz = cx1/scale, cz1/scale local ax,az = 2*cx2/(scale*scale), 2*cz2/(scale*scale) if vx~=vx or vz~=vz or ax~=ax or az~=az then return nil end return Vector3.new(vx,0,vz), Vector3.new(ax,0,az) end
+    local function kin_update() local kv,ka = fit_kin() if not kv then KIN.ok=false KIN.ax=0 KIN.az=0 return nil end KIN.ok=true local sp = math.sqrt(kv.X*kv.X+kv.Z*kv.Z) if sp>KIN.smax then KIN.smax=sp else KIN.smax = KIN.smax*0.985+sp*0.015 end if ka and not TRK.air then local am = math.sqrt(ka.X*ka.X+ka.Z*ka.Z) local ax,az = ka.X,ka.Z if am>P.acc_max and am>0 then ax=ax*P.acc_max/am az=az*P.acc_max/am end KIN.ax = KIN.ax*0.5+ax*0.5 KIN.az = KIN.az*0.5+az*0.5 else KIN.ax = KIN.ax*0.5 KIN.az = KIN.az*0.5 end return kv end
+    local function snap_vel(k) local t0,p0 = snap_get(k) local t1,p1 = snap_get(k+1) local d = t0-t1 if d<=0 then return nil end return (p0-p1)/d, d end
+    local function vert_accel() if snap_n<3 then return nil end local v0,d0 = snap_vel(0) local v1,d1 = snap_vel(1) if not v0 or not v1 then return nil end local span = (d0+d1)*0.5 if span<=1e-4 then return nil end return (v0.Y-v1.Y)/span end
+    local function grav() local ok,g = pcall(function() return Workspace.Gravity end) if ok and type(g)=="number" and g>0 then return g end return 0 end
+    local function air_vy() if snap_n<2 then return nil end local edge = TRK.air_edge if edge<=0 then return nil end local g = grav() local newest, head = snap_get(0) local want = sample_span()*2 local best = nil for k=1,snap_n-1 do local t,p = snap_get(k) if t<edge then break end local dt = newest-t if dt>1e-4 then best = (head.Y-p.Y)/dt - 0.5*g*dt if dt>=want then break end end end return best end
+    local function body_clearance() local part = TRK.part local hum = TRK.hum if not part or not hum then return 0 end local ok,v = pcall(function() return part.Size.Y*0.5 + hum.HipHeight end) if ok and type(v)=="number" and v>0 then return v end return 0 end
+    local function stand_clearance() if GC.seen then return GC.base end return body_clearance() end
+    local function engine_vel(part) local ok,v = pcall(function() return part.AssemblyLinearVelocity end) if not ok or typeof(v)~="Vector3" then ok,v = pcall(function() return part.Velocity end) end if not ok or typeof(v)~="Vector3" then return nil end if v.Magnitude ~= v.Magnitude then return nil end return v end
+    local function vel_trust(pv,ev) if not pv or not ev then return 0 end local ph = Vector3.new(pv.X,0,pv.Z) local eh = Vector3.new(ev.X,0,ev.Z) local pm,em = ph.Magnitude, eh.Magnitude if pm<1 and em<1 then return 1 end if pm<1 or em<1 then return 0 end local ratio = em/pm if ratio>1.5 or ratio<0.6 then return 0 end local align = ph.Unit:Dot(eh.Unit) if align<0.7 then return 0 end local a = math.clamp((align-0.7)/0.25, 0, 1) local r = 1-math.clamp(math.abs(ratio-1)/0.4, 0, 1) return a*r end
+    local function phase_velocity(v, age, air) if not v then return nil end local y = 0 if air then y = v.Y - grav()*math.clamp(age or 0, 0, sample_span()*4) end return Vector3.new(v.X, y, v.Z) end
+    local function merge_vel(fit, fit_age, fast, fast_age, engine, engine_age, air) local stable = phase_velocity(fit, fit_age, air) local instant = phase_velocity(fast, fast_age, air) local turn = 0 if stable and instant then local sh = Vector3.new(stable.X, 0, stable.Z) local ih = Vector3.new(instant.X, 0, instant.Z) if sh.Magnitude>1 and ih.Magnitude>1 then turn = math.acos(math.clamp(sh.Unit:Dot(ih.Unit), -1, 1))/math.pi end end local base = instant or stable if not base then return Vector3.zero, 0, nil, 0 end if stable and instant then local agility = math.clamp(turn*2.2, 0, 1) base = stable:Lerp(instant, 0.4+0.6*agility) end local trust = 0 if engine then local live = phase_velocity(engine, engine_age, air) trust = vel_trust(base, live) if trust>0 and air then base = Vector3.new(base.X, base.Y, base.Z):Lerp(Vector3.new(base.X, live.Y, base.Z), trust*0.35) end end return base, turn, instant or stable, trust end
+    local function vel_push(now, hx, hz) SK.vi = SK.vi%P.ring+1 SK.vt[SK.vi]=now SK.dx[SK.vi]=hx SK.dz[SK.vi]=hz if SK.vn<P.ring then SK.vn=SK.vn+1 end end
+    local function track_clear() TRK.part=nil TRK.pos=nil TRK.vel=Vector3.zero TRK.gap=0 TRK.ready=false TRK.fresh=Vector3.zero TRK.air=false TRK.jumping=false TRK.jump_v=0 TRK.fresh_ok=false TRK.turn=0 TRK.spoof=0 TRK.clr=0 TRK.air_edge=0 TRK.jump_fresh=false GC.base=0 GC.seen=false JL.v=0 JL.seen=false snap_n,snap_i=0,0 SK.vn,SK.vi=0,0 KIN.ok=false KIN.ax=0 KIN.az=0 KIN.smax=0 end
+    local function track_seed(part, pos, now) TRK.part=part TRK.pos=pos TRK.time=now TRK.vel=Vector3.zero TRK.fresh=Vector3.zero TRK.fresh_ok=false TRK.turn=0 TRK.jump_v=0 TRK.gap=0 TRK.ready=false TRK.spoof=0 TRK.air_edge=0 TRK.jump_fresh=false GC.base=0 GC.seen=false snap_n,snap_i=0,0 KIN.ok=false KIN.ax=0 KIN.az=0 snap_push(now, pos) end
+    local ground_params = RaycastParams.new() ground_params.FilterType = Enum.RaycastFilterType.Exclude ground_params.IgnoreWater = true local ground_filter = {}
+    local function ground_below(pos, reach) table.clear(ground_filter) local n = 0 local char = TRK.char if char then n=n+1 ground_filter[n]=char end local mine = LocalPlayer.Character if mine then n=n+1 ground_filter[n]=mine end ground_params.FilterDescendantsInstances = ground_filter local res = Workspace:Raycast(pos, Vector3.new(0, -reach, 0), ground_params) if res then return res.Position.Y end return nil end
+    local function track_fresh(now) local part = TRK.part if not part or not part.Parent then TRK.fresh_ok=false return end local pos = part.Position local g = grav() local sv = snap_vel(0) local vy = sv and sv.Y or 0 local accel = vert_accel() local falling = accel ~= nil and accel < -g*0.5 local guess = stand_clearance() local reach = guess + 6 + math.abs(vy)*sample_span()*4 local air local gy = ground_below(pos, reach) if gy then local clr = pos.Y - gy TRK.clr = clr if math.abs(vy)<1 and not falling then if GC.seen then if clr<GC.base then GC.base = GC.base*0.7+clr*0.3 else GC.base = GC.base*0.98+clr*0.02 end else GC.base=clr GC.seen=true end end local floor = GC.seen and GC.base or guess local tol = math.max(floor*0.35, 1) air = clr > floor + tol if not air and falling and math.abs(vy)>4 and clr>floor+0.35 then air=true end else air=true end if air ~= TRK.air then TRK.air_edge = now if air then TRK.air_since=now TRK.jump_fresh=true TRK.jump_v = JL.seen and JL.v or math.max(vy, 0) else TRK.jump_fresh=false TRK.jump_v=0 end end local model_vy = TRK.jump_v - g*math.max(0, now-TRK.air_since) TRK.air=air TRK.jumping = air and (vy>1 or model_vy>1) end
+    local function track(now) local part = TRK.part if not part or not part.Parent then if TRK.part then track_clear() end return end track_fresh(now) local pos = part.Position if part ~= TRK.part or not TRK.pos then track_seed(part,pos,now) return end local dt = now-TRK.time if dt>0.75 or (pos-TRK.pos).Magnitude>140 then track_seed(part,pos,now) return end if dt<=0 then return end if (pos-TRK.pos).Magnitude == 0 then if TRK.gap>0 and dt>=TRK.gap then TRK.vel=Vector3.zero TRK.fresh=Vector3.zero end return end step_push(dt) TRK.gap=dt snap_push(now, pos) TRK.pos=pos TRK.time=now local fit,fit_age = fit_velocity() local fast,fast_age = recent_velocity() local engine = engine_vel(part) local fresh,turn,instant,trust = merge_vel(fit,fit_age,fast,fast_age,engine,sample_span()*0.5,TRK.air) local kv = kin_update() if kv then fresh = Vector3.new(kv.X, fresh.Y, kv.Z) end if engine and trust<=0 then if TRK.spoof<20 then TRK.spoof=TRK.spoof+1 end elseif TRK.spoof>0 then TRK.spoof=TRK.spoof-1 end if TRK.air then local vy = air_vy() if vy then fresh = Vector3.new(fresh.X, vy, fresh.Z) local since = math.max(0, now-TRK.air_edge) if TRK.jump_fresh and since<=0.2 then local impulse = vy + grav()*since if impulse>1 then if JL.seen then JL.v = JL.v*0.7+impulse*0.3 else JL.v=impulse JL.seen=true end if impulse>TRK.jump_v then TRK.jump_v=impulse end end else TRK.jump_fresh=false end end end TRK.vel=fresh TRK.ready = fit ~= nil or fast ~= nil TRK.fresh = TRK.vel TRK.fresh_ok = TRK.ready TRK.turn = turn local raw = instant or fresh vel_push(now, raw.X, raw.Z) end
+    local function raw_rtt() local a,b local ok,ms = pcall(function() return Stats.Network.ServerStatsItem["Data Ping"]:GetValue() end) if ok and type(ms)=="number" and ms==ms and ms>4 and ms<800 then a=ms/1000 end local fine,v = pcall(function() return LocalPlayer:GetNetworkPing() end) if fine and type(v)=="number" and v==v and v>0 then local rtt = v*2 if rtt>0.004 and rtt<0.8 then b=rtt end end if a and b then return (a+b)*0.5 end return a or b end
+    local function sample_ping() local rtt = raw_rtt() if not rtt or rtt~=rtt then return end rtt = math.clamp(rtt, 0, 1) if EC.seen then EC.jitter = EC.jitter*0.9+math.abs(rtt-EC.rtt)*0.1 EC.rtt = EC.rtt*0.82+rtt*0.18 else EC.rtt=rtt EC.jitter=0 EC.seen=true end EC.ping=EC.rtt end
+    local function lead_time() if not EC.seen then return 0 end local stale=0 if TRK.time>0 and EC.step_seen then stale = math.clamp(os.clock()-TRK.time, 0, EC.step) end return math.clamp(EC.rtt+EC.jitter*0.5+stale, 0, 1) end
+    local function rotate_y(v, ang) local c,s = math.cos(ang),math.sin(ang) return Vector3.new(v.X*c-v.Z*s, v.Y, v.X*s+v.Z*c) end
+    local function dir_stats(win) if SK.vn<4 then return 1,0 end win = math.max(win, sample_span()*3) local newest = SK.vt[SK.vi] local sx,sz,n = 0,0,0 local prev=nil local turn,turn_n = 0,0 local oldest = newest for k=0,SK.vn-1 do local idx = (SK.vi-k-1)%P.ring+1 local t = SK.vt[idx] if newest-t>win then break end local hx,hz = SK.dx[idx], SK.dz[idx] local m = math.sqrt(hx*hx+hz*hz) if m>0 then sx=sx+hx/m sz=sz+hz/m n=n+1 local ang = math.atan2(hz, hx) if prev then local d = ang-prev while d>math.pi do d=d-6.2831853 end while d<-math.pi do d=d+6.2831853 end turn=turn+d turn_n=turn_n+1 end prev=ang oldest=t end end if n<2 then return 1,0 end local coh = math.clamp(math.sqrt(sx*sx+sz*sz)/n, 0, 1) local omega=0 local elapsed = newest-oldest if turn_n>=1 and elapsed>1e-3 then omega = -turn/elapsed end return coh, omega end
+    local function predict_from(base, sa, sb, fh, now) local span = math.max(0, sa+sb) local g = grav() local dir = fh if dir.Magnitude==0 then dir = Vector3.new(TRK.vel.X, 0, TRK.vel.Z) end local x,z if span>0 and KIN.ok then local age = math.clamp(now-TRK.time, 0, sample_span()*2) local ax,az = KIN.ax, KIN.az if TRK.air or math.sqrt(ax*ax+az*az)<P.acc_min then ax,az=0,0 end local vx = dir.X + ax*age local vz = dir.Z + az*age local ta = math.min(span, P.acc_t) local dx = vx*span + 0.5*ax*ta*ta local dz = vz*span + 0.5*az*ta*ta local reach = math.sqrt(dx*dx+dz*dz) local cap = math.max(KIN.smax*P.speed_head, P.speed_floor)*span if reach>cap and reach>1e-6 then dx=dx*cap/reach dz=dz*cap/reach end x = base.X+dx z = base.Z+dz else local hspan = span if span>0 and dir.Magnitude>0 and not TRK.air then local coh,omega = dir_stats(span) local conf = math.clamp(coh, 0, 1)*(1-math.clamp(TRK.turn, 0, 1)*0.5) if omega~=0 then dir = rotate_y(dir, math.clamp(omega*span*0.5*conf, -0.6, 0.6)) end hspan = span*(0.85+0.15*conf) end x = base.X+dir.X*hspan z = base.Z+dir.Z*hspan end local y = base.Y if TRK.air and span>0 then local vy = TRK.vel.Y local phase = math.max(0, now-TRK.air_since) local modeled = TRK.jump_v - g*phase if TRK.jumping and TRK.jump_v>0 and g>0 and phase<=TRK.jump_v/g and modeled>vy then vy=modeled end y = base.Y + vy*span - 0.5*g*span*span if y<base.Y then local clearance = stand_clearance() local reach = base.Y-y+clearance local gy = ground_below(Vector3.new(x, base.Y, z), reach) if gy then local floor = gy+clearance if y<floor then y=floor end end end end return Vector3.new(x, y, z) end
+    local function build_hyps(base, now) table.clear(HY.pos) table.clear(HY.w) local horizon = silent.predict and TRK.ready and lead_time() or 0 local fh = Vector3.new(TRK.fresh.X, 0, TRK.fresh.Z) HY.primary = predict_from(base, 0, horizon, fh, now) HY.n=1 HY.pos[1]=HY.primary HY.w[1]=1 HY.weight=1 HY.stamp=now end
+    local axis_pool = {}
+    local function corridor_axes(anchor) table.clear(axis_pool) local n=0 local function add(v) if typeof(v)~="Vector3" or v.Magnitude<1e-4 then return end local u = v.Unit for k=1,n do if axis_pool[k]:Dot(u)>0.985 then return end end n=n+1 axis_pool[n]=u end local fh = Vector3.new(TRK.fresh.X, 0, TRK.fresh.Z) if TRK.air then add(TRK.fresh) end add(fh) for k=1,HY.n do add(HY.pos[k]-anchor) end add(TRK.fresh) add(Vector3.new(0,1,0)) return n end
+    local function score_axis(anchor, axis) local covered=0 local lo,hi = 0,0 for k=1,HY.n do local d = HY.pos[k]-anchor local a = d:Dot(axis) local perp = (d - axis*a).Magnitude if perp<=P.hit_r then covered=covered+HY.w[k] if a<lo then lo=a end if a>hi then hi=a end end end return covered, lo, hi end
+    local function build_corridor(now) local part = TRK.part if not part or not part.Parent then return nil end local base = part.Position build_hyps(base, now) local anchor = HY.primary or base local count = corridor_axes(anchor) local best_axis, best_cov, best_lo, best_hi = nil, -1, 0, 0 for k=1,count do local axis = axis_pool[k] local cov, lo, hi = score_axis(anchor, axis) if cov>best_cov then best_axis, best_cov, best_lo, best_hi = axis, cov, lo, hi end end if not best_axis then return nil end HY.conf = HY.weight>0 and best_cov/HY.weight or 0 local pad = P.pad local origin = anchor + best_axis*(best_lo - pad) local aim = anchor + best_axis*(best_hi + pad) if (aim-origin).Magnitude<4 then origin = anchor - best_axis*4 aim = anchor + best_axis*4 end return origin, aim, HY.conf, anchor end
+    local function lead_offset() local part = TRK.part if not part or not part.Parent then return Vector3.zero end if not silent.predict or not TRK.ready then return Vector3.zero end local base = part.Position local now = os.clock() local fh = Vector3.new(TRK.fresh.X, 0, TRK.fresh.Z) local point = predict_from(base, 0, lead_time(), fh, now) return point-base end
+    local trace_params = RaycastParams.new() trace_params.FilterType = Enum.RaycastFilterType.Exclude trace_params.IgnoreWater = false local ignore_base, ignore_work = {}, {}
+    local function refresh_ignore() table.clear(ignore_base) local char = LocalPlayer.Character if char then ignore_base[1]=char end local ok,tagged = pcall(function() return CollectionService:GetTagged("WeaponPassthrough") end) if ok and type(tagged)=="table" then for k=1,#tagged do ignore_base[#ignore_base+1]=tagged[k] end end end
+    local function trace(origin, direction) refresh_ignore() table.clear(ignore_work) for k=1,#ignore_base do ignore_work[k]=ignore_base[k] end local result = nil for _=1,6 do trace_params.FilterDescendantsInstances = ignore_work result = Workspace:Raycast(origin, direction, trace_params) if not result then break end local inst = result.Instance if not inst then break end local ok,tr = pcall(function() return inst.Transparency end) if not ok or tr~=1 then break end ignore_work[#ignore_work+1]=inst end return result end
+    local function los_clear(origin, point) if not origin or not point then return false end local delta = point-origin local dist = delta.Magnitude if dist<0.5 then return true end if dist>MAX_RANGE then return false end local hit = trace(origin, delta) if not hit then return true end local inst = hit.Instance local char = TRK.char if inst and char and (inst==char or inst:IsDescendantOf(char)) then return true end return (hit.Position-origin).Magnitude >= dist-0.75 end
+    local hit_names = { "HumanoidRootPart", "UpperTorso", "Torso", "LowerTorso", "Head", "RightUpperArm", "LeftUpperArm", "Right Arm", "Left Arm", "RightUpperLeg", "LeftUpperLeg", "Right Leg", "Left Leg", "RightLowerLeg", "LeftLowerLeg" }
+    local hit_parts, hit_count, hit_char = {}, 0, nil
+    local function refresh_parts() local char = TRK.char if char == hit_char then return end table.clear(hit_parts) hit_count=0 hit_char=char if not char then return end for k=1,#hit_names do local part = char:FindFirstChild(hit_names[k]) if part and part:IsA("BasePart") then hit_count=hit_count+1 hit_parts[hit_count]=part end end end
+    local function getGunOrigin() local c = LocalPlayer.Character if not c then return nil end local hrp = c:FindFirstChild("HumanoidRootPart") if not hrp then return nil end local att = hrp:FindFirstChild("GunRaycastAttachment") if att then return att.WorldCFrame end return hrp.CFrame end
+    local function pick_point(origin, strict) refresh_parts() if hit_count==0 then return nil end local off = lead_offset() local first = nil for k=1,hit_count do local part = hit_parts[k] if not part.Parent then hit_char=nil else local point = part.Position + off if not origin then return point end if not first then first = point end if los_clear(origin, point) then return point end end end if strict then return nil end return first end
+    local force_att, force_saved, force_stamp = nil, nil, 0
+    local function restore_origin() local att = force_att if not att then return end local saved = force_saved force_att, force_saved = nil, nil if saved then pcall(function() if att.Parent then att.CFrame = saved end end) end end
+    local function push_origin(cf) local c = LocalPlayer.Character if not c then return false end local hrp = c:FindFirstChild("HumanoidRootPart") if not hrp then return false end local att = hrp:FindFirstChild("GunRaycastAttachment") if not att then return false end if force_att and force_att~=att then restore_origin() end if not force_att then local ok, saved = pcall(function() return att.CFrame end) if not ok or typeof(saved)~="CFrame" then return false end force_att=att force_saved=saved end force_stamp = os.clock() local ok = pcall(function() att.WorldCFrame = cf end) if not ok then restore_origin() return false end task.defer(restore_origin) return true end
+    local function force_clear(origin, aim) local hit = trace(origin, aim-origin) if not hit then return false end local char = TRK.char if not char then return false end return hit.Instance==char or hit.Instance:IsDescendantOf(char) end
+    local function force_velocity() if TRK.fresh_ok and TRK.fresh.Magnitude>0.5 then return TRK.fresh end if TRK.ready and TRK.vel.Magnitude>0.5 then return TRK.vel end return Vector3.zero end
+    local function resolve_force() local part = TRK.part if not part or not part.Parent then return nil end local live = part.Position local now = os.clock() local origin, aim, conf, anchor = build_corridor(now) if origin and aim then local axis = aim-origin local span = axis.Magnitude if span>1e-3 then local u = axis/span local mark = anchor or live local behind = (mark-origin):Dot(u) if behind<P.pad then origin = origin - u*(P.pad-behind) end local ahead = (aim-mark):Dot(u) if ahead<P.min_span then aim = mark + u*P.min_span end local want = silent.standoff while want>0 do local probe = origin - u*want if (aim-probe).Magnitude<=P.max_span and los_clear(probe, mark) and los_clear(probe, live) then origin = probe break end want = want-3 end if (aim-origin).Magnitude>P.max_span then origin = aim - u*P.max_span end return CFrame.new(origin, aim), CFrame.new(aim), conf or 0, mark end end local vel = force_velocity() local dir = Vector3.new(0,-1,0) if vel.Magnitude>3 then dir = vel.Unit else local mine = getGunOrigin() if mine then local delta = live - mine.Position if delta.Magnitude>2 then dir = delta.Unit end end end local back = live - dir*6 local front = live + dir*math.max(P.min_span, vel.Magnitude*lead_time()+8) if not force_clear(back, front) then back = live - dir*2.5 end return CFrame.new(back, front), CFrame.new(front), 0, live end
+    local function shot_shift(dt) if not silent.predict or not TRK.ready or dt<=0 then return Vector3.zero end local shift = Vector3.new(TRK.vel.X*dt, 0, TRK.vel.Z*dt) if TRK.air then local g = grav() local horizon = lead_time() local vy = TRK.vel.Y local phase = math.max(0, os.clock()-TRK.air_since) local modeled = TRK.jump_v - g*phase if TRK.jumping and TRK.jump_v>0 and g>0 and phase<=TRK.jump_v/g and modeled>vy then vy=modeled end shift = Vector3.new(shift.X, vy*dt - g*horizon*dt - 0.5*g*dt*dt, shift.Z) end return shift end
+    local function resolve_shot() if not silent.enabled then return nil end if not TRK.part or not TRK.part.Parent then return nil end if TRK.hum and TRK.hum.Health<=0 then return nil end if silent.force then local origin_cf, aim_cf = resolve_force() if origin_cf and aim_cf then if push_origin(origin_cf) then return aim_cf end end end local cf = getGunOrigin() local aim = pick_point(cf and cf.Position or nil, false) if not aim then return nil end return CFrame.new(aim) end
+    local weapon_service, orig_mouse, orig_screen
+    local function getWeaponService() if weapon_service then return weapon_service end local ok,m = pcall(function() return require(ReplicatedStorage:WaitForChild("ClientServices"):WaitForChild("WeaponService")) end) if ok and type(m)=="table" then weapon_service=m end return weapon_service end
+    local function install_hooks() local m = getWeaponService() if not m then return end pcall(function() setreadonly(m, false) end) if type(m.GetMouseTargetCFrame)=="function" and not orig_mouse then orig_mouse=m.GetMouseTargetCFrame local old = orig_mouse m.GetMouseTargetCFrame = function(self, ...) sample_ping() if silent.enabled then local ok,cf = pcall(resolve_shot) if ok and cf then return cf end end return old(self, ...) end end if type(m.GetTargetPosition)=="function" and not orig_screen then orig_screen=m.GetTargetPosition local old = orig_screen m.GetTargetPosition = function(self, x, y, ...) sample_ping() if silent.enabled then local ok,cf = pcall(resolve_shot) if ok and cf then return cf end end return old(self, x, y, ...) end end end
+    local function uninstall_hooks() if not weapon_service then return end pcall(function() setreadonly(weapon_service, false) end) if orig_mouse then pcall(function() weapon_service.GetMouseTargetCFrame = orig_mouse end) end if orig_screen then pcall(function() weapon_service.GetTargetPosition = orig_screen end) end end
+    local function findMurderer() local d = getRoundData() if type(d)=="table" then for name,info in pairs(d) do if type(info)=="table" and info.Role=="Murderer" and not info.Dead then local p = Players:FindFirstChild(name) if p then return p end end end end return isMurderer() end
+    local function updateTarget() local t = findMurderer() if t ~= TRK.target then TRK.target=t TRK.char = t and t.Character or nil TRK.part=nil TRK.hum=nil TRK.ready=false snap_n,snap_i=0,0 end if not t or not t.Character then return end if t.Character ~= TRK.char then TRK.char=t.Character TRK.part=nil TRK.hum=nil end if not TRK.part or not TRK.part.Parent then TRK.part = t.Character:FindFirstChild("HumanoidRootPart") or t.Character:FindFirstChild("UpperTorso") or t.Character:FindFirstChild("Torso") end if not TRK.hum or not TRK.hum.Parent then TRK.hum = t.Character:FindFirstChildOfClass("Humanoid") end end
+
+    AddConn("SilentTick", RunService.Heartbeat:Connect(function()
+        if not silent.enabled then return end
+        local now = os.clock()
+        pcall(updateTarget)
+        pcall(track, now)
+    end))
+
+    task.spawn(function()
+        task.wait(1)
+        pcall(install_hooks)
+    end)
+
+    AddConn("SilentHookRetry", RunService.Heartbeat:Connect(function()
+        if silent.enabled and not orig_mouse then pcall(install_hooks) end
+    end))
+
+    -- UI
+    local tC = Window:AddTab({Title = "Бой"})
+    Tabs.Combat = tC
+
+    local silentSec = tC:AddSection({Name = "Тихий выстрел"})
+
+    silentSec:AddToggle("SilentEnabled", {Title = "Включить тихий выстрел", Default = false}):OnChanged(function(v)
+        silent.enabled = v
+        if v then task.spawn(function() pcall(install_hooks) pcall(updateTarget) end)
+        else pcall(uninstall_hooks) end
+        Notify("FH", "Silent " .. (v and "ВКЛ" or "ВЫКЛ"), 1.5)
+    end)
+
+    silentSec:AddToggle("SilentPredict", {Title = "Предсказание", Default = true}):OnChanged(function(v) silent.predict = v end)
+    silentSec:AddToggle("SilentForce", {Title = "Стрельба через стены", Default = false}):OnChanged(function(v) silent.force = v end)
+    silentSec:AddSlider("SilentStandoff", {Title = "Отступ (студы)", Min = 0, Max = 40, Default = 15, Rounding = 0}):OnChanged(function(v) silent.standoff = tonumber(v) or 15 end)
+
+    local silentBindOpt = silentSec:AddKeybind("SilentBind", {Title = "Кнопка выстрела", Default = "E"})
+    silentBindOpt:OnChanged(function(k)
+        if typeof(k) == "EnumItem" then silent.bindKey = k Notify("FH", "Кнопка: " .. tostring(k), 2) end
+    end)
+
+    UserInputService.InputBegan:Connect(function(input, gpe)
+        if gpe then return end
+        if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == silent.bindKey then
+            if silent.enabled then
+                local char = LocalPlayer.Character
+                if not char then return end
+                local gun = char:FindFirstChild("Gun")
+                if not gun then local bp = LocalPlayer:FindFirstChildOfClass("Backpack") gun = bp and bp:FindFirstChild("Gun") end
+                if gun then
+                    if gun.Parent ~= char then
+                        local hum = char:FindFirstChildOfClass("Humanoid")
+                        if hum then hum:EquipTool(gun) end
+                        task.wait(0.05)
+                    end
+                    pcall(function() gun:Activate() end)
+                end
+            end
+        end
+    end)
+
+    -- Knife Silent
+    local knifeSec = tC:AddSection({Name = "Тихий бросок ножа"})
+
+    knifeSec:AddToggle("KnifeSilentOn", {Title = "Включить", Default = false}):OnChanged(function(v)
+        knifeSilent.enabled = v
+        Notify("FH", "Knife Silent " .. (v and "ВКЛ" or "ВЫКЛ"), 1.5)
+    end)
+
+    knifeSec:AddToggle("KnifeInsta", {Title = "Insta Kill", Default = true}):OnChanged(function(v) knifeSilent.instaKill = v end)
+    knifeSec:AddToggle("KnifePredict", {Title = "Предсказание", Default = true}):OnChanged(function(v) knifeSilent.predict = v end)
+    knifeSec:AddSlider("KnifeRadius", {Title = "Радиус (студы)", Min = 5, Max = 60, Default = 20, Rounding = 0}):OnChanged(function(v) knifeSilent.radius = tonumber(v) or 20 end)
+    knifeSec:AddSlider("KnifeFov", {Title = "FOV", Min = 10, Max = 360, Default = 120, Rounding = 0}):OnChanged(function(v) knifeSilent.fov = tonumber(v) or 120 end)
+    knifeSec:AddToggle("KnifeShowFov", {Title = "Показывать круг FOV", Default = true}):OnChanged(function(v) knifeSilent.showFov = v end)
+    knifeSec:AddToggle("KnifeCheckWalls", {Title = "Проверять стены", Default = false}):OnChanged(function(v) knifeSilent.checkWalls = v end)
+
+    local knifeBindOpt = knifeSec:AddKeybind("KnifeBind", {Title = "Кнопка броска", Default = "R"})
+    knifeBindOpt:OnChanged(function(k)
+        if typeof(k) == "EnumItem" then knifeSilent.bindKey = k Notify("FH", "Нож: " .. tostring(k), 2) end
+    end)
+
+    local function throwKnifeAtNearest()
+        if not knifeSilent.enabled then Notify("FH", "Включи тихий бросок ножа", 2) return end
+        local char = LocalPlayer.Character
+        if not char then return end
+        local knife = char:FindFirstChild("Knife")
+        if not knife then
+            local bp = LocalPlayer:FindFirstChildOfClass("Backpack")
+            knife = bp and bp:FindFirstChild("Knife")
+            if knife then local hum = char:FindFirstChildOfClass("Humanoid") if hum then hum:EquipTool(knife) end task.wait(0.05) end
+        end
+        if not knife then Notify("FH", "Нужен нож", 2) return end
+        local myHRP = char:FindFirstChild("HumanoidRootPart")
+        if not myHRP then return end
+        local best, bestDist = nil, math.huge
+        local myPos = myHRP.Position
+        local cam = Workspace.CurrentCamera
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character then
+                local tHRP = p.Character:FindFirstChild("HumanoidRootPart")
+                local tHum = p.Character:FindFirstChildOfClass("Humanoid")
+                if tHRP and tHum and tHum.Health > 0 then
+                    local dist = (tHRP.Position - myPos).Magnitude
+                    if dist <= knifeSilent.radius then
+                        if cam then
+                            local screenPos, onScreen = cam:WorldToViewportPoint(tHRP.Position)
+                            if onScreen then
+                                local center = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)
+                                local angle = math.deg(math.atan2(screenPos.Y - center.Y, screenPos.X - center.X))
+                                if math.abs(angle) <= knifeSilent.fov/2 then
+                                    if knifeSilent.checkWalls then
+                                        local ray = Ray.new(myPos, (tHRP.Position - myPos).Unit * dist)
+                                        local hitPart = Workspace:FindPartOnRay(ray, char)
+                                        if hitPart and hitPart:IsDescendantOf(p.Character) and dist < bestDist then bestDist=dist best=tHRP end
+                                    elseif dist < bestDist then bestDist=dist best=tHRP end
+                                end
+                            end
+                        elseif dist < bestDist then bestDist=dist best=tHRP end
+                    end
+                end
+            end
+        end
+        if not best then Notify("FH", "Цель не найдена", 2) return end
+        local events = knife:FindFirstChild("Events")
+        if events then
+            local throwRemote = events:FindFirstChild("KnifeThrown") or events:FindFirstChild("Throw")
+            if throwRemote then pcall(function() throwRemote:FireServer(best) end) end
+        end
+        pcall(function() knife:Activate() end)
+        Notify("FH", "Нож брошен!", 1.5)
+    end
+
+    UserInputService.InputBegan:Connect(function(input, gpe)
+        if gpe then return end
+        if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == knifeSilent.bindKey then
+            throwKnifeAtNearest()
+        end
+    end)
+
+    local fovCircle = Drawing.new("Circle")
+    fovCircle.Thickness = 1 fovCircle.Color = Color3.fromRGB(255,255,255)
+    fovCircle.Transparency = 0.7 fovCircle.NumSides = 64
+    fovCircle.Radius = knifeSilent.fov fovCircle.Filled = false fovCircle.Visible = false
+    AddConn("KnifeFovTick", RunService.RenderStepped:Connect(function()
+        if knifeSilent.showFov and knifeSilent.enabled then
+            fovCircle.Visible = true
+            fovCircle.Position = UserInputService:GetMouseLocation()
+            fovCircle.Radius = knifeSilent.fov
+        else fovCircle.Visible = false end
+    end))
+
+    -- Kill Aura
+    local kaSec = tC:AddSection({Name = "Килл Аура"})
+    kaSec:AddDropdown("KAVersion", {Title = "Версия", Values = {"v1", "v2"}, Default = "v2"}):OnChanged(function(v)
+        killAuraVersion = v
+        kaV1.on = false kaV2.on = false
+        if Options.KAOn and Options.KAOn.Value then kaV1.on = v == "v1" kaV2.on = v == "v2" end
+    end)
+    kaSec:AddToggle("KAOn", {Title = "Включить", Default = false}):OnChanged(function(v)
+        kaV1.on = v and killAuraVersion == "v1"
+        kaV2.on = v and killAuraVersion == "v2"
+    end)
+    kaSec:AddSlider("KADist", {Title = "Радиус", Min = 5, Max = 60, Default = 30, Rounding = 0}):OnChanged(function(v)
+        local n = tonumber(v) or 30 kaV1.dist = n kaV2.dist = n
+    end)
+
+    AddConn("KAv1Tick", RunService.Heartbeat:Connect(function()
+        if not kaV1.on then return end
+        if tick() - kaV1.lastHit < 0.05 then return end
+        local char = LocalPlayer.Character if not char then return end
+        local knife = char:FindFirstChild("Knife") if not knife then return end
+        local ev = knife:FindFirstChild("Events") if not ev then return end
+        local stabbed = ev:FindFirstChild("KnifeStabbed") local touched = ev:FindFirstChild("HandleTouched")
+        if not stabbed or not touched then return end
+        local my = char:FindFirstChild("HumanoidRootPart") if not my then return end
+        local victims = {}
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer then
+                local tc = p.Character
+                if tc then
+                    local th = tc:FindFirstChildOfClass("Humanoid")
+                    local tp = tc:FindFirstChild("HumanoidRootPart")
+                    if th and th.Health > 0 and tp and (tp.Position - my.Position).Magnitude <= kaV1.dist then victims[#victims+1] = tp end
+                end
+            end
+        end
+        if #victims > 0 then
+            pcall(function() stabbed:FireServer() end)
+            for _, v in ipairs(victims) do pcall(function() touched:FireServer(v) end) end
+            kaV1.lastHit = tick()
+        end
+    end))
+
+    AddConn("KAv2Tick", RunService.Heartbeat:Connect(function()
+        if not kaV2.on then return end
+        if tick() - kaV2.lastHit < 0.05 then return end
+        local char = LocalPlayer.Character if not char then return end
+        local knife = char:FindFirstChild("Knife")
+        if not knife then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            local bpk = LocalPlayer.Backpack and LocalPlayer.Backpack:FindFirstChild("Knife")
+            if hum and bpk then hum:EquipTool(bpk) end
+            return
+        end
+        local ev = knife:FindFirstChild("Events") if not ev then return end
+        local stabbed = ev:FindFirstChild("KnifeStabbed") local touched = ev:FindFirstChild("HandleTouched")
+        if not stabbed or not touched then return end
+        local my = char:FindFirstChild("HumanoidRootPart") if not my then return end
+        local victims = {}
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer then
+                local tc = p.Character
+                if tc then
+                    local th = tc:FindFirstChildOfClass("Humanoid")
+                    local tp = tc:FindFirstChild("HumanoidRootPart")
+                    if th and th.Health > 0 and tp and (tp.Position - my.Position).Magnitude <= kaV2.dist then victims[#victims+1] = tp end
+                end
+            end
+        end
+        if #victims > 0 then
+            pcall(function() stabbed:FireServer() end)
+            for _, v in ipairs(victims) do pcall(function() touched:FireServer(v) end) end
+            kaV2.lastHit = tick()
+        end
+    end))
+
+    -- AutoGrab
+    local grabFailedRound, isGrabbing = false, false
+    local lastRoundReset = tick()
+    local gunCache = {}
+    for _, v in ipairs(Workspace:GetDescendants()) do if v.Name == "GunDrop" then gunCache[v] = true end end
+    AddConn("GunCacheAdd", Workspace.DescendantAdded:Connect(function(v) if v.Name == "GunDrop" then gunCache[v] = true end end))
+    AddConn("GunCacheRem", Workspace.DescendantRemoving:Connect(function(v) if v.Name == "GunDrop" then gunCache[v] = nil end end))
+
+    task.spawn(function()
+        local ok, remote = pcall(function()
+            return ReplicatedStorage:WaitForChild("Remotes", 15):WaitForChild("Gameplay", 15):WaitForChild("CoinsStarted", 15)
+        end)
+        if ok and remote then
+            remote.OnClientEvent:Connect(function() grabFailedRound=false isGrabbing=false lastRoundReset=tick() end)
+        end
+    end)
+
+    local function findNearestGun(my)
+        local best, bd = nil, math.huge
+        for gun in pairs(gunCache) do
+            if gun.Parent and gun:IsA("BasePart") then
+                local d = (gun.Position - my.Position).Magnitude
+                if d < bd then bd = d best = gun end
+            end
+        end
+        return best
+    end
+
+    local autoGrabEnabled = false
+    tC:AddToggle("AutoGrabGun", {Title = "Авто-подбор пистолета", Default = false}):OnChanged(function(v) autoGrabEnabled = v end)
+
+    AddConn("AutoGrabTick", RunService.Heartbeat:Connect(function()
+        if not autoGrabEnabled then return end
+        if getRoleFromData(LocalPlayer) == "murderer" then return end
+        if grabFailedRound or isGrabbing then return end
+        local char = LocalPlayer.Character if not char then return end
+        if char:FindFirstChild("Gun") then return end
+        local bp = LocalPlayer:FindFirstChildOfClass("Backpack")
+        if bp and bp:FindFirstChild("Gun") then return end
+        local my = char:FindFirstChild("HumanoidRootPart") if not my then return end
+        local gun = findNearestGun(my) if not gun then return end
+        isGrabbing = true
+        task.spawn(function()
+            local rp = my.CFrame local grabbed = false
+            for i = 1, 3 do
+                if my and my.Parent then my.CFrame = gun.CFrame end
+                task.wait(0.04)
+                pcall(function() firetouchinterest(my, gun, 0) task.wait(0.02) firetouchinterest(my, gun, 1) end)
+                local c = LocalPlayer.Character
+                if c and c:FindFirstChild("Gun") then grabbed = true break end
+                local b = LocalPlayer:FindFirstChildOfClass("Backpack")
+                if b and b:FindFirstChild("Gun") then grabbed = true break end
+            end
+            if my and my.Parent then
+                my.CFrame = rp
+                my.AssemblyLinearVelocity = Vector3.zero
+                my.AssemblyAngularVelocity = Vector3.zero
+            end
+            if not grabbed then grabFailedRound = true Notify("FH", "Пистолет не подобран.", 4) end
+            isGrabbing = false
+        end)
+    end))
+
+    AddConn("AutoGrabReset", LocalPlayer.CharacterAdded:Connect(function() isGrabbing = false end))
+
+    getgenv().SILENT_UNLOAD = function()
+        silent.enabled = false silent.predict = false silent.force = false
+        restore_origin() track_clear() pcall(uninstall_hooks)
+    end
+end
+
+-- ============================================================
+-- MOVEMENT
+-- ============================================================
+do
+    local tM = Window:AddTab({Title = "Движение"})
+    Tabs.Movement = tM
+    local mvSec = tM:AddSection({Name = "Основное"})
+
+    mvSec:AddToggle("SpeedToggle", {Title = "Скорость", Default = false})
+    mvSec:AddSlider("SpeedValue", {Title = "Скорость ходьбы", Min = 16, Max = 500, Default = 32, Rounding = 0})
+    mvSec:AddToggle("Noclip", {Title = "Noclip", Default = false})
+    mvSec:AddToggle("Spinbot", {Title = "Spinbot", Default = false})
+    mvSec:AddSlider("SpinSpeed", {Title = "Скорость кручения", Min = 1, Max = 50, Default = 8, Rounding = 0})
+    mvSec:AddToggle("InfJump", {Title = "Бесконечный прыжок", Default = false})
+    mvSec:AddToggle("JumpPowerToggle", {Title = "Своя сила прыжка", Default = false})
+    mvSec:AddSlider("JumpPowerVal", {Title = "Сила прыжка", Min = 50, Max = 500, Default = 100, Rounding = 0})
+
+    -- Fly (было убрано, возвращаем)
+    mvSec:AddToggle("FlyToggle", {Title = "Полёт", Default = false})
+    mvSec:AddSlider("FlySpeed", {Title = "Скорость полёта", Min = 20, Max = 500, Default = 60, Rounding = 0})
+
+    -- Bhop (возвращаем в Movement — было убрано)
+    mvSec:AddToggle("BhopOn", {Title = "Банихоп", Default = false})
+    mvSec:AddSlider("BhopPower", {Title = "Сила банихопа", Min = 10, Max = 150, Default = 40, Rounding = 0})
+    mvSec:AddToggle("BhopStrafe", {Title = "Стрейф", Default = false})
+    mvSec:AddToggle("BhopAuto", {Title = "Авто-стрейф", Default = false})
+
+    local bhopOn, bhopPower, bhopStrafe, bhopAuto = false, 40, false, false
+    local bhopSpeed, wasJumping, isBoosting = 0, false, false
+    local lastCamYaw, jumpHoldAt = nil, 0
+
+    if Options.BhopOn then Options.BhopOn:OnChanged(function(v) bhopOn = v end) end
+    if Options.BhopPower then Options.BhopPower:OnChanged(function(v) bhopPower = tonumber(v) or 40 end) end
+    if Options.BhopStrafe then Options.BhopStrafe:OnChanged(function(v) bhopStrafe = v end) end
+    if Options.BhopAuto then Options.BhopAuto:OnChanged(function(v) bhopAuto = v end) end
+
+    UserInputService.JumpRequest:Connect(function() jumpHoldAt = os.clock() end)
+    local function jumpHeld()
+        if os.clock() - jumpHoldAt < 0.2 then return true end
+        return UserInputService:IsKeyDown(Enum.KeyCode.Space)
+    end
+    local function camYaw()
+        local cam = Workspace.CurrentCamera
+        if not cam then return nil end
+        local l = cam.CFrame.LookVector
+        return math.atan2(-l.X, -l.Z)
+    end
+
+    AddConn("BhopTick", RunService.Heartbeat:Connect(function()
+        if not bhopOn then wasJumping=false isBoosting=false bhopSpeed=0 lastCamYaw=nil return end
+        local c = LocalPlayer.Character
+        local hum = c and c:FindFirstChildOfClass("Humanoid")
+        local hrp = c and c:FindFirstChild("HumanoidRootPart")
+        if not hum or not hrp then return end
+        local st = hum:GetState()
+        local jumping = st == Enum.HumanoidStateType.Jumping
+        local airborne = jumping or st == Enum.HumanoidStateType.Freefall
+        if bhopStrafe or bhopAuto then
+            bhopSpeed = 0
+            if jumping and not wasJumping then
+                local dir = hum.MoveDirection
+                if dir.Magnitude < 0.1 then dir = hrp.CFrame.LookVector end
+                dir = Vector3.new(dir.X, 0, dir.Z)
+                if dir.Magnitude > 0 then
+                    dir = dir.Unit
+                    local v = hrp.AssemblyLinearVelocity
+                    hrp.AssemblyLinearVelocity = Vector3.new(dir.X*bhopPower, v.Y, dir.Z*bhopPower)
+                    isBoosting = true
+                end
+            end
+            if isBoosting and airborne then
+                if bhopAuto then
+                    local yaw = camYaw()
+                    if yaw and lastCamYaw then
+                        local delta = yaw - lastCamYaw
+                        while delta>math.pi do delta=delta-math.pi*2 end
+                        while delta<-math.pi do delta=delta+math.pi*2 end
+                        if math.abs(delta)>0.0005 then
+                            local v = hrp.AssemblyLinearVelocity
+                            local xz = Vector3.new(v.X, 0, v.Z)
+                            if xz.Magnitude>1 then
+                                local rot = CFrame.fromEulerAnglesYXZ(0, delta, 0)*xz
+                                hrp.AssemblyLinearVelocity = Vector3.new(rot.X, v.Y, rot.Z)
+                            end
+                        end
+                    end
+                end
+                local dir = hum.MoveDirection
+                if dir.Magnitude > 0.1 then
+                    dir = Vector3.new(dir.X, 0, dir.Z).Unit
+                    local v = hrp.AssemblyLinearVelocity
+                    local cur = Vector3.new(v.X, 0, v.Z)
+                    local tgt = dir*bhopPower
+                    local nxz = cur:Lerp(tgt, 0.3)
+                    hrp.AssemblyLinearVelocity = Vector3.new(nxz.X, v.Y, nxz.Z)
+                elseif bhopAuto then
+                    local v = hrp.AssemblyLinearVelocity
+                    local xz = Vector3.new(v.X, 0, v.Z)
+                    if xz.Magnitude>0.1 and xz.Magnitude<bhopPower then
+                        local kp = xz.Unit*bhopPower
+                        hrp.AssemblyLinearVelocity = Vector3.new(kp.X, v.Y, kp.Z)
+                    end
+                end
+            end
+            if not airborne then isBoosting = false end
+        else
+            local base = math.max(hum.WalkSpeed, 1)
+            local cap = math.max(bhopPower, base)
+            local step = math.max(bhopPower*0.1, 1)
+            if bhopSpeed < base then bhopSpeed = base end
+            if jumping and not wasJumping then
+                bhopSpeed = math.min(bhopSpeed+step, cap)
+                local v = hrp.AssemblyLinearVelocity
+                local xz = Vector3.new(v.X, 0, v.Z)
+                local dir
+                if xz.Magnitude>0.1 then dir = xz.Unit
+                else
+                    local md = hum.MoveDirection
+                    if md.Magnitude>0.1 then dir = Vector3.new(md.X, 0, md.Z).Unit
+                    else local lv = hrp.CFrame.LookVector dir = Vector3.new(lv.X, 0, lv.Z) dir = (dir.Magnitude>0) and dir.Unit or Vector3.zero end
+                end
+                if dir.Magnitude > 0 then hrp.AssemblyLinearVelocity = Vector3.new(dir.X*bhopSpeed, v.Y, dir.Z*bhopSpeed) isBoosting=true end
+            end
+            if airborne and isBoosting then
+                local v = hrp.AssemblyLinearVelocity
+                local xz = Vector3.new(v.X, 0, v.Z)
+                local md = hum.MoveDirection
+                local dir
+                if md.Magnitude>0.1 then dir = Vector3.new(md.X, 0, md.Z).Unit
+                elseif xz.Magnitude>0.1 then dir = xz.Unit end
+                if dir then local sp = math.max(xz.Magnitude, bhopSpeed) hrp.AssemblyLinearVelocity = Vector3.new(dir.X*sp, v.Y, dir.Z*sp) end
+            end
+            if not airborne then
+                isBoosting = false
+                if jumpHeld() then hum.Jump = true else bhopSpeed = 0 end
+            end
+        end
+        lastCamYaw = camYaw()
+        wasJumping = jumping
+    end))
+
+    -- SpeedGlitch
+    local sgOn, sgPower, sgAccel, sgGround = false, 90, 0.6, 16
+    mvSec:AddToggle("SpeedGlitchOn", {Title = "Спидглитч", Default = false}):OnChanged(function(v) sgOn = v end)
+    mvSec:AddSlider("SpeedGlitchPower", {Title = "Скорость в прыжке", Min = 30, Max = 250, Default = 90, Rounding = 0}):OnChanged(function(v) sgPower = tonumber(v) or 90 end)
+    mvSec:AddSlider("SpeedGlitchAccel", {Title = "Разгон (0-1)", Min = 0.1, Max = 1, Default = 0.6, Rounding = 2}):OnChanged(function(v) sgAccel = tonumber(v) or 0.6 end)
+
+    AddConn("SpeedGlitchTick", RunService.Heartbeat:Connect(function()
+        if not sgOn then return end
+        local c = LocalPlayer.Character
+        local h = c and c:FindFirstChildOfClass("Humanoid")
+        local hrp = c and c:FindFirstChild("HumanoidRootPart")
+        if not h or not hrp then return end
+        local st = h:GetState()
+        local air = st == Enum.HumanoidStateType.Jumping or st == Enum.HumanoidStateType.Freefall
+        if air then
+            local v = hrp.AssemblyLinearVelocity
+            local flat = Vector3.new(v.X, 0, v.Z)
+            local dir = flat.Magnitude>0.1 and flat.Unit or (function() local lv = hrp.CFrame.LookVector return Vector3.new(lv.X, 0, lv.Z).Unit end)()
+            local cur = flat.Magnitude
+            local target = math.max(cur, sgPower)
+            local new_mag = cur + (target-cur)*sgAccel
+            hrp.AssemblyLinearVelocity = Vector3.new(dir.X*new_mag, v.Y, dir.Z*new_mag)
+        else
+            local v = hrp.AssemblyLinearVelocity
+            local flat = Vector3.new(v.X, 0, v.Z)
+            if flat.Magnitude > sgGround then local dir = flat.Unit hrp.AssemblyLinearVelocity = Vector3.new(dir.X*sgGround, v.Y, dir.Z*sgGround) end
+        end
+    end))
+
+    -- Fly logic
+    local flyGrav = Workspace.Gravity
+    if Options.FlyToggle then
+        Options.FlyToggle:OnChanged(function(v)
+            if v then flyGrav = Workspace.Gravity Workspace.Gravity = 0
+            else Workspace.Gravity = flyGrav local hrp = getHRP() if hrp then hrp.AssemblyLinearVelocity = Vector3.zero end end
+        end)
+    end
+
+    AddConn("FlyTick", RunService.RenderStepped:Connect(function()
+        if not (Options.FlyToggle and Options.FlyToggle.Value) then return end
+        local hrp = getHRP() local hum = getHum()
+        if not hrp or not hum then return end
+        hum.PlatformStand = true
+        local sp = (Options.FlySpeed and tonumber(Options.FlySpeed.Value)) or 60
+        local dir = Vector3.zero
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir = dir + Camera.CFrame.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir = dir - Camera.CFrame.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir = dir - Camera.CFrame.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir = dir + Camera.CFrame.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then dir = dir + Vector3.new(0, 1, 0) end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then dir = dir - Vector3.new(0, 1, 0) end
+        hrp.Velocity = dir.Magnitude > 0 and dir.Unit * sp or Vector3.zero
+    end))
+
+    AddConn("MovementTick", RunService.Heartbeat:Connect(function()
+        local hum = getHum()
+        if not hum then return end
+        if Options.SpeedToggle and Options.SpeedToggle.Value then
+            hum.WalkSpeed = (Options.SpeedValue and tonumber(Options.SpeedValue.Value)) or 32
+        end
+        if S.frozen then
+            hum.WalkSpeed = 0
+            local hrp = getHRP()
+            if hrp then
+                if not hrp:FindFirstChild("FH_FreezeBV") then
+                    local bv = Instance.new("BodyVelocity")
+                    bv.Name = "FH_FreezeBV"
+                    bv.MaxForce = Vector3.new(1e5,1e5,1e5)
+                    bv.Velocity = Vector3.zero
+                    bv.Parent = hrp
+                end
+                local sp = (Options.FreezeSpeed and tonumber(Options.FreezeSpeed.Value)) or 60
+                local dir = Vector3.zero
+                if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir = dir + Camera.CFrame.LookVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir = dir - Camera.CFrame.LookVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir = dir - Camera.CFrame.RightVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir = dir + Camera.CFrame.RightVector end
+                if UserInputService:IsKeyDown(S.freezeUpKey) then dir = dir + Vector3.new(0,1,0) end
+                if UserInputService:IsKeyDown(S.freezeDownKey) then dir = dir - Vector3.new(0,1,0) end
+                local bv = hrp:FindFirstChild("FH_FreezeBV")
+                if bv then bv.Velocity = dir.Magnitude>0 and dir.Unit*sp or Vector3.zero end
+            end
+        else
+            local hrp = getHRP()
+            if hrp then local bv = hrp:FindFirstChild("FH_FreezeBV") if bv then bv:Destroy() end end
+        end
+        if Options.JumpPowerToggle and Options.JumpPowerToggle.Value then
+            hum.UseJumpPower = true
+            local jp = (Options.JumpPowerVal and tonumber(Options.JumpPowerVal.Value)) or 100
+            if hum.JumpPower ~= jp then hum.JumpPower = jp end
+        end
+        if Options.Spinbot and Options.Spinbot.Value then
+            local hrp = getHRP()
+            if hrp then
+                local s = (Options.SpinSpeed and tonumber(Options.SpinSpeed.Value)) or 8
+                hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(s), 0)
+            end
+        end
+    end))
+
+    AddConn("NoclipTick", RunService.Stepped:Connect(function()
+        if Options.Noclip and Options.Noclip.Value then
+            local c = LocalPlayer.Character
+            if c then for _, p in ipairs(c:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide = false end end end
+        end
+    end))
+
+    AddConn("InfJump", UserInputService.JumpRequest:Connect(function()
+        if Options.InfJump and Options.InfJump.Value then
+            local hum = getHum()
+            if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+        end
+    end))
+
+    local freezeSec = tM:AddSection({Name = "Заморозка"})
+    freezeSec:AddToggle("FreezeToggle", {Title = "Включить заморозку", Default = false}):OnChanged(function(v) S.frozen = v end)
+    freezeSec:AddSlider("FreezeSpeed", {Title = "Скорость заморозки", Min = 20, Max = 300, Default = 60, Rounding = 0})
+    local fUp = freezeSec:AddKeybind("FreezeUpKey", {Title = "Кнопка ВВЕРХ", Default = "Space"})
+    fUp:OnChanged(function(k) if typeof(k)=="EnumItem" then S.freezeUpKey = k end end)
+    local fDown = freezeSec:AddKeybind("FreezeDownKey", {Title = "Кнопка ВНИЗ", Default = "LeftAlt"})
+    fDown:OnChanged(function(k) if typeof(k)=="EnumItem" then S.freezeDownKey = k end end)
+
+    getgenv().MOVE_UNLOAD = function()
+        S.frozen = false
+        local hrp = getHRP()
+        if hrp then local bv = hrp:FindFirstChild("FH_FreezeBV") if bv then bv:Destroy() end end
+        Workspace.Gravity = flyGrav
+    end
+end
+
+-- ============================================================
+-- SETTINGS + CONFIGS (без Korblox — он в Part 2 → Визуал)
+-- ============================================================
+do
+    local tS = Window:AddTab({Title = "Настройки"})
+    Tabs.Settings = tS
+    local setSec = tS:AddSection({Name = "Основные"})
+
+    setSec:AddToggle("ShowHUD", {Title = "Показывать HUD", Default = true}):OnChanged(function(v) if HUDGui then HUDGui.Enabled = v end end)
+    setSec:AddSlider("FPSCap", {Title = "Лимит FPS (0 = без лимита)", Min = 0, Max = 9999, Default = 0, Rounding = 0}):OnChanged(function(v) pcall(function() if setfpscap then setfpscap(tonumber(v) or 0) end end) end)
+    setSec:AddButton({Title = "Переподключиться к серверу", Callback = function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer) end})
+    setSec:AddButton({Title = "Сменить сервер", Callback = function()
+        pcall(function()
+            local url = "https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"
+            local data = game:HttpGet(url)
+            local parsed = HttpService:JSONDecode(data)
+            for _, s in ipairs(parsed.data) do
+                if s.playing < s.maxPlayers and s.id ~= game.JobId then TeleportService:TeleportToPlaceInstance(game.PlaceId, s.id, LocalPlayer) break end
+            end
+        end)
+    end})
+    setSec:AddToggle("AntiAFK", {Title = "Anti-AFK", Default = true})
+    AddConn("AntiAFK", LocalPlayer.Idled:Connect(function()
+        if Options.AntiAFK and Options.AntiAFK.Value then
+            pcall(function() VirtualUser:Button2Down(Vector2.new(0,0), Camera.CFrame) task.wait(1) VirtualUser:Button2Up(Vector2.new(0,0), Camera.CFrame) end)
+        end
+    end))
+    setSec:AddButton({Title = "Выгрузить скрипт", Callback = function()
+        for _, c in pairs(Connections) do pcall(function() c:Disconnect() end) end
+        Connections = {}
+        if HUDGui then HUDGui:Destroy() end
+        if Window then pcall(function() Window:Destroy() end) end
+        Notify("FH", "Скрипт выгружен", 3)
+    end})
+
+    -- Configs
+    local cfgSec = tS:AddSection({Name = "Конфиги"})
+    local CONFIG_DIR = "FortniHub_Configs/"
+    local CONFIG_EXT = ".txt"
+    local function ensureConfigDir()
+        if type(isfolder) ~= "function" or type(makefolder) ~= "function" then return false end
+        local ok, has = pcall(isfolder, CONFIG_DIR)
+        if not ok then return false end
+        if has then return true end
+        return pcall(makefolder, CONFIG_DIR) == true
+    end
+    local function listConfigs()
+        local out = {}
+        if type(listfiles) ~= "function" then return out end
+        if not ensureConfigDir() then return out end
+        local ok, files = pcall(listfiles, CONFIG_DIR)
+        if not ok or type(files) ~= "table" then return out end
+        for _, f in ipairs(files) do
+            local name = string.match(f, "([^/\\]+)"..CONFIG_EXT.."$")
+            if name then out[#out+1] = name end
+        end
+        return out
+    end
+    local function serializeValue(v)
+        local t = type(v)
+        if t == "number" then return "N:" .. tostring(v) end
+        if t == "boolean" then return "B:" .. tostring(v) end
+        if t == "string" then return "S:" .. v end
+        if t == "table" then
+            local isArray = true
+            for k in pairs(v) do if type(k) ~= "number" then isArray = false break end end
+            if isArray then
+                local parts = {}
+                for i = 1, #v do parts[#parts+1] = tostring(v[i]) end
+                return "L:" .. table.concat(parts, ",")
+            else
+                local parts = {}
+                for k, val in pairs(v) do parts[#parts+1] = tostring(k) .. "=" .. tostring(val) end
+                return "D:" .. table.concat(parts, ";")
+            end
+        end
+        return nil
+    end
+    local function deserializeValue(s)
+        local prefix, rest = string.match(s, "^(%a):(.*)$")
+        if not prefix then return nil end
+        if prefix == "N" then return tonumber(rest) end
+        if prefix == "B" then return rest == "true" end
+        if prefix == "S" then return rest end
+        if prefix == "L" then
+            local out = {}
+            for piece in string.gmatch(rest, "[^,]+") do
+                local n = tonumber(piece)
+                if n then out[#out+1] = n else out[#out+1] = piece end
+            end
+            return out
+        end
+        if prefix == "D" then
+            local out = {}
+            for pair in string.gmatch(rest, "[^;]+") do
+                local k, val = string.match(pair, "^(.-)=(.*)$")
+                if k then
+                    local n = tonumber(val)
+                    if n then out[k] = n
+                    elseif val == "true" then out[k] = true
+                    elseif val == "false" then out[k] = false
+                    else out[k] = val end
+                end
+            end
+            return out
+        end
+        return nil
+    end
+    local function saveConfig(name)
+        if type(writefile) ~= "function" then Notify("FH", "Нет writefile", 4) return false end
+        if not ensureConfigDir() then Notify("FH", "Не создал папку", 4) return false end
+        local lines = { "-- FortniHub Config: " .. tostring(name), "-- " .. os.date("%Y-%m-%d %H:%M:%S") }
+        for optionName, option in pairs(Options) do
+            if option and option.Value ~= nil then
+                local ser = serializeValue(option.Value)
+                if ser then lines[#lines+1] = optionName .. "\t" .. ser end
+            end
+        end
+        local path = CONFIG_DIR .. name .. CONFIG_EXT
+        local ok = pcall(writefile, path, table.concat(lines, "\n"))
+        if ok then Notify("FH", "Сохранено: " .. name, 3) return true end
+        Notify("FH", "Ошибка сохранения", 3)
+        return false
+    end
+    local function loadConfig(name)
+        if type(readfile) ~= "function" then Notify("FH", "Нет readfile", 4) return false end
+        local path = CONFIG_DIR .. name .. CONFIG_EXT
+        local ok, data = pcall(readfile, path)
+        if not ok or type(data) ~= "string" then Notify("FH", "Ошибка чтения", 3) return false end
+        local loaded = 0
+        for line in string.gmatch(data, "[^\r\n]+") do
+            if line:sub(1,2) ~= "--" then
+                local key, ser = string.match(line, "^([^\t]+)\t(.+)$")
+                if key and ser then
+                    local val = deserializeValue(ser)
+                    if val ~= nil and Options[key] then pcall(function() Options[key]:SetValue(val) end) loaded = loaded+1 end
+                end
+            end
+        end
+        Notify("FH", "Загружено: " .. name .. " (" .. loaded .. ")", 3)
+        return true
+    end
+    local function deleteConfig(name)
+        if type(delfile) ~= "function" then Notify("FH", "Нет delfile", 4) return false end
+        local ok = pcall(delfile, CONFIG_DIR .. name .. CONFIG_EXT)
+        if ok then Notify("FH", "Удалено: " .. name, 2) return true end
+        return false
+    end
+    local currentList = listConfigs()
+    if #currentList == 0 then currentList = {"(нет конфигов)"} end
+    local drop = cfgSec:AddDropdown("ConfigPick", {Title = "Выбрать конфиг", Values = currentList, Default = currentList[1]})
+    local function refreshList()
+        local list = listConfigs()
+        if #list == 0 then list = {"(нет конфигов)"} end
+        pcall(function() drop:SetValues(list) if drop.Generate then drop:Generate() end end)
+    end
+    cfgSec:AddInput("ConfigName", {Title = "Имя конфига", Default = "my_config"})
+    cfgSec:AddButton({Title = "Сохранить (Save)", Callback = function()
+        local nameOpt = Options.ConfigName
+        local name = nameOpt and nameOpt.Value or "my_config"
+        if type(name) ~= "string" or name == "" then Notify("FH", "Введи имя", 3) return end
+        if saveConfig(name) then refreshList() end
+    end})
+    cfgSec:AddButton({Title = "Загрузить (Load)", Callback = function()
+        local pickOpt = Options.ConfigPick
+        local name = pickOpt and pickOpt.Value
+        if type(name) ~= "string" or name == "" or name == "(нет конфигов)" then Notify("FH", "Выбери конфиг", 3) return end
+        loadConfig(name)
+    end})
+    cfgSec:AddButton({Title = "Удалить", Callback = function()
+        local pickOpt = Options.ConfigPick
+        local name = pickOpt and pickOpt.Value
+        if type(name) ~= "string" or name == "" or name == "(нет конфигов)" then Notify("FH", "Выбери конфиг", 3) return end
+        if deleteConfig(name) then refreshList() end
+    end})
+    cfgSec:AddButton({Title = "Обновить список", Callback = refreshList})
+
+    if HUDGui then HUDGui.Enabled = true end
+end
+
+-- ============================================================
+-- FINAL
+-- ============================================================
+pcall(function() Window:SelectTab(1) end)
+
+task.spawn(function()
+    task.wait(1)
+    Notify("FortniHub", "Part 1/2 v18.4.0 загружена! P — меню. " .. CREDITS, 6)
+end)
+
+print("[FH] ============================================")
+print("[FH] Part 1/2 — FortniHub v18.4.0 — " .. CREDITS)
+print("[FH] ============================================")
