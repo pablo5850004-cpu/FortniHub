@@ -3568,7 +3568,7 @@ do
         {"Default Dance","10272060486"},{"Kazotsky Kick","11397105951"},
         {"Robot","11953266178"},{"Orange Justice","11970665200"},{"Take the L","12327207789"},
     }
-    local emoteMap,emoteList={},{}""
+    local emoteMap,emoteList={},{}
     for _,e in ipairs(statEmotes) do
         if not emoteMap[e[1]] then
             emoteMap[e[1]]=e[2]
