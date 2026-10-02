@@ -1783,46 +1783,44 @@ do
         if not v then track_clear() end
     end)
 
-    local force_tog = silent_section:AddToggle("SilentForce", {
-        Title = "Стрельба через стены",
-        Default = false,
-        Flag = "SilentForce",
-        Option = true,
-    })
-    force_tog:OnChanged(function(v)
-        SS.force = v
-        if not v then restore_origin() end
-    end)
-    force_tog.Option:AddSlider("SilentStandoff", {
-        Title = "Отступ (студы)",
-        Default = 15,
-        Min = 0,
-        Max = 40,
-        Rounding = 0,
-        Flag = "SilentStandoff",
-    }):OnChanged(function(v)
-        SS.stand_off = tonumber(v) or 15
-    end)
+local force_tog = silent_section:AddToggle("SilentForce", {
+    Title = "Стрельба через стены",
+    Default = false,
+    Flag = "SilentForce",
+})
+force_tog:OnChanged(function(v)
+    SS.force = v
+    if not v then restore_origin() end
+end)
+silent_section:AddSlider("SilentStandoff", {
+    Title = "Отступ (студы)",
+    Default = 15,
+    Min = 0,
+    Max = 40,
+    Rounding = 0,
+    Flag = "SilentStandoff",
+}):OnChanged(function(v)
+    SS.stand_off = tonumber(v) or 15
+end)
 
-    local auto_tog = silent_section:AddToggle("SilentAuto", {
-        Title = "Авто-выстрел",
-        Default = false,
-        Flag = "SilentAuto",
-        Option = true,
-    })
-    auto_tog:OnChanged(function(v)
-        SS.auto_on = v
-    end)
-    auto_tog.Option:AddSlider("SilentAutoDelay", {
-        Title = "Задержка (мс)",
-        Default = 0,
-        Min = 0,
-        Max = 600,
-        Rounding = 0,
-        Flag = "SilentAutoDelay",
-    }):OnChanged(function(v)
-        SS.auto_delay = (tonumber(v) or 0) / 1000
-    end)
+   local auto_tog = silent_section:AddToggle("SilentAuto", {
+    Title = "Авто-выстрел",
+    Default = false,
+    Flag = "SilentAuto",
+})
+auto_tog:OnChanged(function(v)
+    SS.auto_on = v
+end)
+silent_section:AddSlider("SilentAutoDelay", {
+    Title = "Задержка авто-выстрела (мс)",
+    Default = 0,
+    Min = 0,
+    Max = 600,
+    Rounding = 0,
+    Flag = "SilentAutoDelay",
+}):OnChanged(function(v)
+    SS.auto_delay = (tonumber(v) or 0) / 1000
+end)
 
     local silentBindOpt = silent_section:AddKeybind("SilentBind", {
         Title = "Кнопка выстрела (ручная)",
