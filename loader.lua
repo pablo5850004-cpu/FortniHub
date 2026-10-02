@@ -24,7 +24,6 @@ if type(body) ~= "string" or #body < 100 then
 end
 print("[FH] one.lua скачан, размер: " .. #body .. " байт")
 
--- убираем ведущие "=" от lua-формата
 body = body:gsub("^=+%s*\n", "")
 
 -- ============================================================
@@ -56,7 +55,6 @@ local INJECT = [[
 
 -- FortniHub inject v17
 do
-    -- Пустой элемент, чтобы любой вызов вида .OnChanged(...) не падал
     local function dummyElement()
         local d = {}
         d.SetValue = function() end
@@ -66,18 +64,19 @@ do
         return d
     end
 
-    -- Форвардер одного метода: если у sec есть метод, вызвать его
     local function makeForward(sec, method)
         return function(_, ...)
+            local args = table.pack(...)
             if type(sec) == "table" and type(sec[method]) == "function" then
-                local ok, r = pcall(function() return sec[method](sec, ...) end)
+                local ok, r = pcall(function()
+                    return sec[method](sec, table.unpack(args, 1, args.n))
+                end)
                 if ok and r ~= nil then return r end
             end
             return dummyElement()
         end
     end
 
-    -- Создать прокси .Option, который форвардит всё в родительскую секцию
     local function makeOptionProxy(sec)
         local opt = {}
         for _, m in ipairs({
@@ -91,13 +90,11 @@ do
         return opt
     end
 
-    -- Установить фолбэки на конкретный контейнер (вкладка/секция)
     local function installFallbacks(container)
         if type(container) ~= "table" then return end
         if rawget(container, "__fh_shim") then return end
         rawset(container, "__fh_shim", true)
 
-        -- AddLabel fallback -> AddParagraph
         if type(container.AddLabel) ~= "function" then
             rawset(container, "AddLabel", function(self, text, _wrap)
                 if type(self.AddParagraph) == "function" then
@@ -113,12 +110,10 @@ do
             end)
         end
 
-        -- AddColorpicker alias -> AddColorPicker
         if type(container.AddColorpicker) ~= "function" and type(container.AddColorPicker) == "function" then
             rawset(container, "AddColorpicker", container.AddColorPicker)
         end
 
-        -- Обернуть все element-креаторы: после создания ставим .Option = прокси
         local creators = {
             "AddToggle","AddSlider","AddDropdown","AddInput","AddButton",
             "AddKeybind","AddColorPicker","AddParagraph",
@@ -128,7 +123,8 @@ do
             if type(orig) == "function" and not rawget(container, "__fh_wrap_" .. name) then
                 rawset(container, "__fh_wrap_" .. name, true)
                 rawset(container, name, function(self, ...)
-                    local r = orig(self, ...)
+                    local args = table.pack(...)
+                    local r = orig(self, table.unpack(args, 1, args.n))
                     if type(r) == "table" and rawget(r, "Option") == nil then
                         rawset(r, "Option", makeOptionProxy(self))
                     end
@@ -137,7 +133,6 @@ do
             end
         end
 
-        -- Рекурсивная обёртка AddSection
         if type(container.AddSection) == "function" and not rawget(container, "__fh_sec") then
             rawset(container, "__fh_sec", true)
             local origAS = container.AddSection
@@ -154,18 +149,19 @@ do
         end
     end
 
-    -- Подменяем Fluent.CreateWindow, чтобы получить доступ ко всем вкладкам
     if type(Fluent) == "table" and type(Fluent.CreateWindow) == "function" and not rawget(Fluent, "__fh_patched") then
         rawset(Fluent, "__fh_patched", true)
         local origCreate = rawget(Fluent, "CreateWindow")
         rawset(Fluent, "CreateWindow", function(self, ...)
-            local win = origCreate(self, ...)
+            local args = table.pack(...)
+            local win = origCreate(self, table.unpack(args, 1, args.n))
             if not win then return win end
             if type(win.AddTab) == "function" and not rawget(win, "__fh_tab") then
                 rawset(win, "__fh_tab", true)
                 local origAddTab = win.AddTab
                 rawset(win, "AddTab", function(w, ...)
-                    local tab = origAddTab(w, ...)
+                    local a2 = table.pack(...)
+                    local tab = origAddTab(w, table.unpack(a2, 1, a2.n))
                     if tab then installFallbacks(tab) end
                     return tab
                 end)
@@ -177,7 +173,6 @@ do
         print("[FH] Fluent shim: пропущен (уже пропатчен или Fluent не найден)")
     end
 
-    -- Диагностика CoinVisual
     task.spawn(function()
         task.wait(3)
         local ok, coins = pcall(function()
@@ -194,7 +189,7 @@ end
 ]]
 
 -- ============================================================
--- 4. Вставляем INJECT после строки "Fluent загружен"
+-- 4. Вставляем INJECT после "Fluent загружен"
 -- ============================================================
 local injected = false
 body = body:gsub('(print%s*%(%s*"[^"]*Fluent загружен[^"]*"%s*%)%s*\n)', function(m)
@@ -203,21 +198,19 @@ body = body:gsub('(print%s*%(%s*"[^"]*Fluent загружен[^"]*"%s*%)%s*\n)',
 end, 1)
 
 if not injected then
-    warn("[FH] Точка инжекта не найдена — INJECT в конец (Fluent shim всё равно сработает)")
+    warn("[FH] Точка инжекта не найдена — INJECT в конец")
     body = body .. "\n" .. INJECT
 else
     print("[FH] INJECT вставлен после Fluent")
 end
 
 -- ============================================================
--- 5. Компиляция + запуск + подробная диагностика
+-- 5. Компиляция + запуск + диагностика
 -- ============================================================
 print("[FH] Компилирую " .. #body .. " байт...")
 local fn, err = loadstring(body, "@FortniHub_v17")
 if type(fn) ~= "function" then
     warn("[FH] Компиляция упала: " .. tostring(err))
-
-    -- Автодиагностика строки
     local lineNum = tonumber(string.match(tostring(err), ":(%d+):"))
     if lineNum then
         local lines = {}
@@ -236,15 +229,7 @@ end
 
 print("[FH] Компиляция OK, запускаю...")
 
--- Ловим runtime-ошибки и печатаем traceback для отладки
-local ok_run, run_err = pcall(function()
-    local thread = coroutine.create(fn)
-    local ok, e = coroutine.resume(thread)
-    if not ok then
-        error(e, 0)
-    end
-    -- если скрипт поставил в очередь ещё корутины — они будут работать отдельно
-end)
+local ok_run, run_err = pcall(fn)
 
 if not ok_run then
     warn("[FH] Runtime упал: " .. tostring(run_err))
