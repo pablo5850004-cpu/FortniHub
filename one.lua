@@ -5780,99 +5780,75 @@ do
         if hrp then hrp.CFrame=oldPos end
     end
 
-    -- DeathLoop: флингуем до смерти цели (из скрипта друга)
+        -- DeathLoop: флингуем до смерти + возврат на исходную позицию
     local function flingDeathLoop(tp)
         if not tp then return end
-        local name=tp.Name
-        local startTime=tick()
-        while tick()-startTime<30 do
-            if not ftOn then return end
-            local d=getRoundData()
-            local info=d and d[name]
-            local pl=Players:FindFirstChild(name)
-            if not pl then return end
-            local char=pl.Character
-            local hum=char and char:FindFirstChildOfClass("Humanoid")
-            if not char or (info and info.Dead) or (hum and hum.Health<=0) then
-                return
+        local hrp0 = getHRP()
+        if not hrp0 then return end
+
+        local savedCF = hrp0.CFrame
+        local savedVel = hrp0.AssemblyLinearVelocity
+        local savedAngVel = hrp0.AssemblyAngularVelocity
+
+        local name = tp.Name
+        local startTime = tick()
+
+        while tick() - startTime < 30 do
+            if not ftOn then break end
+
+            local d = getRoundData()
+            local info = d and d[name]
+            local pl = Players:FindFirstChild(name)
+            if not pl then break end
+
+            local char = pl.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            if not char or (info and info.Dead) or (hum and hum.Health <= 0) then
+                break
             end
-            local hrp=getHRP()
-            if not hrp then return end
-            local tc=pl.Character
-            local thrp=tc:FindFirstChild("HumanoidRootPart") or tc:FindFirstChild("Head")
-            if not thrp then return end
-            local bv=Instance.new("BodyVelocity")
-            bv.Parent=hrp
-            bv.Velocity=Vector3.zero
-            bv.MaxForce=Vector3.new(9e9,9e9,9e9)
-            local tm=tick()
+
+            local hrp = getHRP()
+            if not hrp then break end
+
+            local tc = pl.Character
+            local thrp = tc:FindFirstChild("HumanoidRootPart") or tc:FindFirstChild("Head")
+            if not thrp then break end
+
+            local bv = Instance.new("BodyVelocity")
+            bv.Parent = hrp
+            bv.Velocity = Vector3.zero
+            bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+
+            local tm = tick()
             repeat
                 if not ftOn then break end
                 if hrp and hrp.Parent and thrp and thrp.Parent then
-                    hrp.CFrame=CFrame.new(thrp.Position)*CFrame.new(0,1.5,0)
-                    hrp.AssemblyLinearVelocity=Vector3.new(9e7,9e7*10,9e7)
-                    hrp.AssemblyAngularVelocity=Vector3.new(9e8,9e8,9e8)
+                    hrp.CFrame = CFrame.new(thrp.Position) * CFrame.new(0, 1.5, 0)
+                    hrp.AssemblyLinearVelocity = Vector3.new(9e7, 9e7 * 10, 9e7)
+                    hrp.AssemblyAngularVelocity = Vector3.new(9e8, 9e8, 9e8)
                 end
                 RunService.Heartbeat:Wait()
-            until tick()-tm>1.5
+            until tick() - tm > 1.5
+
             if bv then bv:Destroy() end
             task.wait(0.1)
         end
-    end
 
-    local function doFling(tp)
-        if flingMode=="Classic" then
-            flingClassic(tp)
-        else
-            flingDeathLoop(tp)
+        local hrpEnd = getHRP()
+        if hrpEnd then
+            pcall(function()
+                hrpEnd.CFrame = savedCF
+                hrpEnd.AssemblyLinearVelocity = savedVel
+                hrpEnd.AssemblyAngularVelocity = savedAngVel
+            end)
         end
     end
-
-    local function giveFlingTool()
-        if not ftOn then return end
-        local bp=LocalPlayer:FindFirstChildOfClass("Backpack")
-        if not bp then return end
-        local existing=bp:FindFirstChild("fling")
-        if not existing and LocalPlayer.Character then existing=LocalPlayer.Character:FindFirstChild("fling") end
-        if existing then ftTool=existing return end
-        ftTool=Instance.new("Tool")
-        ftTool.Name="fling"
-        ftTool.RequiresHandle=false
-        ftTool.CanBeDropped=false
-        ftTool.Parent=bp
-        ftActConn=ftTool.Activated:Connect(function()
-            local tp=clickedPlayer()
-            if tp then doFling(tp) end
-        end)
-    end
-    local function removeFlingTool()
-        if ftActConn then pcall(function() ftActConn:Disconnect() end) ftActConn=nil end
-        if ftTool then pcall(function() ftTool:Destroy() end) ftTool=nil end
-        local bp=LocalPlayer:FindFirstChildOfClass("Backpack")
-        if bp then local t=bp:FindFirstChild("fling") if t then pcall(function() t:Destroy() end) end end
-        local c=LocalPlayer.Character
-        if c then local t=c:FindFirstChild("fling") if t then pcall(function() t:Destroy() end) end end
-    end
-    local flingSec=tT:AddSection({Name="Отброс"})
-    addOpt(flingSec, "AddToggle", "ToolFling", {Title="Тул отброса (по клику)", Default=false}, function(v)
-        ftOn=v
-        if v then giveFlingTool() else removeFlingTool() end
-    end)
-    addOpt(flingSec, "AddDropdown", "FlingMode", {Title="Режим флинга", Values={"Classic (один заход)","DeathLoop (до смерти)"}, Default="Classic (один заход)"}, function(v)
-        flingMode = (v=="DeathLoop (до смерти)") and "DeathLoop" or "Classic"
-    end)
-    LocalPlayer.CharacterAdded:Connect(function()
-        task.wait(1)
-        if ftOn then giveFlingTool() end
-    end)
-
-    -- ============================================================
+     -- ============================================================
     -- FAKE DEATH 1/2 (Troll Emote)
     -- ============================================================
     local fdSec=tT:AddSection({Name="Фейк-смерть"})
-    -- ЗАМЕНИТЬ ID НА ТЕ, ЧТО НА СКРИНАХ:
-    local FAKE_DEATH_1_ID = "3333499706"  -- <-- сюда вставь ID эмоции с фото "MM2 Fake Dead"
-    local FAKE_DEATH_2_ID = "12888159317" -- <-- сюда вставь ID второй эмоции "Fake Dead (Troll Emote)"
+    local FAKE_DEATH_1_ID = "132384701706046"  -- MM2 Fake Dead
+    local FAKE_DEATH_2_ID = "125032357496729"  -- Фальшивая смерть (ЛУЧШЕЕ)
     local fdTrack1,fdTrack2=nil,nil
     local function stopAllFd()
         if fdTrack1 then pcall(function() fdTrack1:Stop() end) fdTrack1=nil end
@@ -5898,10 +5874,10 @@ do
             Notify("FH","Не удалось запустить фейк-смерть "..slot,2)
         end
     end
-    fdSec:AddButton({Title="Фейк-смерть 1 (Troll Emote)",Callback=function()
+    fdSec:AddButton({Title="💀 Фейк-смерть 1 (MM2 Fake Dead)",Callback=function()
         playFd(FAKE_DEATH_1_ID, 1)
     end})
-    fdSec:AddButton({Title="Фейк-смерть 2 (Troll Emote)",Callback=function()
+    fdSec:AddButton({Title="💀 Фейк-смерть 2 (Фальшивая смерть ЛУЧШЕЕ)",Callback=function()
         playFd(FAKE_DEATH_2_ID, 2)
     end})
     fdSec:AddButton({Title="Остановить фейк-смерть",Callback=function()
@@ -5914,7 +5890,6 @@ do
         task.wait(1.5)
         if fdAutoOn then playFd(FAKE_DEATH_1_ID, 1) end
     end)
-    -- Ручной ввод ID (если нужно переопределить)
     local fdId1In = fdSec:AddInput("FakeDeathId1",{Title="ID Фейк-смерти 1 (ручной)",Default=FAKE_DEATH_1_ID})
     fdId1In:OnChanged(function(v) if v and tostring(v)~="" then FAKE_DEATH_1_ID=tostring(v) end end)
     registerOnChanged("FakeDeathId1", function(v) if v and tostring(v)~="" then FAKE_DEATH_1_ID=tostring(v) end end)
