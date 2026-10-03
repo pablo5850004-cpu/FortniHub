@@ -444,18 +444,297 @@ do
 end
 
 -- ==============================================================
--- 7. UI LIBRARY LOADER
+-- 7. UI LIBRARY LOADER + FLUENT ADAPTER
 -- ==============================================================
 do
-    local LIB_URLS = {
-        "https://raw.githubusercontent.com/fortnitehub-org/library/main/lib.lua",
-        "https://cdn.jsdelivr.net/gh/fortnitehub-org/library@main/lib.lua",
-        "https://fortnitehub.xyz/sdk/library.lua",
-    }
+    -- ------------------------------------------------------
+    -- 7.1 АДАПТЕР ДЛЯ FLUENT (Fluent:CreateWindow → lib:window)
+    -- ------------------------------------------------------
+    local function build_fluent_adapter(F)
+        local A = {}
 
+        -- ---------- element wrappers ----------
+        local function w_toggle(el)
+            local o = {}
+            o.__el = el
+            function o:get() return el:GetValue() end
+            function o:set(v) pcall(function() el:SetValue(v and true or false) end) end
+            o.GetValue = function() return el:GetValue() end
+            o.SetValue = function(_, v) pcall(function() el:SetValue(v) end) end
+            return o
+        end
+
+        local function w_slider(el)
+            local o = {}
+            o.__el = el
+            function o:get() return el:GetValue() end
+            function o:set(v) pcall(function() el:SetValue(tonumber(v) or 0) end) end
+            o.GetValue = function() return el:GetValue() end
+            o.SetValue = function(_, v) pcall(function() el:SetValue(tonumber(v) or 0) end) end
+            return o
+        end
+
+        local function w_dropdown(el)
+            local o = {}
+            o.__el = el
+            function o:get() return el:GetValue() end
+            function o:set(v) pcall(function() el:SetValue(v) end) end
+            function o:setlist(v)
+                pcall(function()
+                    if type(el.Refresh) == "function" then el:Refresh(v) end
+                end)
+                pcall(function()
+                    if type(el.SetValues) == "function" then el:SetValues(v) end
+                end)
+            end
+            o.GetValue = function() return el:GetValue() end
+            o.SetValue = function(_, v) pcall(function() el:SetValue(v) end) end
+            o.SetValues = function(_, v) o.setlist(v) end
+            return o
+        end
+
+        local function w_keybind(el)
+            local o = {}
+            o.__el = el
+            function o:get() return el.Value end
+            function o:set(v)
+                pcall(function()
+                    if type(v) == "string" then
+                        v = Enum.KeyCode[v] or Enum.KeyCode.Unknown
+                    end
+                    el:SetValue(v)
+                end)
+            end
+            o.GetValue = function() return el.Value end
+            o.SetValue = function(_, v) o.set(v) end
+            return o
+        end
+
+        local function w_color(el)
+            local o = {}
+            o.__el = el
+            function o:get() return el:GetValue() end
+            function o:set(v) pcall(function() el:SetValue(v) end) end
+            o.GetValue = function() return el:GetValue() end
+            o.SetValue = function(_, v) pcall(function() el:SetValue(v) end) end
+            return o
+        end
+
+        local function w_button(el)
+            return { __el = el }
+        end
+
+        -- ---------- section wrapper ----------
+        local function make_section(sec)
+            local s = {}
+            s.__sec = sec
+
+            function s:toggle(cfg)
+                cfg = cfg or {}
+                local el = sec:AddToggle({
+                    Title = cfg.name or "toggle",
+                    Default = cfg.default and true or false,
+                    Callback = cfg.callback,
+                })
+                local t = w_toggle(el)
+                if cfg.option then
+                    t.Option = make_section(sec)
+                end
+                return t
+            end
+
+            function s:slider(cfg)
+                cfg = cfg or {}
+                local el = sec:AddSlider({
+                    Title = cfg.name or "slider",
+                    Min = tonumber(cfg.min) or 0,
+                    Max = tonumber(cfg.max) or 100,
+                    Default = tonumber(cfg.default) or 0,
+                    Rounding = tonumber(cfg.round) or 0,
+                    Suffix = type(cfg.type) == "string" and cfg.type or "",
+                    Callback = cfg.callback,
+                })
+                return w_slider(el)
+            end
+
+            function s:dropdown(cfg)
+                cfg = cfg or {}
+                local el = sec:AddDropdown({
+                    Title = cfg.name or "dropdown",
+                    Values = cfg.values or {},
+                    Default = cfg.default,
+                    Multi = cfg.multi and true or false,
+                    Callback = cfg.callback,
+                })
+                return w_dropdown(el)
+            end
+
+            function s:button(cfg)
+                cfg = cfg or {}
+                local el = sec:AddButton({
+                    Title = cfg.name or "button",
+                    Callback = cfg.callback,
+                })
+                return w_button(el)
+            end
+
+            function s:keybind(cfg)
+                cfg = cfg or {}
+                local def = Enum.KeyCode.Unknown
+                if type(cfg.default) == "string" then
+                    def = Enum.KeyCode[cfg.default] or def
+                elseif typeof(cfg.default) == "EnumItem" then
+                    def = cfg.default
+                end
+                local el = sec:AddKeybind({
+                    Title = cfg.name or "keybind",
+                    Default = def,
+                    Callback = cfg.callback,
+                })
+                return w_keybind(el)
+            end
+
+            function s:colorpicker(cfg)
+                cfg = cfg or {}
+                local el = sec:AddColorPicker({
+                    Title = cfg.name or "color",
+                    Default = cfg.default or Color3.new(1, 1, 1),
+                    Callback = cfg.callback,
+                })
+                return w_color(el)
+            end
+
+            function s:label(text)
+                local el
+                pcall(function()
+                    el = sec:AddParagraph({
+                        Title = tostring(text or ""),
+                        Content = "",
+                    })
+                end)
+                if not el then
+                    el = sec:AddButton({
+                        Title = tostring(text or ""),
+                        Callback = function() end,
+                    })
+                end
+                return {
+                    __el = el,
+                    SetValue = function() end,
+                    GetValue = function() return "" end,
+                }
+            end
+
+            -- Fluent не имеет gallery — фолбэк на dropdown
+            function s:gallery(cfg)
+                cfg = cfg or {}
+                local values = cfg.values or {}
+                local names = {}
+                for i, v in ipairs(values) do
+                    if type(v) == "table" and v.name then
+                        names[i] = v.name
+                    else
+                        names[i] = tostring(v)
+                    end
+                end
+                local el = sec:AddDropdown({
+                    Title = cfg.name or "list",
+                    Values = names,
+                    Default = nil,
+                    Multi = cfg.multi and true or false,
+                    Callback = cfg.callback,
+                })
+                local o = w_dropdown(el)
+                function o:setdata(v)
+                    local new = {}
+                    for i, x in ipairs(v or {}) do
+                        if type(x) == "table" and x.name then
+                            new[i] = x.name
+                        else
+                            new[i] = tostring(x)
+                        end
+                    end
+                    pcall(function()
+                        if type(el.Refresh) == "function" then el:Refresh(new) end
+                    end)
+                    pcall(function()
+                        if type(el.SetValues) == "function" then el:SetValues(new) end
+                    end)
+                end
+                o.SetData = function(_, v) o.setdata(v) end
+                function o:clear() end
+                function o:refresh() end
+                return o
+            end
+
+            return s
+        end
+
+        -- ---------- window wrapper ----------
+        function A:window(cfg)
+            cfg = cfg or {}
+            local bind = Enum.KeyCode.Insert
+            if type(cfg.bind) == "string" and Enum.KeyCode[cfg.bind] then
+                bind = Enum.KeyCode[cfg.bind]
+            end
+
+            local win = F:CreateWindow({
+                Title = cfg.title or "FortniHub",
+                SubTitle = "",
+                TabWidth = 160,
+                Size = UDim2.fromOffset(580, 460),
+                Acrylic = true,
+                Theme = "Dark",
+                MinimizeKey = bind,
+            })
+
+            local w = {}
+
+            function w:tab(tcfg)
+                tcfg = tcfg or {}
+                local tab = win:AddTab({
+                    Title = tcfg.name or "Tab",
+                    Icon = tcfg.icon or "",
+                })
+
+                local tab_wrap = {}
+                tab_wrap.__tab = tab
+
+                function tab_wrap:section(scfg)
+                    scfg = scfg or {}
+                    local name = scfg.Name or scfg.name or "Section"
+                    local sec = tab:AddSection(name)
+                    return make_section(sec)
+                end
+
+                function tab_wrap:toggle(cfg) return make_section(tab):toggle(cfg) end
+                function tab_wrap:slider(cfg) return make_section(tab):slider(cfg) end
+                function tab_wrap:dropdown(cfg) return make_section(tab):dropdown(cfg) end
+                function tab_wrap:button(cfg) return make_section(tab):button(cfg) end
+                function tab_wrap:keybind(cfg) return make_section(tab):keybind(cfg) end
+                function tab_wrap:colorpicker(cfg) return make_section(tab):colorpicker(cfg) end
+                function tab_wrap:label(t) return make_section(tab):label(t) end
+                function tab_wrap:gallery(cfg) return make_section(tab):gallery(cfg) end
+
+                return tab_wrap
+            end
+
+            function w:button(_cfg) end
+            function w:finish() end
+
+            return w
+        end
+
+        return A
+    end
+
+    -- ------------------------------------------------------
+    -- 7.2 ВЫБОР БИБЛИОТЕКИ
+    -- ------------------------------------------------------
     local lib = nil
     local g = getgenv()
 
+    -- приоритет 1: уже готовый кастомный lib в namespace
     if type(g.fortnitehublib) == "table"
         and type(g.fortnitehublib.window) == "function" then
         lib = g.fortnitehublib
@@ -466,16 +745,32 @@ do
         lib = g.fortnihublib
     end
 
+    -- приоритет 2: Fluent (адаптер)
     if not lib then
-        for _, url in ipairs(LIB_URLS) do
-            local ok, body = pcall(function()
-                return game:HttpGet(url)
-            end)
+        local F = g.Fluent
+        if type(F) ~= "table" then
+            local ok, val = pcall(function() return Fluent end)
+            if ok then F = val end
+        end
+        if type(F) == "table" and type(F.CreateWindow) == "function" then
+            lib = build_fluent_adapter(F)
+            print("[FortniHub] Fluent adapter built.")
+        end
+    end
 
+    -- приоритет 3: свой SDK по URL
+    if not lib then
+        local LIB_URLS = {
+            "https://raw.githubusercontent.com/fortnitehub-org/library/main/lib.lua",
+            "https://cdn.jsdelivr.net/gh/fortnitehub-org/library@main/lib.lua",
+            "https://fortnitehub.xyz/sdk/library.lua",
+        }
+        for _, url in ipairs(LIB_URLS) do
+            local ok, body = pcall(function() return game:HttpGet(url) end)
             if ok and type(body) == "string" and #body > 32 then
-                local fn = loadstring(body, "@fortnihub-lib")
-                if fn then
-                    local ok2, res = pcall(fn)
+                local f = loadstring(body, "@fortnihub-lib")
+                if f then
+                    local ok2, res = pcall(f)
                     if ok2 and type(res) == "table"
                         and type(res.window) == "function" then
                         lib = res
@@ -486,27 +781,65 @@ do
         end
     end
 
+    -- приоритет 4: заглушка
     if not lib then
         warn("[FortniHub] UI library not found — using stub.")
 
-        local stub = {}
-        stub._stub = true
+        local stub = { _stub = true }
+
         stub.window = function()
             local w = {}
+
             w.tab = function()
-                return {}
+                local t = {}
+
+                t.section = function()
+                    local s = {}
+
+                    s.toggle = function()
+                        return {
+                            get = function() return false end,
+                            set = function() end,
+                            GetValue = function() return false end,
+                            SetValue = function() end,
+                            Option = s,
+                        }
+                    end
+
+                    s.slider   = s.toggle
+                    s.dropdown = s.toggle
+                    s.button   = s.toggle
+                    s.keybind  = s.toggle
+                    s.colorpicker = s.toggle
+                    s.label    = s.toggle
+                    s.gallery  = s.toggle
+
+                    return s
+                end
+
+                t.button  = function() end
+                t.toggle  = function() end
+                t.gallery = function() end
+
+                return t
             end
+
             w.button = function() end
             w.finish = function() end
-            w.toggle = function() end
+
             return w
         end
 
         lib = stub
     end
 
-    getgenv().fortnihublib = lib
+    g.fortnihublib = lib
     FH.lib = lib
+
+    print("[FortniHub] UI source: "
+        .. (lib._stub and "stub" or
+            (lib == g.fortnitehublib and "custom" or
+             (lib == g.fortnihublib and "cached" or "adapter"))))
 end
 
 -- ==============================================================
