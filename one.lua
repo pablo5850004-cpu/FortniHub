@@ -3604,7 +3604,7 @@ do
     addOpt(lvSec, "AddColorPicker", "ToolChamsCol", {Title="Цвет", Default=Color3.fromRGB(255,200,0)}, function(c) tcCol=c end)
 
     -- ============================================================
-    -- МОДЕЛЬ ОРУЖИЯ (фикс через SpecialMesh, без кастома)
+    -- МОДЕЛЬ ОРУЖИЯ
     -- ============================================================
     local wmSec=Tabs.Visual:AddSection({Name="Модель оружия"})
     local WM_PRESETS = {
@@ -3624,7 +3624,11 @@ do
                 local sm = part:FindFirstChildOfClass("SpecialMesh")
                 if sm then
                     if data.hadSM then
-                        pcall(function() sm.MeshId=data.mesh sm.TextureId=data.tex sm.Scale=data.scale end)
+                        pcall(function()
+                            sm.MeshId=data.mesh
+                            sm.TextureId=data.tex
+                            sm.Scale=data.scale
+                        end)
                     else
                         pcall(function() sm:Destroy() end)
                     end
@@ -3654,9 +3658,10 @@ do
             local sm = handle:FindFirstChildOfClass("SpecialMesh")
             wmCache[handle] = {
                 hadSM = sm ~= nil,
-                mesh = sm and sm.MeshId or handle.MeshId or "",
-                tex = sm and sm.TextureId or handle.TextureID or "",
+                mesh = sm and sm.MeshId or (handle.MeshId or ""),
+                tex = sm and sm.TextureId or (handle.TextureID or ""),
                 scale = sm and sm.Scale or Vector3.new(1,1,1),
+                hadMeshPart = handle:IsA("MeshPart"),
             }
         end
         local sm = handle:FindFirstChildOfClass("SpecialMesh")
@@ -3681,7 +3686,9 @@ do
     addOpt(wmSec, "AddToggle", "WeaponModelOn", {Title="Заменить модель", Default=false}, function(v)
         wmOn=v
         if v then
-            if not wmConn then wmConn=RunService.Heartbeat:Connect(function() if wmOn then pcall(wmApply) end end) end
+            if not wmConn then
+                wmConn=RunService.Heartbeat:Connect(function() if wmOn then pcall(wmApply) end end)
+            end
             task.spawn(wmApply)
         else
             if wmConn then pcall(function() wmConn:Disconnect() end) wmConn=nil end
@@ -3700,133 +3707,6 @@ do
         task.wait(1)
         if wmOn then pcall(wmApply) end
     end)
-
-    -- ФЕЙК-ВНЕШНОСТЬ
-    local bodySec=Tabs.Visual:AddSection({Name="Фейк-внешность"})
-    local kbOn=false
-    local kbBackup={}
-    local function kbRestore()
-        local c=LocalPlayer.Character
-        if not c then kbBackup={} return end
-        local ru=c:FindFirstChild("RightUpperLeg") or c:FindFirstChild("Right Leg")
-        local rl=c:FindFirstChild("RightLowerLeg")
-        local rf=c:FindFirstChild("RightFoot")
-        if ru and kbBackup.RU then
-            pcall(function() ru.TextureID=kbBackup.RU.TextureID or "" ru.MeshId=kbBackup.RU.MeshId or "" end)
-        end
-        if rl and kbBackup.RL then
-            pcall(function() rl.MeshId=kbBackup.RL.MeshId or "" rl.Transparency=kbBackup.RL.Transparency or 0 end)
-        end
-        if rf and kbBackup.RF then
-            pcall(function() rf.MeshId=kbBackup.RF.MeshId or "" rf.Transparency=kbBackup.RF.Transparency or 0 end)
-        end
-        kbBackup={}
-    end
-    local function kbApply()
-        if not kbOn then return end
-        local c=LocalPlayer.Character
-        if not c then return end
-        local ru=c:FindFirstChild("RightUpperLeg") or c:FindFirstChild("Right Leg")
-        local rl=c:FindFirstChild("RightLowerLeg")
-        local rf=c:FindFirstChild("RightFoot")
-        if not ru then return end
-        kbBackup={}
-        if ru then
-            kbBackup.RU={MeshId=ru.MeshId,TextureID=ru.TextureID}
-            pcall(function() ru.MeshId="rbxassetid://902942096" ru.TextureID="rbxassetid://902843398" end)
-        end
-        if rl then
-            kbBackup.RL={MeshId=rl.MeshId,Transparency=rl.Transparency}
-            pcall(function() rl.MeshId="rbxassetid://902942093" rl.Transparency=1 end)
-        end
-        if rf then
-            kbBackup.RF={MeshId=rf.MeshId,Transparency=rf.Transparency}
-            pcall(function() rf.MeshId="rbxassetid://902942089" rf.Transparency=1 end)
-        end
-    end
-    addOpt(bodySec, "AddToggle", "KorbloxOn", {Title="Fake Korblox", Default=false}, function(v)
-        kbOn=v
-        if v then kbApply() else kbRestore() end
-        Notify("FH","Korblox "..(v and "ВКЛ" or "ВЫКЛ"),1.5)
-    end)
-    local hlOn=false
-    local hlBackup={}
-    local function hlRestore()
-        local c=LocalPlayer.Character
-        if not c then hlBackup={} return end
-        local head=c:FindFirstChild("Head")
-        if head and hlBackup.Head then
-            pcall(function() head.Transparency=hlBackup.Head.Transparency end)
-            pcall(function() head.LocalTransparencyModifier=hlBackup.Head.LTM end)
-            pcall(function() head.Size=hlBackup.Head.Size end)
-            pcall(function() head.MeshId=hlBackup.Head.MeshId end)
-        end
-        if head then
-            for _,d in ipairs(head:GetDescendants()) do
-                if hlBackup[d] then
-                    if d:IsA("Decal") or d:IsA("Texture") then
-                        pcall(function() d.Transparency=hlBackup[d] end)
-                    elseif d:IsA("Accessory") or d:IsA("Accoutrement") then
-                        local h=d:FindFirstChild("Handle")
-                        if h and hlBackup[h] then pcall(function() h.Transparency=hlBackup[h] end) end
-                    end
-                end
-            end
-        end
-        hlBackup={}
-    end
-    local function hlApply()
-        if not hlOn then return end
-        local c=LocalPlayer.Character
-        if not c then return end
-        local head=c:FindFirstChild("Head")
-        if not head then return end
-        hlBackup={}
-        hlBackup.Head={Transparency=head.Transparency,LTM=head.LocalTransparencyModifier,Size=head.Size,MeshId=head.MeshId}
-        pcall(function() head.Transparency=1 end)
-        pcall(function() head.LocalTransparencyModifier=1 end)
-        for _,d in ipairs(head:GetDescendants()) do
-            if d:IsA("Decal") or d:IsA("Texture") then
-                hlBackup[d]=d.Transparency
-                pcall(function() d.Transparency=1 end)
-            elseif d:IsA("Accessory") or d:IsA("Accoutrement") then
-                local h=d:FindFirstChild("Handle")
-                if h then hlBackup[h]=h.Transparency pcall(function() h.Transparency=1 end) end
-                for _,sub in ipairs(d:GetDescendants()) do
-                    if sub:IsA("Decal") or sub:IsA("Texture") then
-                        hlBackup[sub]=sub.Transparency
-                        pcall(function() sub.Transparency=1 end)
-                    end
-                end
-            end
-        end
-        for _,acc in ipairs(c:GetChildren()) do
-            if acc:IsA("Accessory") or acc:IsA("Accoutrement") then
-                if acc:FindFirstChild("Handle") and acc.AccessoryType==Enum.AccessoryType.Hat then
-                    local h=acc:FindFirstChild("Handle")
-                    hlBackup[h]=h.Transparency
-                    pcall(function() h.Transparency=1 end)
-                    for _,sub in ipairs(acc:GetDescendants()) do
-                        if sub:IsA("Decal") or sub:IsA("Texture") then
-                            hlBackup[sub]=sub.Transparency
-                            pcall(function() sub.Transparency=1 end)
-                        end
-                    end
-                end
-            end
-        end
-    end
-    addOpt(bodySec, "AddToggle", "HeadlessOn", {Title="Fake Headless", Default=false}, function(v)
-        hlOn=v
-        if v then hlApply() else hlRestore() end
-        Notify("FH","Headless "..(v and "ВКЛ" or "ВЫКЛ"),1.5)
-    end)
-    LocalPlayer.CharacterAdded:Connect(function()
-        task.wait(1)
-        if kbOn then kbApply() end
-        if hlOn then hlApply() end
-    end)
-end
 -- ============================================================
 -- main.lua — FortniHub MM2 v20.0 BETA — ЧАСТЬ 3/3
 -- ============================================================
