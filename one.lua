@@ -3606,7 +3606,7 @@ do
     -- ============================================================
     -- МОДЕЛЬ ОРУЖИЯ (фикс через SpecialMesh, без кастома)
     -- ============================================================
-    local wmSec=tabs and Tabs.Visual:AddSection({Name="Модель оружия"})
+    local wmSec=Tabs.Visual:AddSection({Name="Модель оружия"})
     local WM_PRESETS = {
         ["Нож"]={mesh="rbxassetid://161064389",texture="rbxassetid://161064385",scale=1},
         ["Пистолет"]={mesh="rbxassetid://147273448",texture="rbxassetid://147273447",scale=1},
