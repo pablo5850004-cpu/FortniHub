@@ -3703,10 +3703,14 @@ do
     wmSec:AddButton({Title="Применить",Callback=function()
         if wmOn then pcall(wmApply) end
     end})
-    LocalPlayer.CharacterAdded:Connect(function()
+      LocalPlayer.CharacterAdded:Connect(function()
         task.wait(1)
         if wmOn then pcall(wmApply) end
     end)
+end
+-- ============================================================
+-- main.lua — FortniHub MM2 v20.0 BETA — ЧАСТЬ 3/3
+-- ============================================================
 -- ============================================================
 -- main.lua — FortniHub MM2 v20.0 BETA — ЧАСТЬ 3/3
 -- ============================================================
