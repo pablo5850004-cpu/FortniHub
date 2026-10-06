@@ -76,7 +76,7 @@ do
         if type(container.AddLabel) ~= "function" then
             rawset(container, "AddLabel", function(self, text, _wrap)
                 if type(self.AddParagraph) == "function" then
-                    local ok, r = pcall(function() return self:AddParagraph(tostring(text or "")) end)
+                    local ok, r = pcall(function() return self:AddParagraph(tostring(text or ""), "") end)
                     if ok and type(r) == "table" then
                         if rawget(r, "SetValue") == nil then rawset(r, "SetValue", function() end) end
                         if rawget(r, "GetValue") == nil then rawset(r, "GetValue", function() return "" end) end
