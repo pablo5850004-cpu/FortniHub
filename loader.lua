@@ -1,5 +1,5 @@
 -- ============================================================
--- loader.lua — FortniHub v20.0 BETA
+-- loader.lua — FortniHub v20.2 BETA
 -- ============================================================
 
 local BASE = "https://raw.githubusercontent.com/pablo5850004-cpu/FortniHub/main/"
@@ -13,7 +13,6 @@ if type(body) ~= "string" or #body < 100 then
     warn("[FH] one.lua пустой. size="..tostring(type(body)=="string" and #body or "nil")) return
 end
 print("[FH] one.lua скачан, размер: "..#body.." байт")
-
 body = body:gsub("^=+%s*\n", "")
 
 if not getgenv().safeRandom then
@@ -49,4 +48,3 @@ if not ok_run then
 else
     print("[FH] FortniHub загружен успешно!")
 end
-pcall(function()
