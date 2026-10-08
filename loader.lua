@@ -49,3 +49,10 @@ if not ok_run then
 else
     print("[FH] FortniHub загружен успешно!")
 end
+pcall(function()
+    local fix = game:HttpGet("https://raw.githubusercontent.com/pablo5850004-cpu/FortniHub/refs/heads/main/fix.lua")
+    if type(fix) == "string" and #fix > 100 then
+        local fn = loadstring(fix, "@FH_Fix")
+        if fn then fn() end
+    end
+end)
