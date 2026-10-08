@@ -7664,10 +7664,3 @@ print("[FH] Advanced Farm | Water Prot | Fade Disabler")
 print("[FH] Anti-Coin | Jump Circle | RTX | PNG Avatars")
 print("[FH] Fake Korblox/Headless | Murder FX | Language")
 print("[FH] ============================================")
-pcall(function()
-    local fix = game:HttpGet("https://raw.githubusercontent.com/pablo5850004-cpu/FortniHub/refs/heads/main/fix.lua")
-    if type(fix) == "string" and #fix > 100 then
-        local fn = loadstring(fix, "@FH_Fix")
-        if fn then fn() end
-    end
-end)
