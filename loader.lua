@@ -1,5 +1,6 @@
 -- ============================================================
--- loader.lua — FortniHub v20.2 BETA (2 файла)
+-- loader.lua — FortniHub v20.2 BETA
+-- Грузит ровно два файла: one.lua + part2.lua
 -- ============================================================
 local BASE = "https://raw.githubusercontent.com/pablo5850004-cpu/FortniHub/main/"
 local FILES = {"one.lua", "part2.lua"}
