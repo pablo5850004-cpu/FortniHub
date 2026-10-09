@@ -1819,23 +1819,7 @@ print("[FH] ============================================")
 -- FortniHub MM2 v20.3 BETA — ЧАСТЬ 2/2
 -- Visual / Effects / Farm / Utility / Troll / Extra
 -- ============================================================
-
-local Window = getgenv().FH_Window
-local Options = getgenv().Options
-local Notify = getgenv().FH_Notify
-local getRoundData = getgenv().getRoundData
-local getRoleFromData = getgenv().getRoleFromData
-local getHRP = getgenv().getHRP
-local getHum = getgenv().getHum
-
-if not (Window and Options and Notify and getRoundData and getRoleFromData and getHRP and getHum) then
-    warn("[FH] Part 1 не загружена.")
-    return
-end
-
-local Tabs = getgenv().FH_Tabs
-if not Tabs then warn("[FH] FH_Tabs не найден.") return end
-
+-- Part 2 — переменные Window/Options/Notify/Tabs уже в области видимости
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
