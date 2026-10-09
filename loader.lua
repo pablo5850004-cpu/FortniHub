@@ -1,24 +1,18 @@
 -- ============================================================
--- loader.lua — FortniHub v20.2 BETA
+-- loader.lua — FortniHub v20.2 BETA (2 файла)
 -- ============================================================
-
 local BASE = "https://raw.githubusercontent.com/pablo5850004-cpu/FortniHub/main/"
-local files = {
-    "part1.lua",
-    "part2.lua",
-    "part3.lua",
-    "part4.lua",
-}
+local FILES = {"one.lua", "part2.lua"}
 
 print("[FH] FortniHub loader запускается...")
 
-for _, name in ipairs(files) do
+for _, name in ipairs(FILES) do
     local url = BASE .. name
     local ok, body = pcall(function() return game:HttpGet(url) end)
     if not ok or type(body) ~= "string" or #body < 100 then
         warn("[FH] Не скачал "..name..": "..tostring(body))
     else
-        print("[FH] "..name.." скачан, размер: "..#body.." байт")
+        print("[FH] "..name.." скачан, "..#body.." байт")
         body = body:gsub("^=+%s*\n", "")
         local fn, err = loadstring(body, "@"..name)
         if type(fn) ~= "function" then
