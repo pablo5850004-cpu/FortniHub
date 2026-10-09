@@ -2363,19 +2363,6 @@ print("[FH] ============================================")
 -- Visual / Effects / Farm / Utility / Troll / Extra
 -- ============================================================
 
-local Window = getgenv().FH_Window
-local Options = getgenv().Options
-local Notify = getgenv().FH_Notify
-local getRoundData = getgenv().getRoundData
-local getRoleFromData = getgenv().getRoleFromData
-local getHRP = getgenv().getHRP
-local getHum = getgenv().getHum
-
-if not (Window and Options and Notify and getRoundData and getRoleFromData and getHRP and getHum) then
-    warn("[FH] Part 1 не загружена или не экспортировала переменные.")
-    return
-end
-
 local Tabs = getgenv().FH_Tabs
 if not Tabs then warn("[FH] FH_Tabs не найден.") return end
 
