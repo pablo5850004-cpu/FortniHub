@@ -1,6 +1,6 @@
 -- ============================================================
--- main.lua — FortniHub MM2 v20.1 — ЧАСТЬ 1/2
--- Main code (бывшие Parts 1/2 + 2/2 + 3/3, всё в одном)
+-- main.lua вЂ” FortniHub MM2 v20.1 вЂ” Г—ГЂГ‘Г’Гњ 1/2
+-- Main code (ГЎГ»ГўГёГЁГҐ Parts 1/2 + 2/2 + 3/3, ГўГ±Вё Гў Г®Г¤Г­Г®Г¬)
 -- ============================================================
 
 local Players=game:GetService("Players")
@@ -106,7 +106,7 @@ end
 
 local Fluent
 do
-    print("[FH] Загружаю Fluent UI...")
+    print("[FH] Г‡Г ГЈГ°ГіГ¦Г Гѕ Fluent UI...")
     local urls={
         "https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua",
         "https://raw.githubusercontent.com/dawid-scripts/Fluent/main/src/init.lua",
@@ -119,11 +119,11 @@ do
         local ok,b=pcall(function() return game:HttpGet(u,true) end)
         if ok and type(b)=="string" and #b>1000 and not b:find("<html") then body=b;break end
     end
-    if not body then error("[FH] Не удалось загрузить Fluent UI") end
+    if not body then error("[FH] ГЌГҐ ГіГ¤Г Г«Г®Г±Гј Г§Г ГЈГ°ГіГ§ГЁГІГј Fluent UI") end
     local fn=loadstring(body,"@Fluent")
     Fluent=fn and fn()
-    if type(Fluent)~="table" then error("[FH] Fluent не таблица") end
-    print("[FH] Fluent загружен")
+    if type(Fluent)~="table" then error("[FH] Fluent Г­ГҐ ГІГ ГЎГ«ГЁГ¶Г ") end
+    print("[FH] Fluent Г§Г ГЈГ°ГіГ¦ГҐГ­")
 end
 local function adaptTab(tab)
     if not tab then return tab end
@@ -143,8 +143,8 @@ local function adaptTab(tab)
         rawset(tab,"__AS",true)
         local origAS=tab.AddSection
         tab.AddSection=function(self,arg)
-            if type(arg)=="table" then arg=arg.Name or arg.name or "Секция" end
-            if arg==nil then arg="Секция" end
+            if type(arg)=="table" then arg=arg.Name or arg.name or "Г‘ГҐГЄГ¶ГЁГї" end
+            if arg==nil then arg="Г‘ГҐГЄГ¶ГЁГї" end
             local sec=origAS(self,arg)
             if sec then
                 if sec.Option==nil then sec.Option=sec end
@@ -159,7 +159,7 @@ local Window,Options=nil,nil
 do
     Window=Fluent:CreateWindow({
         Title="FortniHub MM2",
-        SubTitle="v"..VERSION.." — "..CREDITS,
+        SubTitle="v"..VERSION.." вЂ” "..CREDITS,
         TabWidth=130,
         Size=UDim2.fromOffset(420,300),
         Theme="Darker",
@@ -176,16 +176,16 @@ do
 end
 local Tabs={}
 getgenv().FH_Tabs=Tabs
-Tabs.Combat=Window:AddTab({Title="Бой"})
-Tabs.Movement=Window:AddTab({Title="Движение"})
-Tabs.Binds=Window:AddTab({Title="Бинды"})
-Tabs.Visual=Window:AddTab({Title="Визуал"})
-Tabs.Effects=Window:AddTab({Title="Эффекты"})
-Tabs.Farm=Window:AddTab({Title="Фарм"})
-Tabs.Animations=Window:AddTab({Title="Эмоции"})
-Tabs.Utility=Window:AddTab({Title="Утилиты"})
-Tabs.Troll=Window:AddTab({Title="Троллинг"})
-Tabs.Settings=Window:AddTab({Title="Настройки"})
+Tabs.Combat=Window:AddTab({Title="ГЃГ®Г©"})
+Tabs.Movement=Window:AddTab({Title="Г„ГўГЁГ¦ГҐГ­ГЁГҐ"})
+Tabs.Binds=Window:AddTab({Title="ГЃГЁГ­Г¤Г»"})
+Tabs.Visual=Window:AddTab({Title="Г‚ГЁГ§ГіГ Г«"})
+Tabs.Effects=Window:AddTab({Title="ГќГґГґГҐГЄГІГ»"})
+Tabs.Farm=Window:AddTab({Title="Г”Г Г°Г¬"})
+Tabs.Animations=Window:AddTab({Title="ГќГ¬Г®Г¶ГЁГЁ"})
+Tabs.Utility=Window:AddTab({Title="Г“ГІГЁГ«ГЁГІГ»"})
+Tabs.Troll=Window:AddTab({Title="Г’Г°Г®Г«Г«ГЁГ­ГЈ"})
+Tabs.Settings=Window:AddTab({Title="ГЌГ Г±ГІГ°Г®Г©ГЄГЁ"})
 
 local function addOpt(container, method, name, opts, callback)
     local opt = container[method](container, name, opts)
@@ -207,9 +207,9 @@ getgenv().FH_Notify=Notify
 
 task.spawn(function()
     task.wait(0.8)
-    Notify("FortniHub","Скрипт был создан HOTI и Ve315.", 7)
+    Notify("FortniHub","Г‘ГЄГ°ГЁГЇГІ ГЎГ»Г« Г±Г®Г§Г¤Г Г­ HOTI ГЁ Ve315.", 7)
     task.wait(1.2)
-    Notify("FortniHub","Скрипт находится в BETA версии, могут быть баги.", 7)
+    Notify("FortniHub","Г‘ГЄГ°ГЁГЇГІ Г­Г ГµГ®Г¤ГЁГІГ±Гї Гў BETA ГўГҐГ°Г±ГЁГЁ, Г¬Г®ГЈГіГІ ГЎГ»ГІГј ГЎГ ГЈГЁ.", 7)
 end)
 
 local HUDGui,FPSLabel,PingLabel,Pill
@@ -405,7 +405,7 @@ do
     }
     local SS = getgenv().SILENT_S
 
-    local silent_section = Tabs.Combat:AddSection({Name="Тихий выстрел"})
+    local silent_section = Tabs.Combat:AddSection({Name="Г’ГЁГµГЁГ© ГўГ»Г±ГІГ°ГҐГ«"})
 
     local gap_min = 0
     local gap_seen = false
@@ -1539,7 +1539,7 @@ do
     local main_conn = run.Heartbeat:Connect(function() pcall(tick_silent) end)
 
     addOpt(silent_section, "AddToggle", "SilentEnabled", {
-        Title = "Включить", Default = false, Flag = "SilentEnabled",
+        Title = "Г‚ГЄГ«ГѕГ·ГЁГІГј", Default = false, Flag = "SilentEnabled",
     }, function(v)
         SS.enabled = v
         getgenv().SILENT_AIM_ACTIVE = v
@@ -1554,16 +1554,16 @@ do
             clear_watch()
             track_clear()
         end
-        Notify("FH", "Silent "..(v and "ВКЛ" or "ВЫКЛ"), 1.5)
+        Notify("FH", "Silent "..(v and "Г‚ГЉГ‹" or "Г‚Г›ГЉГ‹"), 1.5)
     end)
     addOpt(silent_section, "AddToggle", "SilentPredict", {
-        Title = "Предсказание", Default = true, Flag = "SilentPredict",
+        Title = "ГЏГ°ГҐГ¤Г±ГЄГ Г§Г Г­ГЁГҐ", Default = true, Flag = "SilentPredict",
     }, function(v)
         SS.predict = v
         if not v then track_clear() end
     end)
     addOpt(silent_section, "AddToggle", "SilentForce", {
-        Title = "Стрельба через стены", Default = false, Flag = "SilentForce",
+        Title = "Г‘ГІГ°ГҐГ«ГјГЎГ  Г·ГҐГ°ГҐГ§ Г±ГІГҐГ­Г»", Default = false, Flag = "SilentForce",
     }, function(v)
         SS.force = v
         if v then
@@ -1575,7 +1575,7 @@ do
             local pr = Options.SilentPredict
             if pr then pcall(function() pr:SetValue(false) end) end
             SS.predict = false
-            Notify("FH","Force ВКЛ — предикт выключен", 3)
+            Notify("FH","Force Г‚ГЉГ‹ вЂ” ГЇГ°ГҐГ¤ГЁГЄГІ ГўГ»ГЄГ«ГѕГ·ГҐГ­", 3)
         else
             restore_origin()
             local so = Options.SilentStandoff
@@ -1586,13 +1586,13 @@ do
         end
     end)
     addOpt(silent_section, "AddSlider", "SilentStandoff", {
-        Title = "Отступ", Default = 15, Min = 0, Max = 40, Rounding = 0, Flag = "SilentStandoff",
+        Title = "ГЋГІГ±ГІГіГЇ", Default = 15, Min = 0, Max = 40, Rounding = 0, Flag = "SilentStandoff",
     }, function(v) SS.stand_off = tonumber(v) or 15 end)
     addOpt(silent_section, "AddToggle", "SilentAuto", {
-        Title = "Авто-выстрел", Default = false, Flag = "SilentAuto",
+        Title = "ГЂГўГІГ®-ГўГ»Г±ГІГ°ГҐГ«", Default = false, Flag = "SilentAuto",
     }, function(v) SS.auto_on = v end)
     addOpt(silent_section, "AddSlider", "SilentAutoDelay", {
-        Title = "Задержка авто", Default = 0, Min = 0, Max = 600, Rounding = 0, Flag = "SilentAutoDelay",
+        Title = "Г‡Г Г¤ГҐГ°Г¦ГЄГ  Г ГўГІГ®", Default = 0, Min = 0, Max = 600, Rounding = 0, Flag = "SilentAutoDelay",
     }, function(v) SS.auto_delay = (tonumber(v) or 0) / 1000 end)
 
     getgenv().SILENT_INSTALL_HOOKS = function() pcall(install_hooks) end
@@ -1617,14 +1617,14 @@ do
 end
 
 -- ============================================================
--- ТИХИЙ БРОСОК НОЖА (заглушка)
+-- Г’Г€Г•Г€Г‰ ГЃГђГЋГ‘ГЋГЉ ГЌГЋГ†ГЂ (Г§Г ГЈГ«ГіГёГЄГ )
 -- ============================================================
 do
-    local knifeSec = Tabs.Combat:AddSection({Name="Тихий бросок ножа"})
-    addOpt(knifeSec, "AddToggle", "KnifeSilentOn", {Title="Включить", Default=false, Flag="KnifeSilentOn"}, function(v)
+    local knifeSec = Tabs.Combat:AddSection({Name="Г’ГЁГµГЁГ© ГЎГ°Г®Г±Г®ГЄ Г­Г®Г¦Г "})
+    addOpt(knifeSec, "AddToggle", "KnifeSilentOn", {Title="Г‚ГЄГ«ГѕГ·ГЁГІГј", Default=false, Flag="KnifeSilentOn"}, function(v)
         knifeSilent.enabled = v
         if v then
-            Notify("FH", "В разработке", 3)
+            Notify("FH", "Г‚ Г°Г Г§Г°Г ГЎГ®ГІГЄГҐ", 3)
             task.delay(0.5, function()
                 local opt = Options.KnifeSilentOn
                 if opt then pcall(function() opt:SetValue(false) end) end
@@ -1634,12 +1634,12 @@ do
 end
 
 -- ============================================================
--- КИЛЛ АУРА
+-- ГЉГ€Г‹Г‹ ГЂГ“ГђГЂ
 -- ============================================================
 do
     local tC = Tabs.Combat
-    local kaSec = tC:AddSection({Name="Килл Аура"})
-    addOpt(kaSec, "AddDropdown", "KAVersion", {Title="Версия", Values={"v1","v2"}, Default="v2"}, function(v)
+    local kaSec = tC:AddSection({Name="ГЉГЁГ«Г« ГЂГіГ°Г "})
+    addOpt(kaSec, "AddDropdown", "KAVersion", {Title="Г‚ГҐГ°Г±ГЁГї", Values={"v1","v2"}, Default="v2"}, function(v)
         killAuraVersion = v
         kaV1.on = false
         kaV2.on = false
@@ -1648,11 +1648,11 @@ do
             kaV2.on = v == "v2"
         end
     end)
-    addOpt(kaSec, "AddToggle", "KAOn", {Title="Включить", Default=false}, function(v)
+    addOpt(kaSec, "AddToggle", "KAOn", {Title="Г‚ГЄГ«ГѕГ·ГЁГІГј", Default=false}, function(v)
         kaV1.on = v and killAuraVersion == "v1"
         kaV2.on = v and killAuraVersion == "v2"
     end)
-    addOpt(kaSec, "AddSlider", "KADist", {Title="Радиус", Min=5, Max=60, Default=30, Rounding=0}, function(v)
+    addOpt(kaSec, "AddSlider", "KADist", {Title="ГђГ Г¤ГЁГіГ±", Min=5, Max=60, Default=30, Rounding=0}, function(v)
         local n = tonumber(v) or 30
         kaV1.dist = n
         kaV2.dist = n
@@ -1731,7 +1731,7 @@ do
 end
 
 -- ============================================================
--- АВТО-ПОДБОР ПИСТОЛЕТА
+-- ГЂГ‚Г’ГЋ-ГЏГЋГ„ГЃГЋГђ ГЏГ€Г‘Г’ГЋГ‹Г…Г’ГЂ
 -- ============================================================
 do
     local tC = Tabs.Combat
@@ -1765,7 +1765,7 @@ do
         return best
     end
     local autoGrabEnabled = false
-    addOpt(tC, "AddToggle", "AutoGrabGun", {Title="Авто-подбор пистолета", Default=false}, function(v) autoGrabEnabled = v end)
+    addOpt(tC, "AddToggle", "AutoGrabGun", {Title="ГЂГўГІГ®-ГЇГ®Г¤ГЎГ®Г° ГЇГЁГ±ГІГ®Г«ГҐГІГ ", Default=false}, function(v) autoGrabEnabled = v end)
     AddConn("AutoGrabTick", RunService.Heartbeat:Connect(function()
         if not autoGrabEnabled then return end
         if getgenv().FH_INVIS_ACTIVE then return end
@@ -1801,7 +1801,7 @@ do
             end
             if not grabbed then
                 grabFailedRound = true
-                Notify("FH", "Пистолет не подобран.", 4)
+                Notify("FH", "ГЏГЁГ±ГІГ®Г«ГҐГІ Г­ГҐ ГЇГ®Г¤Г®ГЎГ°Г Г­.", 4)
             end
             isGrabbing = false
         end)
@@ -1810,24 +1810,24 @@ do
 end
 
 -- ============================================================
--- ДВИЖЕНИЕ
+-- Г„Г‚Г€Г†Г…ГЌГ€Г…
 -- ============================================================
 do
     local tM = Tabs.Movement
-    local mvSec = tM:AddSection({Name="Основное"})
-    addOpt(mvSec, "AddToggle", "SpeedToggle", {Title="Скорость", Default=false}, function() end)
-    addOpt(mvSec, "AddSlider", "SpeedValue", {Title="Скорость ходьбы", Min=16, Max=500, Default=32, Rounding=0}, function() end)
+    local mvSec = tM:AddSection({Name="ГЋГ±Г­Г®ГўГ­Г®ГҐ"})
+    addOpt(mvSec, "AddToggle", "SpeedToggle", {Title="Г‘ГЄГ®Г°Г®Г±ГІГј", Default=false}, function() end)
+    addOpt(mvSec, "AddSlider", "SpeedValue", {Title="Г‘ГЄГ®Г°Г®Г±ГІГј ГµГ®Г¤ГјГЎГ»", Min=16, Max=500, Default=32, Rounding=0}, function() end)
     addOpt(mvSec, "AddToggle", "Noclip", {Title="Noclip", Default=false}, function() end)
     addOpt(mvSec, "AddToggle", "Spinbot", {Title="Spinbot", Default=false}, function() end)
-    addOpt(mvSec, "AddSlider", "SpinSpeed", {Title="Скорость кручения", Min=1, Max=50, Default=8, Rounding=0}, function() end)
-    addOpt(mvSec, "AddToggle", "InfJump", {Title="Бесконечный прыжок", Default=false}, function() end)
-    addOpt(mvSec, "AddToggle", "JumpPowerToggle", {Title="Своя сила прыжка", Default=false}, function() end)
-    addOpt(mvSec, "AddSlider", "JumpPowerVal", {Title="Сила прыжка", Min=50, Max=500, Default=100, Rounding=0}, function() end)
-    addOpt(mvSec, "AddToggle", "FlyToggle", {Title="Полёт", Default=false}, function() end)
-    addOpt(mvSec, "AddSlider", "FlySpeed", {Title="Скорость полёта", Min=20, Max=500, Default=60, Rounding=0}, function() end)
-    addOpt(mvSec, "AddToggle", "BhopOn", {Title="Банихоп", Default=false}, function() end)
-    addOpt(mvSec, "AddSlider", "BhopPower", {Title="Сила банихопа", Min=10, Max=150, Default=40, Rounding=0}, function() end)
-    addOpt(mvSec, "AddToggle", "BhopStrafe", {Title="Стрейф", Default=false}, function() end)
+    addOpt(mvSec, "AddSlider", "SpinSpeed", {Title="Г‘ГЄГ®Г°Г®Г±ГІГј ГЄГ°ГіГ·ГҐГ­ГЁГї", Min=1, Max=50, Default=8, Rounding=0}, function() end)
+    addOpt(mvSec, "AddToggle", "InfJump", {Title="ГЃГҐГ±ГЄГ®Г­ГҐГ·Г­Г»Г© ГЇГ°Г»Г¦Г®ГЄ", Default=false}, function() end)
+    addOpt(mvSec, "AddToggle", "JumpPowerToggle", {Title="Г‘ГўГ®Гї Г±ГЁГ«Г  ГЇГ°Г»Г¦ГЄГ ", Default=false}, function() end)
+    addOpt(mvSec, "AddSlider", "JumpPowerVal", {Title="Г‘ГЁГ«Г  ГЇГ°Г»Г¦ГЄГ ", Min=50, Max=500, Default=100, Rounding=0}, function() end)
+    addOpt(mvSec, "AddToggle", "FlyToggle", {Title="ГЏГ®Г«ВёГІ", Default=false}, function() end)
+    addOpt(mvSec, "AddSlider", "FlySpeed", {Title="Г‘ГЄГ®Г°Г®Г±ГІГј ГЇГ®Г«ВёГІГ ", Min=20, Max=500, Default=60, Rounding=0}, function() end)
+    addOpt(mvSec, "AddToggle", "BhopOn", {Title="ГЃГ Г­ГЁГµГ®ГЇ", Default=false}, function() end)
+    addOpt(mvSec, "AddSlider", "BhopPower", {Title="Г‘ГЁГ«Г  ГЎГ Г­ГЁГµГ®ГЇГ ", Min=10, Max=150, Default=40, Rounding=0}, function() end)
+    addOpt(mvSec, "AddToggle", "BhopStrafe", {Title="Г‘ГІГ°ГҐГ©Гґ", Default=false}, function() end)
 
     local bhopOn,bhopPower,bhopStrafe=false,40,false
     local bhopSpeed,wasJumping,isBoosting=0,false,false
@@ -1912,9 +1912,9 @@ do
     end))
 
     local sgOn,sgPower,sgAccel,sgGround=false,90,0.6,16
-    addOpt(mvSec, "AddToggle", "SpeedGlitchOn", {Title="Спидглитч", Default=false}, function(v) sgOn=v end)
-    addOpt(mvSec, "AddSlider", "SpeedGlitchPower", {Title="Скорость в прыжке", Min=30, Max=250, Default=90, Rounding=0}, function(v) sgPower=tonumber(v) or 90 end)
-    addOpt(mvSec, "AddSlider", "SpeedGlitchAccel", {Title="Разгон", Min=0.1, Max=1, Default=0.6, Rounding=2}, function(v) sgAccel=tonumber(v) or 0.6 end)
+    addOpt(mvSec, "AddToggle", "SpeedGlitchOn", {Title="Г‘ГЇГЁГ¤ГЈГ«ГЁГІГ·", Default=false}, function(v) sgOn=v end)
+    addOpt(mvSec, "AddSlider", "SpeedGlitchPower", {Title="Г‘ГЄГ®Г°Г®Г±ГІГј Гў ГЇГ°Г»Г¦ГЄГҐ", Min=30, Max=250, Default=90, Rounding=0}, function(v) sgPower=tonumber(v) or 90 end)
+    addOpt(mvSec, "AddSlider", "SpeedGlitchAccel", {Title="ГђГ Г§ГЈГ®Г­", Min=0.1, Max=1, Default=0.6, Rounding=2}, function(v) sgAccel=tonumber(v) or 0.6 end)
     AddConn("SpeedGlitchTick",RunService.Heartbeat:Connect(function()
         if not sgOn then return end
         local c=LocalPlayer.Character
@@ -2043,13 +2043,13 @@ do
         end
     end))
 
-    local freezeSec=tM:AddSection({Name="Заморозка"})
-    addOpt(freezeSec, "AddToggle", "FreezeToggle", {Title="Включить", Default=false}, function(v) S.frozen=v end)
-    addOpt(freezeSec, "AddSlider", "FreezeSpeed", {Title="Скорость", Min=20, Max=300, Default=60, Rounding=0}, function() end)
-    local fUp=freezeSec:AddKeybind("FreezeUpKey",{Title="Кнопка ВВЕРХ",Default="Space"})
+    local freezeSec=tM:AddSection({Name="Г‡Г Г¬Г®Г°Г®Г§ГЄГ "})
+    addOpt(freezeSec, "AddToggle", "FreezeToggle", {Title="Г‚ГЄГ«ГѕГ·ГЁГІГј", Default=false}, function(v) S.frozen=v end)
+    addOpt(freezeSec, "AddSlider", "FreezeSpeed", {Title="Г‘ГЄГ®Г°Г®Г±ГІГј", Min=20, Max=300, Default=60, Rounding=0}, function() end)
+    local fUp=freezeSec:AddKeybind("FreezeUpKey",{Title="ГЉГ­Г®ГЇГЄГ  Г‚Г‚Г…ГђГ•",Default="Space"})
     fUp:OnChanged(function(k) if typeof(k)=="EnumItem" then S.freezeUpKey=k end end)
     registerOnChanged("FreezeUpKey", function(k) if typeof(k)=="EnumItem" then S.freezeUpKey=k end end)
-    local fDown=freezeSec:AddKeybind("FreezeDownKey",{Title="Кнопка ВНИЗ",Default="LeftAlt"})
+    local fDown=freezeSec:AddKeybind("FreezeDownKey",{Title="ГЉГ­Г®ГЇГЄГ  Г‚ГЌГ€Г‡",Default="LeftAlt"})
     fDown:OnChanged(function(k) if typeof(k)=="EnumItem" then S.freezeDownKey=k end end)
     registerOnChanged("FreezeDownKey", function(k) if typeof(k)=="EnumItem" then S.freezeDownKey=k end end)
 
@@ -2062,24 +2062,24 @@ do
 end
 
 -- ============================================================
--- БИНДЫ
+-- ГЃГ€ГЌГ„Г›
 -- ============================================================
 do
     local tB=Tabs.Binds
     local BIND_LIST={
-        {id="SilentEnabled",title="Тихий выстрел",cat="Бой",opt="SilentEnabled"},
-        {id="KAOn",title="Килл Аура",cat="Бой",opt="KAOn"},
-        {id="AutoGrabGun",title="Авто-подбор пистолета",cat="Бой",opt="AutoGrabGun"},
-        {id="SpeedToggle",title="Скорость",cat="Движение",opt="SpeedToggle"},
-        {id="Noclip",title="Noclip",cat="Движение",opt="Noclip"},
-        {id="Spinbot",title="Спинбот",cat="Движение",opt="Spinbot"},
-        {id="InfJump",title="Бесконечный прыжок",cat="Движение",opt="InfJump"},
-        {id="JumpPowerToggle",title="Своя сила прыжка",cat="Движение",opt="JumpPowerToggle"},
-        {id="SpeedGlitchOn",title="Спидглитч",cat="Движение",opt="SpeedGlitchOn"},
-        {id="FlyToggle",title="Полёт",cat="Движение",opt="FlyToggle"},
-        {id="BhopOn",title="Банихоп",cat="Движение",opt="BhopOn"},
-        {id="FreezeToggle",title="Заморозка",cat="Движение",opt="FreezeToggle"},
-        {id="InvisOn",title="Невидимость",cat="Другое",opt="InvisOn"},
+        {id="SilentEnabled",title="Г’ГЁГµГЁГ© ГўГ»Г±ГІГ°ГҐГ«",cat="ГЃГ®Г©",opt="SilentEnabled"},
+        {id="KAOn",title="ГЉГЁГ«Г« ГЂГіГ°Г ",cat="ГЃГ®Г©",opt="KAOn"},
+        {id="AutoGrabGun",title="ГЂГўГІГ®-ГЇГ®Г¤ГЎГ®Г° ГЇГЁГ±ГІГ®Г«ГҐГІГ ",cat="ГЃГ®Г©",opt="AutoGrabGun"},
+        {id="SpeedToggle",title="Г‘ГЄГ®Г°Г®Г±ГІГј",cat="Г„ГўГЁГ¦ГҐГ­ГЁГҐ",opt="SpeedToggle"},
+        {id="Noclip",title="Noclip",cat="Г„ГўГЁГ¦ГҐГ­ГЁГҐ",opt="Noclip"},
+        {id="Spinbot",title="Г‘ГЇГЁГ­ГЎГ®ГІ",cat="Г„ГўГЁГ¦ГҐГ­ГЁГҐ",opt="Spinbot"},
+        {id="InfJump",title="ГЃГҐГ±ГЄГ®Г­ГҐГ·Г­Г»Г© ГЇГ°Г»Г¦Г®ГЄ",cat="Г„ГўГЁГ¦ГҐГ­ГЁГҐ",opt="InfJump"},
+        {id="JumpPowerToggle",title="Г‘ГўГ®Гї Г±ГЁГ«Г  ГЇГ°Г»Г¦ГЄГ ",cat="Г„ГўГЁГ¦ГҐГ­ГЁГҐ",opt="JumpPowerToggle"},
+        {id="SpeedGlitchOn",title="Г‘ГЇГЁГ¤ГЈГ«ГЁГІГ·",cat="Г„ГўГЁГ¦ГҐГ­ГЁГҐ",opt="SpeedGlitchOn"},
+        {id="FlyToggle",title="ГЏГ®Г«ВёГІ",cat="Г„ГўГЁГ¦ГҐГ­ГЁГҐ",opt="FlyToggle"},
+        {id="BhopOn",title="ГЃГ Г­ГЁГµГ®ГЇ",cat="Г„ГўГЁГ¦ГҐГ­ГЁГҐ",opt="BhopOn"},
+        {id="FreezeToggle",title="Г‡Г Г¬Г®Г°Г®Г§ГЄГ ",cat="Г„ГўГЁГ¦ГҐГ­ГЁГҐ",opt="FreezeToggle"},
+        {id="InvisOn",title="ГЌГҐГўГЁГ¤ГЁГ¬Г®Г±ГІГј",cat="Г„Г°ГіГЈГ®ГҐ",opt="InvisOn"},
     }
     local BindState={}
     for _,e in ipairs(BIND_LIST) do
@@ -2172,7 +2172,7 @@ do
         if st.btn then pcall(function() st.btn:Destroy() end) st.btn=nil end
     end
 
-    local listSec=tB:AddSection({Name="Модули"})
+    local listSec=tB:AddSection({Name="ГЊГ®Г¤ГіГ«ГЁ"})
     local currentCat=nil
     for _,def in ipairs(BIND_LIST) do
         if def.cat~=currentCat then
@@ -2184,7 +2184,7 @@ do
         kb:OnChanged(function(k)
             if typeof(k)=="EnumItem" then
                 st.key=k
-                Notify("FH","Бинд: "..def.title.." > "..tostring(k),2)
+                Notify("FH","ГЃГЁГ­Г¤: "..def.title.." > "..tostring(k),2)
             else st.key=nil end
         end)
         registerOnChanged("BIND_KEY_"..def.id, function(k)
@@ -2194,7 +2194,7 @@ do
                 st.key=nil
             end
         end)
-        addOpt(listSec, "AddToggle", "BIND_TCH_"..def.id, {Title="  Кнопка: "..def.title, Default=false}, function(v)
+        addOpt(listSec, "AddToggle", "BIND_TCH_"..def.id, {Title="  ГЉГ­Г®ГЇГЄГ : "..def.title, Default=false}, function(v)
             st.touchOn=v
             if v then makeTouchButton(def.id) else killTouchButton(def.id) end
         end)
@@ -2206,13 +2206,13 @@ do
             if st.key and input.KeyCode==st.key then fireBind(id) end
         end
     end)
-    local setSec=tB:AddSection({Name="Настройки биндов"})
-    addOpt(setSec, "AddToggle", "BIND_FREEZE", {Title="Заморозка кнопок", Default=false}, function(v)
+    local setSec=tB:AddSection({Name="ГЌГ Г±ГІГ°Г®Г©ГЄГЁ ГЎГЁГ­Г¤Г®Гў"})
+    addOpt(setSec, "AddToggle", "BIND_FREEZE", {Title="Г‡Г Г¬Г®Г°Г®Г§ГЄГ  ГЄГ­Г®ГЇГ®ГЄ", Default=false}, function(v)
         buttonsFrozen=v
         getgenv().FH_ButtonsFrozen=v
-        Notify("FH",v and "Кнопки заморожены" or "Кнопки разморожены",1.5)
+        Notify("FH",v and "ГЉГ­Г®ГЇГЄГЁ Г§Г Г¬Г®Г°Г®Г¦ГҐГ­Г»" or "ГЉГ­Г®ГЇГЄГЁ Г°Г Г§Г¬Г®Г°Г®Г¦ГҐГ­Г»",1.5)
     end)
-    setSec:AddButton({Title="Сбросить все бинды",Callback=function()
+    setSec:AddButton({Title="Г‘ГЎГ°Г®Г±ГЁГІГј ГўГ±ГҐ ГЎГЁГ­Г¤Г»",Callback=function()
         local count=0
         for id,st in pairs(BindState) do
             st.key=nil
@@ -2221,15 +2221,15 @@ do
                 count=count+1
             end
         end
-        Notify("FH","Сброшено биндов: "..count,2)
+        Notify("FH","Г‘ГЎГ°Г®ГёГҐГ­Г® ГЎГЁГ­Г¤Г®Гў: "..count,2)
     end})
-    setSec:AddButton({Title="Удалить все кнопки",Callback=function()
+    setSec:AddButton({Title="Г“Г¤Г Г«ГЁГІГј ГўГ±ГҐ ГЄГ­Г®ГЇГЄГЁ",Callback=function()
         for id,st in pairs(BindState) do
             st.touchOn=false
             if Options["BIND_TCH_"..id] then pcall(function() Options["BIND_TCH_"..id]:SetValue(false) end) end
             killTouchButton(id)
         end
-        Notify("FH","Все кнопки удалены",2)
+        Notify("FH","Г‚Г±ГҐ ГЄГ­Г®ГЇГЄГЁ ГіГ¤Г Г«ГҐГ­Г»",2)
     end})
     getgenv().BINDS_UNLOAD=function()
         for id,st in pairs(BindState) do killTouchButton(id) end
@@ -2238,15 +2238,15 @@ do
 end
 
 -- ============================================================
--- НАСТРОЙКИ
+-- ГЌГЂГ‘Г’ГђГЋГ‰ГЉГ€
 -- ============================================================
 do
     local tS=Tabs.Settings
-    local setSec=tS:AddSection({Name="Основные"})
-    addOpt(setSec, "AddToggle", "ShowHUD", {Title="Показывать HUD", Default=true}, function(v) if HUDGui then HUDGui.Enabled=v end end)
-    addOpt(setSec, "AddSlider", "FPSCap", {Title="Лимит FPS (0 - без лимита)", Min=0, Max=9999, Default=0, Rounding=0}, function(v) pcall(function() if setfpscap then setfpscap(tonumber(v) or 0) end end) end)
-    setSec:AddButton({Title="Переподключиться к серверу",Callback=function() TeleportService:TeleportToPlaceInstance(game.PlaceId,game.JobId,LocalPlayer) end})
-    setSec:AddButton({Title="Сменить сервер",Callback=function()
+    local setSec=tS:AddSection({Name="ГЋГ±Г­Г®ГўГ­Г»ГҐ"})
+    addOpt(setSec, "AddToggle", "ShowHUD", {Title="ГЏГ®ГЄГ Г§Г»ГўГ ГІГј HUD", Default=true}, function(v) if HUDGui then HUDGui.Enabled=v end end)
+    addOpt(setSec, "AddSlider", "FPSCap", {Title="Г‹ГЁГ¬ГЁГІ FPS (0 - ГЎГҐГ§ Г«ГЁГ¬ГЁГІГ )", Min=0, Max=9999, Default=0, Rounding=0}, function(v) pcall(function() if setfpscap then setfpscap(tonumber(v) or 0) end end) end)
+    setSec:AddButton({Title="ГЏГҐГ°ГҐГЇГ®Г¤ГЄГ«ГѕГ·ГЁГІГјГ±Гї ГЄ Г±ГҐГ°ГўГҐГ°Гі",Callback=function() TeleportService:TeleportToPlaceInstance(game.PlaceId,game.JobId,LocalPlayer) end})
+    setSec:AddButton({Title="Г‘Г¬ГҐГ­ГЁГІГј Г±ГҐГ°ГўГҐГ°",Callback=function()
         pcall(function()
             local url="https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"
             local data=game:HttpGet(url)
@@ -2262,15 +2262,15 @@ do
             pcall(function() VirtualUser:Button2Down(Vector2.new(0,0),Camera.CFrame) task.wait(1) VirtualUser:Button2Up(Vector2.new(0,0),Camera.CFrame) end)
         end
     end))
-    setSec:AddButton({Title="Выгрузить скрипт",Callback=function()
+    setSec:AddButton({Title="Г‚Г»ГЈГ°ГіГ§ГЁГІГј Г±ГЄГ°ГЁГЇГІ",Callback=function()
         for _,c in pairs(Connections) do pcall(function() c:Disconnect() end) end
         Connections={}
         if HUDGui then HUDGui:Destroy() end
         if Window then pcall(function() Window:Destroy() end) end
-        Notify("FH","Скрипт выгружен",3)
+        Notify("FH","Г‘ГЄГ°ГЁГЇГІ ГўГ»ГЈГ°ГіГ¦ГҐГ­",3)
     end})
 
-    local cfgSec=tS:AddSection({Name="Конфиги"})
+    local cfgSec=tS:AddSection({Name="ГЉГ®Г­ГґГЁГЈГЁ"})
     local CONFIG_DIR="FortniHub_Configs/"
     local CONFIG_EXT=".txt"
     local function ensureConfigDir()
@@ -2374,8 +2374,8 @@ do
         return nil
     end
     local function saveConfig(name)
-        if type(writefile)~="function" then Notify("FH","Нет writefile",4) return false end
-        if not ensureConfigDir() then Notify("FH","Не создал папку",4) return false end
+        if type(writefile)~="function" then Notify("FH","ГЌГҐГІ writefile",4) return false end
+        if not ensureConfigDir() then Notify("FH","ГЌГҐ Г±Г®Г§Г¤Г Г« ГЇГ ГЇГЄГі",4) return false end
         local lines={"-- FortniHub Config: "..tostring(name),"-- "..os.date("%Y-%m-%d %H:%M:%S")}
         for optionName,option in pairs(Options) do
             if option and option.Value~=nil then
@@ -2385,15 +2385,15 @@ do
         end
         local path=CONFIG_DIR..name..CONFIG_EXT
         local ok=pcall(writefile,path,table.concat(lines,"\n"))
-        if ok then Notify("FH","Сохранено: "..name,3) return true end
-        Notify("FH","Ошибка сохранения",3)
+        if ok then Notify("FH","Г‘Г®ГµГ°Г Г­ГҐГ­Г®: "..name,3) return true end
+        Notify("FH","ГЋГёГЁГЎГЄГ  Г±Г®ГµГ°Г Г­ГҐГ­ГЁГї",3)
         return false
     end
     local function loadConfig(name)
-        if type(readfile)~="function" then Notify("FH","Нет readfile",4) return false end
+        if type(readfile)~="function" then Notify("FH","ГЌГҐГІ readfile",4) return false end
         local path=CONFIG_DIR..name..CONFIG_EXT
         local ok,data=pcall(readfile,path)
-        if not ok or type(data)~="string" then Notify("FH","Ошибка чтения",3) return false end
+        if not ok or type(data)~="string" then Notify("FH","ГЋГёГЁГЎГЄГ  Г·ГІГҐГ­ГЁГї",3) return false end
         local loaded=0
         local bindLoaded=0
         local BS = getgenv().FH_BindState
@@ -2438,48 +2438,48 @@ do
                 end
             end
         end
-        Notify("FH","Загружено: "..name.." ("..loaded..", биндов: "..bindLoaded..")",4)
+        Notify("FH","Г‡Г ГЈГ°ГіГ¦ГҐГ­Г®: "..name.." ("..loaded..", ГЎГЁГ­Г¤Г®Гў: "..bindLoaded..")",4)
         return true
     end
     local function deleteConfig(name)
-        if type(delfile)~="function" then Notify("FH","Нет delfile",4) return false end
+        if type(delfile)~="function" then Notify("FH","ГЌГҐГІ delfile",4) return false end
         local ok=pcall(delfile,CONFIG_DIR..name..CONFIG_EXT)
-        if ok then Notify("FH","Удалено: "..name,2) return true end
+        if ok then Notify("FH","Г“Г¤Г Г«ГҐГ­Г®: "..name,2) return true end
         return false
     end
     local currentList=listConfigs()
-    if #currentList==0 then currentList={"(нет конфигов)"} end
-    local drop=cfgSec:AddDropdown("ConfigPick",{Title="Выбрать конфиг",Values=currentList,Default=currentList[1]})
+    if #currentList==0 then currentList={"(Г­ГҐГІ ГЄГ®Г­ГґГЁГЈГ®Гў)"} end
+    local drop=cfgSec:AddDropdown("ConfigPick",{Title="Г‚Г»ГЎГ°Г ГІГј ГЄГ®Г­ГґГЁГЈ",Values=currentList,Default=currentList[1]})
     local function refreshList()
         local list=listConfigs()
-        if #list==0 then list={"(нет конфигов)"} end
+        if #list==0 then list={"(Г­ГҐГІ ГЄГ®Г­ГґГЁГЈГ®Гў)"} end
         pcall(function() drop:SetValues(list) if drop.Generate then drop:Generate() end end)
     end
-    cfgSec:AddInput("ConfigName",{Title="Имя конфига",Default="my_config"})
-    cfgSec:AddButton({Title="Сохранить",Callback=function()
+    cfgSec:AddInput("ConfigName",{Title="Г€Г¬Гї ГЄГ®Г­ГґГЁГЈГ ",Default="my_config"})
+    cfgSec:AddButton({Title="Г‘Г®ГµГ°Г Г­ГЁГІГј",Callback=function()
         local nameOpt=Options.ConfigName
         local name=nameOpt and nameOpt.Value or "my_config"
-        if type(name)~="string" or name=="" then Notify("FH","Введи имя",3) return end
+        if type(name)~="string" or name=="" then Notify("FH","Г‚ГўГҐГ¤ГЁ ГЁГ¬Гї",3) return end
         if saveConfig(name) then refreshList() end
     end})
-    cfgSec:AddButton({Title="Загрузить",Callback=function()
+    cfgSec:AddButton({Title="Г‡Г ГЈГ°ГіГ§ГЁГІГј",Callback=function()
         local pickOpt=Options.ConfigPick
         local name=pickOpt and pickOpt.Value
-        if type(name)~="string" or name=="" or name=="(нет конфигов)" then Notify("FH","Выбери конфиг",3) return end
+        if type(name)~="string" or name=="" or name=="(Г­ГҐГІ ГЄГ®Г­ГґГЁГЈГ®Гў)" then Notify("FH","Г‚Г»ГЎГҐГ°ГЁ ГЄГ®Г­ГґГЁГЈ",3) return end
         loadConfig(name)
     end})
-    cfgSec:AddButton({Title="Удалить",Callback=function()
+    cfgSec:AddButton({Title="Г“Г¤Г Г«ГЁГІГј",Callback=function()
         local pickOpt=Options.ConfigPick
         local name=pickOpt and pickOpt.Value
-        if type(name)~="string" or name=="" or name=="(нет конфигов)" then Notify("FH","Выбери конфиг",3) return end
+        if type(name)~="string" or name=="" or name=="(Г­ГҐГІ ГЄГ®Г­ГґГЁГЈГ®Гў)" then Notify("FH","Г‚Г»ГЎГҐГ°ГЁ ГЄГ®Г­ГґГЁГЈ",3) return end
         if deleteConfig(name) then refreshList() end
     end})
-    cfgSec:AddButton({Title="Обновить список",Callback=refreshList})
+    cfgSec:AddButton({Title="ГЋГЎГ­Г®ГўГЁГІГј Г±ГЇГЁГ±Г®ГЄ",Callback=refreshList})
     if HUDGui then HUDGui.Enabled=true end
 end
 
 -- ============================================================
--- ESP И ВИЗУАЛЫ
+-- ESP Г€ Г‚Г€Г‡Г“ГЂГ‹Г›
 -- ============================================================
 do
     local espState={
@@ -2940,68 +2940,68 @@ do
     end)
     Players.PlayerRemoving:Connect(function(p) killCham(p) end)
     local tV=Tabs.Visual
-    local espSec=tV:AddSection({Name="ESP Игроков"})
-    addOpt(espSec, "AddToggle", "ESPOn", {Title="Включить ESP", Default=false}, function(v)
+    local espSec=tV:AddSection({Name="ESP Г€ГЈГ°Г®ГЄГ®Гў"})
+    addOpt(espSec, "AddToggle", "ESPOn", {Title="Г‚ГЄГ«ГѕГ·ГЁГІГј ESP", Default=false}, function(v)
         espState.enabled=v
         if not v then
             for _,e in pairs(drawCache) do dispose(e) end
             drawCache={}
         end
     end)
-    addOpt(espSec, "AddToggle", "ESPBox", {Title="Рамка", Default=false}, function(v) espState.box=v end)
-    addOpt(espSec, "AddColorPicker", "ESPBoxCol", {Title="Цвет рамки", Default=Color3.new(1,1,1)}, function(c) espState.boxCol[1]=c end)
-    addOpt(espSec, "AddSlider", "ESPBoxAlpha", {Title="Прозрачность рамки", Min=0, Max=1, Default=1, Rounding=2}, function(v) espState.boxCol[2]=tonumber(v) or 1 end)
-    addOpt(espSec, "AddDropdown", "ESPBoxType", {Title="Тип рамки", Values={"Прямоугольник","Уголки"}, Default="Прямоугольник"}, function(v) espState.boxType=(v=="Уголки") and "Corners" or "Static" end)
-    addOpt(espSec, "AddToggle", "ESPBoxGrd", {Title="Градиент рамки", Default=false}, function(v) espState.boxGrd=v end)
-    addOpt(espSec, "AddColorPicker", "ESPBoxGrd1", {Title="Цвет 1", Default=Color3.fromRGB(255,60,60)}, function(c) espState.boxGrd1=c end)
-    addOpt(espSec, "AddColorPicker", "ESPBoxGrd2", {Title="Цвет 2", Default=Color3.fromRGB(255,180,60)}, function(c) espState.boxGrd2=c end)
-    addOpt(espSec, "AddToggle", "ESPBoxFill", {Title="Заливка", Default=false}, function(v) espState.boxFill=v end)
-    addOpt(espSec, "AddColorPicker", "ESPBoxFillCol", {Title="Цвет заливки", Default=Color3.fromRGB(255,60,60)}, function(c) espState.boxFillCol[1]=c end)
-    addOpt(espSec, "AddSlider", "ESPBoxFillAlpha", {Title="Прозрачность заливки", Min=0, Max=1, Default=0.5, Rounding=2}, function(v) espState.boxFillCol[2]=tonumber(v) or 0.5 end)
-    addOpt(espSec, "AddToggle", "ESPName", {Title="Имя", Default=false}, function(v) espState.name=v end)
-    addOpt(espSec, "AddColorPicker", "ESPNameCol", {Title="Цвет имени", Default=Color3.new(1,1,1)}, function(c) espState.nameCol[1]=c end)
-    addOpt(espSec, "AddToggle", "ESPDist", {Title="Дистанция", Default=false}, function(v) espState.dist=v end)
-    addOpt(espSec, "AddColorPicker", "ESPDistCol", {Title="Цвет дистанции", Default=Color3.fromRGB(220,220,220)}, function(c) espState.distCol[1]=c end)
-    addOpt(espSec, "AddToggle", "ESPAvatar", {Title="Аватарка", Default=false}, function(v) espState.avatar=v end)
-    addOpt(espSec, "AddToggle", "ESPSkel", {Title="Скелет", Default=false}, function(v) espState.skel=v end)
-    addOpt(espSec, "AddColorPicker", "ESPSkelCol", {Title="Цвет скелета", Default=Color3.new(1,1,1)}, function(c) espState.skelCol[1]=c end)
-    addOpt(espSec, "AddToggle", "ESPChams", {Title="Свечение", Default=false}, function(v) espState.chams=v end)
+    addOpt(espSec, "AddToggle", "ESPBox", {Title="ГђГ Г¬ГЄГ ", Default=false}, function(v) espState.box=v end)
+    addOpt(espSec, "AddColorPicker", "ESPBoxCol", {Title="Г–ГўГҐГІ Г°Г Г¬ГЄГЁ", Default=Color3.new(1,1,1)}, function(c) espState.boxCol[1]=c end)
+    addOpt(espSec, "AddSlider", "ESPBoxAlpha", {Title="ГЏГ°Г®Г§Г°Г Г·Г­Г®Г±ГІГј Г°Г Г¬ГЄГЁ", Min=0, Max=1, Default=1, Rounding=2}, function(v) espState.boxCol[2]=tonumber(v) or 1 end)
+    addOpt(espSec, "AddDropdown", "ESPBoxType", {Title="Г’ГЁГЇ Г°Г Г¬ГЄГЁ", Values={"ГЏГ°ГїГ¬Г®ГіГЈГ®Г«ГјГ­ГЁГЄ","Г“ГЈГ®Г«ГЄГЁ"}, Default="ГЏГ°ГїГ¬Г®ГіГЈГ®Г«ГјГ­ГЁГЄ"}, function(v) espState.boxType=(v=="Г“ГЈГ®Г«ГЄГЁ") and "Corners" or "Static" end)
+    addOpt(espSec, "AddToggle", "ESPBoxGrd", {Title="ГѓГ°Г Г¤ГЁГҐГ­ГІ Г°Г Г¬ГЄГЁ", Default=false}, function(v) espState.boxGrd=v end)
+    addOpt(espSec, "AddColorPicker", "ESPBoxGrd1", {Title="Г–ГўГҐГІ 1", Default=Color3.fromRGB(255,60,60)}, function(c) espState.boxGrd1=c end)
+    addOpt(espSec, "AddColorPicker", "ESPBoxGrd2", {Title="Г–ГўГҐГІ 2", Default=Color3.fromRGB(255,180,60)}, function(c) espState.boxGrd2=c end)
+    addOpt(espSec, "AddToggle", "ESPBoxFill", {Title="Г‡Г Г«ГЁГўГЄГ ", Default=false}, function(v) espState.boxFill=v end)
+    addOpt(espSec, "AddColorPicker", "ESPBoxFillCol", {Title="Г–ГўГҐГІ Г§Г Г«ГЁГўГЄГЁ", Default=Color3.fromRGB(255,60,60)}, function(c) espState.boxFillCol[1]=c end)
+    addOpt(espSec, "AddSlider", "ESPBoxFillAlpha", {Title="ГЏГ°Г®Г§Г°Г Г·Г­Г®Г±ГІГј Г§Г Г«ГЁГўГЄГЁ", Min=0, Max=1, Default=0.5, Rounding=2}, function(v) espState.boxFillCol[2]=tonumber(v) or 0.5 end)
+    addOpt(espSec, "AddToggle", "ESPName", {Title="Г€Г¬Гї", Default=false}, function(v) espState.name=v end)
+    addOpt(espSec, "AddColorPicker", "ESPNameCol", {Title="Г–ГўГҐГІ ГЁГ¬ГҐГ­ГЁ", Default=Color3.new(1,1,1)}, function(c) espState.nameCol[1]=c end)
+    addOpt(espSec, "AddToggle", "ESPDist", {Title="Г„ГЁГ±ГІГ Г­Г¶ГЁГї", Default=false}, function(v) espState.dist=v end)
+    addOpt(espSec, "AddColorPicker", "ESPDistCol", {Title="Г–ГўГҐГІ Г¤ГЁГ±ГІГ Г­Г¶ГЁГЁ", Default=Color3.fromRGB(220,220,220)}, function(c) espState.distCol[1]=c end)
+    addOpt(espSec, "AddToggle", "ESPAvatar", {Title="ГЂГўГ ГІГ Г°ГЄГ ", Default=false}, function(v) espState.avatar=v end)
+    addOpt(espSec, "AddToggle", "ESPSkel", {Title="Г‘ГЄГҐГ«ГҐГІ", Default=false}, function(v) espState.skel=v end)
+    addOpt(espSec, "AddColorPicker", "ESPSkelCol", {Title="Г–ГўГҐГІ Г±ГЄГҐГ«ГҐГІГ ", Default=Color3.new(1,1,1)}, function(c) espState.skelCol[1]=c end)
+    addOpt(espSec, "AddToggle", "ESPChams", {Title="Г‘ГўГҐГ·ГҐГ­ГЁГҐ", Default=false}, function(v) espState.chams=v end)
     local function chamsPair(prefix,role,defFill,defOut)
-        addOpt(espSec, "AddColorPicker", "ChamsF"..prefix, {Title=role.." заливка", Default=defFill}, function(c) espState["chamsF"..prefix][1]=c end)
-        addOpt(espSec, "AddSlider", "ChamsFA"..prefix, {Title=role.." прозр", Min=0, Max=1, Default=0.55, Rounding=2}, function(v) espState["chamsF"..prefix][2]=tonumber(v) or 0.55 end)
-        addOpt(espSec, "AddColorPicker", "ChamsO"..prefix, {Title=role.." обводка", Default=defOut}, function(c) espState["chamsO"..prefix][1]=c end)
-        addOpt(espSec, "AddSlider", "ChamsOA"..prefix, {Title=role.." прозр обводки", Min=0, Max=1, Default=0.15, Rounding=2}, function(v) espState["chamsO"..prefix][2]=tonumber(v) or 0.15 end)
+        addOpt(espSec, "AddColorPicker", "ChamsF"..prefix, {Title=role.." Г§Г Г«ГЁГўГЄГ ", Default=defFill}, function(c) espState["chamsF"..prefix][1]=c end)
+        addOpt(espSec, "AddSlider", "ChamsFA"..prefix, {Title=role.." ГЇГ°Г®Г§Г°", Min=0, Max=1, Default=0.55, Rounding=2}, function(v) espState["chamsF"..prefix][2]=tonumber(v) or 0.55 end)
+        addOpt(espSec, "AddColorPicker", "ChamsO"..prefix, {Title=role.." Г®ГЎГўГ®Г¤ГЄГ ", Default=defOut}, function(c) espState["chamsO"..prefix][1]=c end)
+        addOpt(espSec, "AddSlider", "ChamsOA"..prefix, {Title=role.." ГЇГ°Г®Г§Г° Г®ГЎГўГ®Г¤ГЄГЁ", Min=0, Max=1, Default=0.15, Rounding=2}, function(v) espState["chamsO"..prefix][2]=tonumber(v) or 0.15 end)
     end
-    chamsPair("Mur","Убийца",Color3.fromRGB(255,60,60),Color3.fromRGB(255,120,120))
-    chamsPair("Inno","Мирный",Color3.new(1,1,1),Color3.new(1,1,1))
-    chamsPair("Shf","Шериф",Color3.fromRGB(0,153,255),Color3.fromRGB(120,200,255))
-    chamsPair("Hero","Герой",Color3.fromRGB(255,215,0),Color3.fromRGB(255,240,140))
-    addOpt(espSec, "AddToggle", "ESPMatChams", {Title="Материал-чамсы", Default=false}, function(v) espState.matChams=v end)
-    addOpt(espSec, "AddDropdown", "ESPMatType", {Title="Материал", Values={"ForceField","Flat","Chromatic"}, Default="ForceField"}, function(v) espState.matType=v end)
-    addOpt(espSec, "AddColorPicker", "ESPMatMur", {Title="Убийца", Default=Color3.fromRGB(255,60,60)}, function(c) espState.matColMur=c end)
-    addOpt(espSec, "AddColorPicker", "ESPMatInno", {Title="Мирный", Default=Color3.new(1,1,1)}, function(c) espState.matColInno=c end)
-    addOpt(espSec, "AddColorPicker", "ESPMatShf", {Title="Шериф", Default=Color3.fromRGB(0,153,255)}, function(c) espState.matColShf=c end)
-    addOpt(espSec, "AddColorPicker", "ESPMatHero", {Title="Герой", Default=Color3.fromRGB(255,215,0)}, function(c) espState.matColHero=c end)
-    addOpt(espSec, "AddToggle", "ESPFlags", {Title="Метки ролей", Default=false}, function(v) espState.flags=v end)
-    addOpt(espSec, "AddToggle", "ESPArrows", {Title="Стрелки", Default=false}, function(v) espState.arrows=v end)
-    addOpt(espSec, "AddColorPicker", "ESPArrMur", {Title="Убийца", Default=Color3.fromRGB(255,60,60)}, function(c) espState.arrowMur=c end)
-    addOpt(espSec, "AddColorPicker", "ESPArrInno", {Title="Мирный", Default=Color3.new(1,1,1)}, function(c) espState.arrowInno=c end)
-    addOpt(espSec, "AddColorPicker", "ESPArrShf", {Title="Шериф", Default=Color3.fromRGB(0,153,255)}, function(c) espState.arrowShf=c end)
-    addOpt(espSec, "AddColorPicker", "ESPArrHero", {Title="Герой", Default=Color3.fromRGB(255,215,0)}, function(c) espState.arrowHero=c end)
-    addOpt(espSec, "AddSlider", "ESPArrSz", {Title="Размер стрелок", Min=16, Max=96, Default=42, Rounding=0}, function(v) espState.arrowSize=tonumber(v) or 42 end)
-    addOpt(espSec, "AddSlider", "ESPArrDist", {Title="Дистанция стрелок", Min=40, Max=520, Default=260, Rounding=0}, function(v) espState.arrowDist=tonumber(v) or 260 end)
-    addOpt(espSec, "AddSlider", "ESPMaxDist", {Title="Макс дистанция ESP", Min=50, Max=1000, Default=500, Rounding=0}, function(v) espState.maxDist=tonumber(v) or 500 end)
-    addOpt(espSec, "AddToggle", "ESPAllowLocal", {Title="Показывать себя", Default=false}, function(v) espState.allowLocal=v end)
-    local gunSec=tV:AddSection({Name="ESP Пистолета"})
-    addOpt(gunSec, "AddToggle", "GunEspOn", {Title="ESP пистолета", Default=false}, function(v)
+    chamsPair("Mur","Г“ГЎГЁГ©Г¶Г ",Color3.fromRGB(255,60,60),Color3.fromRGB(255,120,120))
+    chamsPair("Inno","ГЊГЁГ°Г­Г»Г©",Color3.new(1,1,1),Color3.new(1,1,1))
+    chamsPair("Shf","ГГҐГ°ГЁГґ",Color3.fromRGB(0,153,255),Color3.fromRGB(120,200,255))
+    chamsPair("Hero","ГѓГҐГ°Г®Г©",Color3.fromRGB(255,215,0),Color3.fromRGB(255,240,140))
+    addOpt(espSec, "AddToggle", "ESPMatChams", {Title="ГЊГ ГІГҐГ°ГЁГ Г«-Г·Г Г¬Г±Г»", Default=false}, function(v) espState.matChams=v end)
+    addOpt(espSec, "AddDropdown", "ESPMatType", {Title="ГЊГ ГІГҐГ°ГЁГ Г«", Values={"ForceField","Flat","Chromatic"}, Default="ForceField"}, function(v) espState.matType=v end)
+    addOpt(espSec, "AddColorPicker", "ESPMatMur", {Title="Г“ГЎГЁГ©Г¶Г ", Default=Color3.fromRGB(255,60,60)}, function(c) espState.matColMur=c end)
+    addOpt(espSec, "AddColorPicker", "ESPMatInno", {Title="ГЊГЁГ°Г­Г»Г©", Default=Color3.new(1,1,1)}, function(c) espState.matColInno=c end)
+    addOpt(espSec, "AddColorPicker", "ESPMatShf", {Title="ГГҐГ°ГЁГґ", Default=Color3.fromRGB(0,153,255)}, function(c) espState.matColShf=c end)
+    addOpt(espSec, "AddColorPicker", "ESPMatHero", {Title="ГѓГҐГ°Г®Г©", Default=Color3.fromRGB(255,215,0)}, function(c) espState.matColHero=c end)
+    addOpt(espSec, "AddToggle", "ESPFlags", {Title="ГЊГҐГІГЄГЁ Г°Г®Г«ГҐГ©", Default=false}, function(v) espState.flags=v end)
+    addOpt(espSec, "AddToggle", "ESPArrows", {Title="Г‘ГІГ°ГҐГ«ГЄГЁ", Default=false}, function(v) espState.arrows=v end)
+    addOpt(espSec, "AddColorPicker", "ESPArrMur", {Title="Г“ГЎГЁГ©Г¶Г ", Default=Color3.fromRGB(255,60,60)}, function(c) espState.arrowMur=c end)
+    addOpt(espSec, "AddColorPicker", "ESPArrInno", {Title="ГЊГЁГ°Г­Г»Г©", Default=Color3.new(1,1,1)}, function(c) espState.arrowInno=c end)
+    addOpt(espSec, "AddColorPicker", "ESPArrShf", {Title="ГГҐГ°ГЁГґ", Default=Color3.fromRGB(0,153,255)}, function(c) espState.arrowShf=c end)
+    addOpt(espSec, "AddColorPicker", "ESPArrHero", {Title="ГѓГҐГ°Г®Г©", Default=Color3.fromRGB(255,215,0)}, function(c) espState.arrowHero=c end)
+    addOpt(espSec, "AddSlider", "ESPArrSz", {Title="ГђГ Г§Г¬ГҐГ° Г±ГІГ°ГҐГ«Г®ГЄ", Min=16, Max=96, Default=42, Rounding=0}, function(v) espState.arrowSize=tonumber(v) or 42 end)
+    addOpt(espSec, "AddSlider", "ESPArrDist", {Title="Г„ГЁГ±ГІГ Г­Г¶ГЁГї Г±ГІГ°ГҐГ«Г®ГЄ", Min=40, Max=520, Default=260, Rounding=0}, function(v) espState.arrowDist=tonumber(v) or 260 end)
+    addOpt(espSec, "AddSlider", "ESPMaxDist", {Title="ГЊГ ГЄГ± Г¤ГЁГ±ГІГ Г­Г¶ГЁГї ESP", Min=50, Max=1000, Default=500, Rounding=0}, function(v) espState.maxDist=tonumber(v) or 500 end)
+    addOpt(espSec, "AddToggle", "ESPAllowLocal", {Title="ГЏГ®ГЄГ Г§Г»ГўГ ГІГј Г±ГҐГЎГї", Default=false}, function(v) espState.allowLocal=v end)
+    local gunSec=tV:AddSection({Name="ESP ГЏГЁГ±ГІГ®Г«ГҐГІГ "})
+    addOpt(gunSec, "AddToggle", "GunEspOn", {Title="ESP ГЇГЁГ±ГІГ®Г«ГҐГІГ ", Default=false}, function(v)
         espState.gunEspOn=v
         if v then collectCandidates() else clearGuns() end
     end)
-    addOpt(gunSec, "AddToggle", "GunTextOn", {Title="Текст", Default=false}, function(v) espState.gunTextOn=v end)
-    addOpt(gunSec, "AddColorPicker", "GunTextCol", {Title="Цвет текста", Default=Color3.new(1,1,1)}, function(c) espState.gunTextCol=c end)
-    addOpt(gunSec, "AddToggle", "GunHlOn", {Title="Обводка", Default=false}, function(v) espState.gunHlOn=v end)
-    addOpt(gunSec, "AddColorPicker", "GunHlCol", {Title="Цвет обводки", Default=Color3.new(1,1,1)}, function(c) espState.gunHlCol=c end)
-    local camSec=tV:AddSection({Name="Камера"})
+    addOpt(gunSec, "AddToggle", "GunTextOn", {Title="Г’ГҐГЄГ±ГІ", Default=false}, function(v) espState.gunTextOn=v end)
+    addOpt(gunSec, "AddColorPicker", "GunTextCol", {Title="Г–ГўГҐГІ ГІГҐГЄГ±ГІГ ", Default=Color3.new(1,1,1)}, function(c) espState.gunTextCol=c end)
+    addOpt(gunSec, "AddToggle", "GunHlOn", {Title="ГЋГЎГўГ®Г¤ГЄГ ", Default=false}, function(v) espState.gunHlOn=v end)
+    addOpt(gunSec, "AddColorPicker", "GunHlCol", {Title="Г–ГўГҐГІ Г®ГЎГўГ®Г¤ГЄГЁ", Default=Color3.new(1,1,1)}, function(c) espState.gunHlCol=c end)
+    local camSec=tV:AddSection({Name="ГЉГ Г¬ГҐГ°Г "})
     local ratioOn,ratioValue=false,100
     local aspectMul=CFrame.new(0,0,0,1,0,0,0,1,0,0,0,1)
     RunService:BindToRenderStep("FH_aspect",Enum.RenderPriority.Camera.Value+1,function()
@@ -3010,7 +3010,7 @@ do
         if cam then cam.CFrame=cam.CFrame*aspectMul end
     end)
     addOpt(camSec, "AddToggle", "AspectOn", {Title="Aspect ratio", Default=false}, function(v) ratioOn=v end)
-    addOpt(camSec, "AddSlider", "AspectVal", {Title="Значение", Min=1, Max=100, Default=100, Rounding=0}, function(v)
+    addOpt(camSec, "AddSlider", "AspectVal", {Title="Г‡Г­Г Г·ГҐГ­ГЁГҐ", Min=1, Max=100, Default=100, Rounding=0}, function(v)
         ratioValue=tonumber(v) or 100
         aspectMul=CFrame.new(0,0,0,1,0,0,0,ratioValue/100,0,0,0,1)
     end)
@@ -3020,7 +3020,7 @@ do
         local cam=Workspace.CurrentCamera
         if cam and cam.FieldOfView~=fovValue then cam.FieldOfView=fovValue end
     end)
-    addOpt(camSec, "AddToggle", "FovOn", {Title="Своё FOV", Default=false}, function(v)
+    addOpt(camSec, "AddToggle", "FovOn", {Title="Г‘ГўГ®Вё FOV", Default=false}, function(v)
         fovOn=v
         local cam=Workspace.CurrentCamera
         if v then if cam then fovOrig=cam.FieldOfView cam.FieldOfView=fovValue end
@@ -3036,10 +3036,10 @@ do
 end
 
 -- ============================================================
--- СВОИ ВИЗУАЛЫ
+-- Г‘Г‚ГЋГ€ Г‚Г€Г‡Г“ГЂГ‹Г›
 -- ============================================================
 do
-    local lvSec=Tabs.Visual:AddSection({Name="Свои визуалы"})
+    local lvSec=Tabs.Visual:AddSection({Name="Г‘ГўГ®ГЁ ГўГЁГ§ГіГ Г«Г»"})
     local chGui=Instance.new("ScreenGui")
     chGui.Name="FH_ChinaHat_v21"
     chGui.ResetOnSpawn=false
@@ -3162,8 +3162,8 @@ do
             if chRows[i].Visible then chRows[i].Visible=false end
         end
     end)
-    addOpt(lvSec, "AddToggle", "ChinaHatOn", {Title="Китайская шляпа", Default=false}, function(v) chOn=v end)
-    addOpt(lvSec, "AddColorPicker", "ChinaHatCol", {Title="Цвет", Default=Color3.fromRGB(170,85,255)}, function(c) chCol=c end)
+    addOpt(lvSec, "AddToggle", "ChinaHatOn", {Title="ГЉГЁГІГ Г©Г±ГЄГ Гї ГёГ«ГїГЇГ ", Default=false}, function(v) chOn=v end)
+    addOpt(lvSec, "AddColorPicker", "ChinaHatCol", {Title="Г–ГўГҐГІ", Default=Color3.fromRGB(170,85,255)}, function(c) chCol=c end)
 
     local btOn,btCol=false,Color3.fromRGB(255,60,60)
     local btModel=nil
@@ -3248,7 +3248,7 @@ do
             end
         end
     end
-    addOpt(lvSec, "AddToggle", "BacktrackOn", {Title="Бэктрек", Default=false}, function(v)
+    addOpt(lvSec, "AddToggle", "BacktrackOn", {Title="ГЃГЅГЄГІГ°ГҐГЄ", Default=false}, function(v)
         btOn=v
         if v then
             if not _G.FH_BT_CONN then
@@ -3257,7 +3257,7 @@ do
             if not btModel then btBuild() end
         else btKill() end
     end)
-    addOpt(lvSec, "AddColorPicker", "BacktrackCol", {Title="Цвет", Default=Color3.fromRGB(255,60,60)}, function(c)
+    addOpt(lvSec, "AddColorPicker", "BacktrackCol", {Title="Г–ГўГҐГІ", Default=Color3.fromRGB(255,60,60)}, function(c)
         btCol=c
         if btModel then
             for _,p in ipairs(btModel:GetDescendants()) do
@@ -3328,14 +3328,14 @@ do
             end
         end)
     end
-    addOpt(lvSec, "AddToggle", "LandCircleOn", {Title="Круг падения", Default=false}, function(v)
+    addOpt(lvSec, "AddToggle", "LandCircleOn", {Title="ГЉГ°ГіГЈ ГЇГ Г¤ГҐГ­ГЁГї", Default=false}, function(v)
         lcOn=v
         if v then lcBind()
         elseif lcConn then pcall(function() lcConn:Disconnect() end) lcConn=nil end
     end)
-    addOpt(lvSec, "AddColorPicker", "LandCircleCol", {Title="Цвет", Default=Color3.new(1,1,1)}, function(c) lcCol=c end)
-    addOpt(lvSec, "AddSlider", "LandCircleTr", {Title="Прозрачность", Min=0, Max=1, Default=1, Rounding=2}, function(v) lcTr=tonumber(v) or 1 end)
-    addOpt(lvSec, "AddSlider", "LandCircleDur", {Title="Длительность", Min=0.1, Max=3, Default=0.82, Rounding=2}, function(v) lcDur=tonumber(v) or 0.82 end)
+    addOpt(lvSec, "AddColorPicker", "LandCircleCol", {Title="Г–ГўГҐГІ", Default=Color3.new(1,1,1)}, function(c) lcCol=c end)
+    addOpt(lvSec, "AddSlider", "LandCircleTr", {Title="ГЏГ°Г®Г§Г°Г Г·Г­Г®Г±ГІГј", Min=0, Max=1, Default=1, Rounding=2}, function(v) lcTr=tonumber(v) or 1 end)
+    addOpt(lvSec, "AddSlider", "LandCircleDur", {Title="Г„Г«ГЁГІГҐГ«ГјГ­Г®Г±ГІГј", Min=0.1, Max=3, Default=0.82, Rounding=2}, function(v) lcDur=tonumber(v) or 0.82 end)
 
     local mgOn,mgCol=false,Color3.fromRGB(242,242,242)
     local mgWidth,mgHeight,mgOffset=280,72,180
@@ -3442,17 +3442,17 @@ do
             mgCurrent.Visible=true
         end)
     end
-    addOpt(lvSec, "AddToggle", "MovGraphOn", {Title="График скорости", Default=false}, function(v)
+    addOpt(lvSec, "AddToggle", "MovGraphOn", {Title="ГѓГ°Г ГґГЁГЄ Г±ГЄГ®Г°Г®Г±ГІГЁ", Default=false}, function(v)
         mgOn=v
         if v then mgStart() else mgClear() end
     end)
-    addOpt(lvSec, "AddColorPicker", "MovGraphCol", {Title="Цвет", Default=Color3.fromRGB(242,242,242)}, function(c)
+    addOpt(lvSec, "AddColorPicker", "MovGraphCol", {Title="Г–ГўГҐГІ", Default=Color3.fromRGB(242,242,242)}, function(c)
         mgCol=c
         for i=1,#mgLines do mgLines[i].Color=c end
     end)
-    addOpt(lvSec, "AddSlider", "MovGraphW", {Title="Ширина", Min=180, Max=420, Default=280, Rounding=0}, function(v) mgWidth=tonumber(v) or 280 end)
-    addOpt(lvSec, "AddSlider", "MovGraphH", {Title="Высота", Min=40, Max=120, Default=72, Rounding=0}, function(v) mgHeight=tonumber(v) or 72 end)
-    addOpt(lvSec, "AddSlider", "MovGraphY", {Title="Смещение Y", Min=-200, Max=400, Default=180, Rounding=0}, function(v) mgOffset=tonumber(v) or 180 end)
+    addOpt(lvSec, "AddSlider", "MovGraphW", {Title="ГГЁГ°ГЁГ­Г ", Min=180, Max=420, Default=280, Rounding=0}, function(v) mgWidth=tonumber(v) or 280 end)
+    addOpt(lvSec, "AddSlider", "MovGraphH", {Title="Г‚Г»Г±Г®ГІГ ", Min=40, Max=120, Default=72, Rounding=0}, function(v) mgHeight=tonumber(v) or 72 end)
+    addOpt(lvSec, "AddSlider", "MovGraphY", {Title="Г‘Г¬ГҐГ№ГҐГ­ГЁГҐ Y", Min=-200, Max=400, Default=180, Rounding=0}, function(v) mgOffset=tonumber(v) or 180 end)
 
     local chOn2,chCol2=false,Color3.new(1,1,1)
     local chLines={}
@@ -3485,11 +3485,11 @@ do
             chLines[i].Visible=true
         end
     end)
-    addOpt(lvSec, "AddToggle", "CrosshairOn", {Title="Прицел", Default=false}, function(v)
+    addOpt(lvSec, "AddToggle", "CrosshairOn", {Title="ГЏГ°ГЁГ¶ГҐГ«", Default=false}, function(v)
         chOn2=v
         pcall(function() UserInputService.MouseIconEnabled=not v end)
     end)
-    addOpt(lvSec, "AddColorPicker", "CrosshairCol", {Title="Цвет", Default=Color3.new(1,1,1)}, function(c) chCol2=c end)
+    addOpt(lvSec, "AddColorPicker", "CrosshairCol", {Title="Г–ГўГҐГІ", Default=Color3.new(1,1,1)}, function(c) chCol2=c end)
 
     local scOn,scType,scCol=false,"ForceField",Color3.fromRGB(0,200,255)
     local scCache={}
@@ -3523,14 +3523,14 @@ do
             end
         end
     end
-    addOpt(lvSec, "AddToggle", "SelfChamsOn", {Title="Чамсы на себе", Default=false}, function(v)
+    addOpt(lvSec, "AddToggle", "SelfChamsOn", {Title="Г—Г Г¬Г±Г» Г­Г  Г±ГҐГЎГҐ", Default=false}, function(v)
         scOn=v
         if v then
             if not scConn then scConn=RunService.Heartbeat:Connect(function() if scOn then scApply() end end) end
         else scRestore() end
     end)
-    addOpt(lvSec, "AddDropdown", "SelfChamsType", {Title="Пресет", Values={"ForceField","Flat","Chromatic"}, Default="ForceField"}, function(v) scType=v end)
-    addOpt(lvSec, "AddColorPicker", "SelfChamsCol", {Title="Цвет", Default=Color3.fromRGB(0,200,255)}, function(c) scCol=c end)
+    addOpt(lvSec, "AddDropdown", "SelfChamsType", {Title="ГЏГ°ГҐГ±ГҐГІ", Values={"ForceField","Flat","Chromatic"}, Default="ForceField"}, function(v) scType=v end)
+    addOpt(lvSec, "AddColorPicker", "SelfChamsCol", {Title="Г–ГўГҐГІ", Default=Color3.fromRGB(0,200,255)}, function(c) scCol=c end)
 
     local tcOn,tcType,tcCol=false,"ForceField",Color3.fromRGB(255,200,0)
     local tcCache={}
@@ -3568,29 +3568,29 @@ do
             end
         end
     end
-    addOpt(lvSec, "AddToggle", "ToolChamsOn", {Title="Чамсы оружия", Default=false}, function(v)
+    addOpt(lvSec, "AddToggle", "ToolChamsOn", {Title="Г—Г Г¬Г±Г» Г®Г°ГіГ¦ГЁГї", Default=false}, function(v)
         tcOn=v
         if v then
             if not tcConn then tcConn=RunService.Heartbeat:Connect(function() if tcOn then tcApply() end end) end
         else tcRestore() end
     end)
-    addOpt(lvSec, "AddDropdown", "ToolChamsType", {Title="Пресет", Values={"ForceField","Flat","Chromatic"}, Default="ForceField"}, function(v) tcType=v end)
-    addOpt(lvSec, "AddColorPicker", "ToolChamsCol", {Title="Цвет", Default=Color3.fromRGB(255,200,0)}, function(c) tcCol=c end)
+    addOpt(lvSec, "AddDropdown", "ToolChamsType", {Title="ГЏГ°ГҐГ±ГҐГІ", Values={"ForceField","Flat","Chromatic"}, Default="ForceField"}, function(v) tcType=v end)
+    addOpt(lvSec, "AddColorPicker", "ToolChamsCol", {Title="Г–ГўГҐГІ", Default=Color3.fromRGB(255,200,0)}, function(c) tcCol=c end)
 
     -- ============================================================
-    -- МОДЕЛЬ ОРУЖИЯ
+    -- ГЊГЋГ„Г…Г‹Гњ ГЋГђГ“Г†Г€Гџ
     -- ============================================================
-    local wmSec=Tabs.Visual:AddSection({Name="Модель оружия"})
+    local wmSec=Tabs.Visual:AddSection({Name="ГЊГ®Г¤ГҐГ«Гј Г®Г°ГіГ¦ГЁГї"})
     local WM_PRESETS = {
-        ["Нож"]={mesh="rbxassetid://161064389",texture="rbxassetid://161064385",scale=1},
-        ["Пистолет"]={mesh="rbxassetid://147273448",texture="rbxassetid://147273447",scale=1},
+        ["ГЌГ®Г¦"]={mesh="rbxassetid://161064389",texture="rbxassetid://161064385",scale=1},
+        ["ГЏГЁГ±ГІГ®Г«ГҐГІ"]={mesh="rbxassetid://147273448",texture="rbxassetid://147273447",scale=1},
         ["AWP"]={mesh="rbxassetid://147273448",texture="rbxassetid://147273447",scale=1.2},
         ["Katana"]={mesh="rbxassetid://176592070",texture="rbxassetid://176592069",scale=1.1},
-        ["Меч"]={mesh="rbxassetid://105704067",texture="rbxassetid://105704066",scale=1.1},
-        ["Кувалда"]={mesh="rbxassetid://161064389",texture="rbxassetid://161064385",scale=1.3},
+        ["ГЊГҐГ·"]={mesh="rbxassetid://105704067",texture="rbxassetid://105704066",scale=1.1},
+        ["ГЉГіГўГ Г«Г¤Г "]={mesh="rbxassetid://161064389",texture="rbxassetid://161064385",scale=1.3},
     }
-    local WM_NAMES = {"Нож","Пистолет","AWP","Katana","Меч","Кувалда"}
-    local wmOn,wmSlot,wmPreset=false,"Knife","Нож"
+    local WM_NAMES = {"ГЌГ®Г¦","ГЏГЁГ±ГІГ®Г«ГҐГІ","AWP","Katana","ГЊГҐГ·","ГЉГіГўГ Г«Г¤Г "}
+    local wmOn,wmSlot,wmPreset=false,"Knife","ГЌГ®Г¦"
     local wmCache={}
     local function wmRestore()
         for part,data in pairs(wmCache) do
@@ -3657,7 +3657,7 @@ do
         end)
     end
     local wmConn=nil
-    addOpt(wmSec, "AddToggle", "WeaponModelOn", {Title="Заменить модель", Default=false}, function(v)
+    addOpt(wmSec, "AddToggle", "WeaponModelOn", {Title="Г‡Г Г¬ГҐГ­ГЁГІГј Г¬Г®Г¤ГҐГ«Гј", Default=false}, function(v)
         wmOn=v
         if v then
             if not wmConn then
@@ -3669,12 +3669,12 @@ do
             wmRestore()
         end
     end)
-    addOpt(wmSec, "AddDropdown", "WeaponModelSlot", {Title="Слот", Values={"Knife","Gun","Sword","Hammer"}, Default="Knife"}, function(v) wmSlot=v end)
-    addOpt(wmSec, "AddDropdown", "WeaponModelPreset", {Title="Модель", Values=WM_NAMES, Default="Нож"}, function(v)
+    addOpt(wmSec, "AddDropdown", "WeaponModelSlot", {Title="Г‘Г«Г®ГІ", Values={"Knife","Gun","Sword","Hammer"}, Default="Knife"}, function(v) wmSlot=v end)
+    addOpt(wmSec, "AddDropdown", "WeaponModelPreset", {Title="ГЊГ®Г¤ГҐГ«Гј", Values=WM_NAMES, Default="ГЌГ®Г¦"}, function(v)
         wmPreset=v
         if wmOn then task.spawn(wmApply) end
     end)
-    wmSec:AddButton({Title="Применить",Callback=function()
+    wmSec:AddButton({Title="ГЏГ°ГЁГ¬ГҐГ­ГЁГІГј",Callback=function()
         if wmOn then pcall(wmApply) end
     end})
     LocalPlayer.CharacterAdded:Connect(function()
@@ -3684,11 +3684,11 @@ do
 end
 
 -- ============================================================
--- ЭФФЕКТЫ
+-- ГќГ”Г”Г…ГЉГ’Г›
 -- ============================================================
 do
     local tE=Tabs.Effects
-    local tracerSec=tE:AddSection({Name="Трассер пули"})
+    local tracerSec=tE:AddSection({Name="Г’Г°Г Г±Г±ГҐГ° ГЇГіГ«ГЁ"})
     local tracerOn,tracerCol,tracerDur=false,Color3.fromRGB(133,220,255),1
     local tracerTrackBullet=true
     local function makePoint(pos,life)
@@ -3783,15 +3783,15 @@ do
             else createGunTracer() end
         end)
     end
-    addOpt(tracerSec, "AddToggle", "TracerOn", {Title="Включить трассер", Default=false}, function(v)
+    addOpt(tracerSec, "AddToggle", "TracerOn", {Title="Г‚ГЄГ«ГѕГ·ГЁГІГј ГІГ°Г Г±Г±ГҐГ°", Default=false}, function(v)
         tracerOn=v
         if v then connectTracer() end
     end)
-    addOpt(tracerSec, "AddToggle", "TracerTrackBullet", {Title="Отслеживание пуль", Default=true}, function(v) tracerTrackBullet=v end)
-    addOpt(tracerSec, "AddColorPicker", "TracerCol", {Title="Цвет", Default=Color3.fromRGB(133,220,255)}, function(c) tracerCol=c end)
-    addOpt(tracerSec, "AddSlider", "TracerDur", {Title="Длительность", Min=0.1, Max=5, Default=1, Rounding=1}, function(v) tracerDur=tonumber(v) or 1 end)
+    addOpt(tracerSec, "AddToggle", "TracerTrackBullet", {Title="ГЋГІГ±Г«ГҐГ¦ГЁГўГ Г­ГЁГҐ ГЇГіГ«Гј", Default=true}, function(v) tracerTrackBullet=v end)
+    addOpt(tracerSec, "AddColorPicker", "TracerCol", {Title="Г–ГўГҐГІ", Default=Color3.fromRGB(133,220,255)}, function(c) tracerCol=c end)
+    addOpt(tracerSec, "AddSlider", "TracerDur", {Title="Г„Г«ГЁГІГҐГ«ГјГ­Г®Г±ГІГј", Min=0.1, Max=5, Default=1, Rounding=1}, function(v) tracerDur=tonumber(v) or 1 end)
 
-    local auraSec=tE:AddSection({Name="Аура"})
+    local auraSec=tE:AddSection({Name="ГЂГіГ°Г "})
     local auraOn,auraType,auraCol=false,"angel",Color3.fromRGB(133,220,255)
     local auraIds={angel="97658130917593",starlight="134645216613107",heavenly="139300897520961",ribbon="132069507632161",sakura="81755778619404",wind="80694081850877",flow="119913533725648",star="73754563740680"}
     local auraCache,auraParts,auraConn={},{},nil
@@ -3846,21 +3846,21 @@ do
         if auraConn then pcall(function() auraConn:Disconnect() end) auraConn=nil end
         clearAura()
     end
-    addOpt(auraSec, "AddToggle", "AuraOn", {Title="Включить ауру", Default=false}, function(v)
+    addOpt(auraSec, "AddToggle", "AuraOn", {Title="Г‚ГЄГ«ГѕГ·ГЁГІГј Г ГіГ°Гі", Default=false}, function(v)
         auraOn=v
         if v then startAura() else stopAura() end
     end)
-    addOpt(auraSec, "AddDropdown", "AuraType", {Title="Тип", Values={"angel","starlight","heavenly","ribbon","sakura","wind","flow","star"}, Default="angel"}, function(v)
+    addOpt(auraSec, "AddDropdown", "AuraType", {Title="Г’ГЁГЇ", Values={"angel","starlight","heavenly","ribbon","sakura","wind","flow","star"}, Default="angel"}, function(v)
         auraType=v
         if auraOn then task.spawn(applyAura) end
     end)
-    addOpt(auraSec, "AddColorPicker", "AuraCol", {Title="Цвет", Default=Color3.fromRGB(133,220,255)}, function(c)
+    addOpt(auraSec, "AddColorPicker", "AuraCol", {Title="Г–ГўГҐГІ", Default=Color3.fromRGB(133,220,255)}, function(c)
         auraCol=c
         for _,m in pairs(auraCache) do colorAura(m,c) end
         if auraOn then task.spawn(applyAura) end
     end)
 
-    local fxSec=tE:AddSection({Name="Эффекты мира"})
+    local fxSec=tE:AddSection({Name="ГќГґГґГҐГЄГІГ» Г¬ГЁГ°Г "})
     local fxOn,fxType,fxCol,fxRate=false,"Snow",Color3.fromRGB(150,200,255),250
     local fxPart,fxEmit,fxConn=nil,nil,nil
     local function styleFX()
@@ -3922,24 +3922,24 @@ do
             fxPart.CFrame=CFrame.new(cf.Position+flat*57+Vector3.new(0,44,0))
         end)
     end
-    addOpt(fxSec, "AddToggle", "FXOn", {Title="Включить эффекты", Default=false}, function(v)
+    addOpt(fxSec, "AddToggle", "FXOn", {Title="Г‚ГЄГ«ГѕГ·ГЁГІГј ГЅГґГґГҐГЄГІГ»", Default=false}, function(v)
         fxOn=v
         if v then startFX() else stopFX() end
     end)
-    addOpt(fxSec, "AddDropdown", "FXType", {Title="Тип", Values={"Снег","Сакура"}, Default="Снег"}, function(v)
-        fxType=(v=="Сакура") and "Sakura" or "Snow"
+    addOpt(fxSec, "AddDropdown", "FXType", {Title="Г’ГЁГЇ", Values={"Г‘Г­ГҐГЈ","Г‘Г ГЄГіГ°Г "}, Default="Г‘Г­ГҐГЈ"}, function(v)
+        fxType=(v=="Г‘Г ГЄГіГ°Г ") and "Sakura" or "Snow"
         if fxOn then styleFX() end
     end)
-    addOpt(fxSec, "AddColorPicker", "FXCol", {Title="Цвет", Default=Color3.fromRGB(150,200,255)}, function(c)
+    addOpt(fxSec, "AddColorPicker", "FXCol", {Title="Г–ГўГҐГІ", Default=Color3.fromRGB(150,200,255)}, function(c)
         fxCol=c
         if fxEmit then fxEmit.Color=ColorSequence.new(c) end
     end)
-    addOpt(fxSec, "AddSlider", "FXRate", {Title="Интенсивность", Min=20, Max=900, Default=250, Rounding=1}, function(v)
+    addOpt(fxSec, "AddSlider", "FXRate", {Title="Г€Г­ГІГҐГ­Г±ГЁГўГ­Г®Г±ГІГј", Min=20, Max=900, Default=250, Rounding=1}, function(v)
         fxRate=tonumber(v) or 250
         if fxEmit then styleFX() end
     end)
 
-    local wSec=tE:AddSection({Name="Мир"})
+    local wSec=tE:AddSection({Name="ГЊГЁГ°"})
     local orig={
         Amb=Lighting.Ambient,Br=Lighting.Brightness,CT=Lighting.ClockTime,
         CSB=Lighting.ColorShift_Bottom,CST=Lighting.ColorShift_Top,
@@ -3963,25 +3963,25 @@ do
         end
     end)
     local timeOn,timeVal=false,12
-    addOpt(wSec, "AddToggle", "TimeOn", {Title="Своё время", Default=false}, function(v)
+    addOpt(wSec, "AddToggle", "TimeOn", {Title="Г‘ГўГ®Вё ГўГ°ГҐГ¬Гї", Default=false}, function(v)
         timeOn=v
         Lighting.ClockTime=v and timeVal or orig.CT
     end)
-    addOpt(wSec, "AddSlider", "TimeVal", {Title="Час", Min=0, Max=24, Default=12, Rounding=0}, function(v)
+    addOpt(wSec, "AddSlider", "TimeVal", {Title="Г—Г Г±", Min=0, Max=24, Default=12, Rounding=0}, function(v)
         timeVal=tonumber(v) or 12
         if timeOn then Lighting.ClockTime=timeVal end
     end)
     local expOn,expVal=false,0
-    addOpt(wSec, "AddToggle", "ExpOn", {Title="Экспозиция", Default=false}, function(v)
+    addOpt(wSec, "AddToggle", "ExpOn", {Title="ГќГЄГ±ГЇГ®Г§ГЁГ¶ГЁГї", Default=false}, function(v)
         expOn=v
         Lighting.ExposureCompensation=v and expVal or orig.Exp
     end)
-    addOpt(wSec, "AddSlider", "ExpVal", {Title="Значение", Min=-5, Max=5, Default=0, Rounding=2}, function(v)
+    addOpt(wSec, "AddSlider", "ExpVal", {Title="Г‡Г­Г Г·ГҐГ­ГЁГҐ", Min=-5, Max=5, Default=0, Rounding=2}, function(v)
         expVal=tonumber(v) or 0
         if expOn then Lighting.ExposureCompensation=expVal end
     end)
     local fogOn,fogCol,fogStart,fogEnd=false,Color3.fromRGB(192,192,192),0,1000
-    addOpt(wSec, "AddToggle", "FogOn", {Title="Свой туман", Default=false}, function(v)
+    addOpt(wSec, "AddToggle", "FogOn", {Title="Г‘ГўГ®Г© ГІГіГ¬Г Г­", Default=false}, function(v)
         fogOn=v
         if v then
             Lighting.FogColor=fogCol
@@ -3993,20 +3993,20 @@ do
             Lighting.FogEnd=orig.FE
         end
     end)
-    addOpt(wSec, "AddColorPicker", "FogCol", {Title="Цвет тумана", Default=Color3.fromRGB(192,192,192)}, function(c)
+    addOpt(wSec, "AddColorPicker", "FogCol", {Title="Г–ГўГҐГІ ГІГіГ¬Г Г­Г ", Default=Color3.fromRGB(192,192,192)}, function(c)
         fogCol=c
         if fogOn then Lighting.FogColor=c end
     end)
-    addOpt(wSec, "AddSlider", "FogStart", {Title="Начало", Min=0, Max=1000, Default=0, Rounding=0}, function(v)
+    addOpt(wSec, "AddSlider", "FogStart", {Title="ГЌГ Г·Г Г«Г®", Min=0, Max=1000, Default=0, Rounding=0}, function(v)
         fogStart=tonumber(v) or 0
         if fogOn then Lighting.FogStart=fogStart end
     end)
-    addOpt(wSec, "AddSlider", "FogEnd", {Title="Конец", Min=0, Max=1000, Default=1000, Rounding=0}, function(v)
+    addOpt(wSec, "AddSlider", "FogEnd", {Title="ГЉГ®Г­ГҐГ¶", Min=0, Max=1000, Default=1000, Rounding=0}, function(v)
         fogEnd=tonumber(v) or 1000
         if fogOn then Lighting.FogEnd=fogEnd end
     end)
     local ambOn,ambCol=false,Color3.fromRGB(128,128,128)
-    addOpt(wSec, "AddToggle", "AmbOn", {Title="Свой ambient", Default=false}, function(v)
+    addOpt(wSec, "AddToggle", "AmbOn", {Title="Г‘ГўГ®Г© ambient", Default=false}, function(v)
         ambOn=v
         if v then
             Lighting.Ambient=ambCol
@@ -4016,7 +4016,7 @@ do
             Lighting.OutdoorAmbient=orig.OA
         end
     end)
-    addOpt(wSec, "AddColorPicker", "AmbCol", {Title="Цвет ambient", Default=Color3.fromRGB(128,128,128)}, function(c)
+    addOpt(wSec, "AddColorPicker", "AmbCol", {Title="Г–ГўГҐГІ ambient", Default=Color3.fromRGB(128,128,128)}, function(c)
         ambCol=c
         if ambOn then Lighting.Ambient=c Lighting.OutdoorAmbient=c end
     end)
@@ -4074,11 +4074,11 @@ do
             origSky,origSkyParent=nil,nil
         end
     end
-    addOpt(wSec, "AddToggle", "SkyOn", {Title="Небо", Default=false}, function(v)
+    addOpt(wSec, "AddToggle", "SkyOn", {Title="ГЌГҐГЎГ®", Default=false}, function(v)
         skyOn=v
         if v then applySky(skyName) else restoreSky() end
     end)
-    addOpt(wSec, "AddDropdown", "SkyName", {Title="Пресет", Values={"Jungle","Blossom","Red night","Purple","Foggy","Galaxy","Anime","Minecraft"}, Default="Jungle"}, function(v)
+    addOpt(wSec, "AddDropdown", "SkyName", {Title="ГЏГ°ГҐГ±ГҐГІ", Values={"Jungle","Blossom","Red night","Purple","Foggy","Galaxy","Anime","Minecraft"}, Default="Jungle"}, function(v)
         skyName=v
         if skyOn then applySky(v) end
     end)
@@ -4104,10 +4104,10 @@ do
 end
 
 -- ============================================================
--- ЭФФЕКТ ПРИ СМЕРТИ УБИЙЦЫ
+-- ГќГ”Г”Г…ГЉГ’ ГЏГђГ€ Г‘ГЊГ…ГђГ’Г€ Г“ГЃГ€Г‰Г–Г›
 -- ============================================================
 do
-    local meSec=Tabs.Effects:AddSection({Name="Смерть убийцы"})
+    local meSec=Tabs.Effects:AddSection({Name="Г‘Г¬ГҐГ°ГІГј ГіГЎГЁГ©Г¶Г»"})
     local mOn,mCloneOn,mPartOn,mEmitOn=false,false,false,false
     local mCloneCol=Color3.fromRGB(255,0,0)
     local mPartCol=Color3.fromRGB(255,0,0)
@@ -4304,7 +4304,7 @@ do
         for _,c in ipairs(mClones) do pcall(function() c:Destroy() end) end
         mClones={}
     end
-    addOpt(meSec, "AddToggle", "MEOn", {Title="Включить эффект", Default=false}, function(v)
+    addOpt(meSec, "AddToggle", "MEOn", {Title="Г‚ГЄГ«ГѕГ·ГЁГІГј ГЅГґГґГҐГЄГІ", Default=false}, function(v)
         mOn=v
         if v then
             mThread=task.spawn(function()
@@ -4333,13 +4333,13 @@ do
             if mThread then pcall(function() task.cancel(mThread) end) mThread=nil end
         end
     end)
-    addOpt(meSec, "AddToggle", "MEClone", {Title="Клон", Default=false}, function(v) mCloneOn=v end)
-    addOpt(meSec, "AddColorPicker", "MECloneCol", {Title="Цвет клона", Default=Color3.fromRGB(255,0,0)}, function(c) mCloneCol=c end)
-    addOpt(meSec, "AddSlider", "MECloneDur", {Title="Длительность клона", Min=1, Max=5, Default=3, Rounding=1}, function(v) mCloneDur=tonumber(v) or 3 end)
-    addOpt(meSec, "AddToggle", "MEPart", {Title="Частицы", Default=false}, function(v) mPartOn=v end)
-    addOpt(meSec, "AddColorPicker", "MEPartCol", {Title="Цвет частиц", Default=Color3.fromRGB(255,0,0)}, function(c) mPartCol=c end)
+    addOpt(meSec, "AddToggle", "MEClone", {Title="ГЉГ«Г®Г­", Default=false}, function(v) mCloneOn=v end)
+    addOpt(meSec, "AddColorPicker", "MECloneCol", {Title="Г–ГўГҐГІ ГЄГ«Г®Г­Г ", Default=Color3.fromRGB(255,0,0)}, function(c) mCloneCol=c end)
+    addOpt(meSec, "AddSlider", "MECloneDur", {Title="Г„Г«ГЁГІГҐГ«ГјГ­Г®Г±ГІГј ГЄГ«Г®Г­Г ", Min=1, Max=5, Default=3, Rounding=1}, function(v) mCloneDur=tonumber(v) or 3 end)
+    addOpt(meSec, "AddToggle", "MEPart", {Title="Г—Г Г±ГІГЁГ¶Г»", Default=false}, function(v) mPartOn=v end)
+    addOpt(meSec, "AddColorPicker", "MEPartCol", {Title="Г–ГўГҐГІ Г·Г Г±ГІГЁГ¶", Default=Color3.fromRGB(255,0,0)}, function(c) mPartCol=c end)
     addOpt(meSec, "AddToggle", "MEEmit", {Title="Emitter", Default=false}, function(v) mEmitOn=v end)
-    addOpt(meSec, "AddColorPicker", "MEEmitCol", {Title="Цвет emitter", Default=Color3.fromRGB(255,100,100)}, function(c)
+    addOpt(meSec, "AddColorPicker", "MEEmitCol", {Title="Г–ГўГҐГІ emitter", Default=Color3.fromRGB(255,100,100)}, function(c)
         mEmitCol=c
         for i=1,#mActive do
             local e=mActive[i]
@@ -4350,7 +4350,7 @@ do
             end
         end
     end)
-    addOpt(meSec, "AddSlider", "MEEmitDur", {Title="Длительность emitter", Min=1, Max=5, Default=1, Rounding=1}, function(v) mEmitDur=tonumber(v) or 1 end)
+    addOpt(meSec, "AddSlider", "MEEmitDur", {Title="Г„Г«ГЁГІГҐГ«ГјГ­Г®Г±ГІГј emitter", Min=1, Max=5, Default=1, Rounding=1}, function(v) mEmitDur=tonumber(v) or 1 end)
     getgenv().MURDER_UNLOAD=function()
         mOn=false
         stopMurder()
@@ -4359,11 +4359,11 @@ do
 end
 
 -- ============================================================
--- ФАРМ
+-- Г”ГЂГђГЊ
 -- ============================================================
 do
     local tF=Tabs.Farm
-    local farmSec=tF:AddSection({Name="Автофарм"})
+    local farmSec=tF:AddSection({Name="ГЂГўГІГ®ГґГ Г°Г¬"})
     local active=false
     local mode="Basic"
     local speed=23
@@ -4640,7 +4640,7 @@ do
             end
         end
         if next(savedConflicts) then
-            Notify("FH","Конфликтующие функции отключены",3)
+            Notify("FH","ГЉГ®Г­ГґГ«ГЁГЄГІГіГѕГ№ГЁГҐ ГґГіГ­ГЄГ¶ГЁГЁ Г®ГІГЄГ«ГѕГ·ГҐГ­Г»",3)
         end
     end
     local function restoreConflicts()
@@ -4649,7 +4649,7 @@ do
             if opt then pcall(function() opt:SetValue(true) end) end
         end
         if next(savedConflicts) then
-            Notify("FH","Функции восстановлены",2)
+            Notify("FH","Г”ГіГ­ГЄГ¶ГЁГЁ ГўГ®Г±Г±ГІГ Г­Г®ГўГ«ГҐГ­Г»",2)
         end
         savedConflicts = {}
     end
@@ -4715,20 +4715,20 @@ do
             if sawCoins and not coinsDone then finish() end
         end
     end)
-    addOpt(farmSec, "AddToggle", "FarmV3On", {Title="Включить автофарм", Default=false}, function(v)
+    addOpt(farmSec, "AddToggle", "FarmV3On", {Title="Г‚ГЄГ«ГѕГ·ГЁГІГј Г ГўГІГ®ГґГ Г°Г¬", Default=false}, function(v)
         active=v
         if v then disableConflicts()
         else restoreConflicts() farmRelease() end
         resetProgress()
     end)
-    addOpt(farmSec, "AddDropdown", "FarmV3Mode", {Title="Тип", Values={"Basic","Down"}, Default="Basic"}, function(v)
+    addOpt(farmSec, "AddDropdown", "FarmV3Mode", {Title="Г’ГЁГЇ", Values={"Basic","Down"}, Default="Basic"}, function(v)
         mode=v or "Basic"
         farmTarget=nil
         if mode=="Basic" and wasDown then wasDown=false returnToSurface() end
     end)
-    addOpt(farmSec, "AddSlider", "FarmV3Speed", {Title="Скорость", Min=5, Max=60, Default=23, Rounding=1}, function(v) speed=tonumber(v) or 23 end)
-    addOpt(farmSec, "AddToggle", "FarmV3Avoid", {Title="Избегать маньяка", Default=false}, function(v) avoid=v farmTarget=nil end)
-    addOpt(farmSec, "AddDropdown", "FarmFullAction", {Title="При полном мешке", Values={"Respawn","Auto"}, Default="Respawn"}, function(v) fullAction=v or "Respawn" end)
+    addOpt(farmSec, "AddSlider", "FarmV3Speed", {Title="Г‘ГЄГ®Г°Г®Г±ГІГј", Min=5, Max=60, Default=23, Rounding=1}, function(v) speed=tonumber(v) or 23 end)
+    addOpt(farmSec, "AddToggle", "FarmV3Avoid", {Title="Г€Г§ГЎГҐГЈГ ГІГј Г¬Г Г­ГјГїГЄГ ", Default=false}, function(v) avoid=v farmTarget=nil end)
+    addOpt(farmSec, "AddDropdown", "FarmFullAction", {Title="ГЏГ°ГЁ ГЇГ®Г«Г­Г®Г¬ Г¬ГҐГёГЄГҐ", Values={"Respawn","Auto"}, Default="Respawn"}, function(v) fullAction=v or "Respawn" end)
     getgenv().FARMV3_UNLOAD=function()
         active=false
         farmTarget=nil
@@ -4738,21 +4738,21 @@ do
 end
 
 -- ============================================================
--- АНИМАЦИИ (заглушка, заменяется Extra Part 1)
+-- ГЂГЌГ€ГЊГЂГ–Г€Г€ (Г§Г ГЈГ«ГіГёГЄГ , Г§Г Г¬ГҐГ­ГїГҐГІГ±Гї Extra Part 1)
 -- ============================================================
 do
-    local animSec=Tabs.Animations:AddSection({Name="Эмоции (базовые)"})
-    animSec:AddButton({Title="Список эмоций в Extra Part", Callback=function()
-        Notify("FH","Список эмоций в Extra Part 1/2",2)
+    local animSec=Tabs.Animations:AddSection({Name="ГќГ¬Г®Г¶ГЁГЁ (ГЎГ Г§Г®ГўГ»ГҐ)"})
+    animSec:AddButton({Title="Г‘ГЇГЁГ±Г®ГЄ ГЅГ¬Г®Г¶ГЁГ© Гў Extra Part", Callback=function()
+        Notify("FH","Г‘ГЇГЁГ±Г®ГЄ ГЅГ¬Г®Г¶ГЁГ© Гў Extra Part 1/2",2)
     end})
 end
 
 -- ============================================================
--- УТИЛИТЫ
+-- Г“Г’Г€Г‹Г€Г’Г›
 -- ============================================================
 do
     local tU=Tabs.Utility
-    local notifySec=tU:AddSection({Name="Уведомления"})
+    local notifySec=tU:AddSection({Name="Г“ГўГҐГ¤Г®Г¬Г«ГҐГ­ГЁГї"})
     local notifyOn,rolesOn=false,false
     local lastRole=nil
     task.spawn(function()
@@ -4762,19 +4762,19 @@ do
                 local r=d and d[LocalPlayer.Name] and d[LocalPlayer.Name].Role
                 if r and r~=lastRole then
                     lastRole=r
-                    local ru=(r=="Sheriff" and "Шериф") or (r=="Hero" and "Герой") or (r=="Murderer" and "Маньяк") or (r=="Innocent" and "Мирный") or r
-                    Notify("FH","Роль: "..ru,4)
+                    local ru=(r=="Sheriff" and "ГГҐГ°ГЁГґ") or (r=="Hero" and "ГѓГҐГ°Г®Г©") or (r=="Murderer" and "ГЊГ Г­ГјГїГЄ") or (r=="Innocent" and "ГЊГЁГ°Г­Г»Г©") or r
+                    Notify("FH","ГђГ®Г«Гј: "..ru,4)
                 elseif not r then lastRole=nil end
             end
         end
     end)
-    addOpt(notifySec, "AddToggle", "NotifyOn", {Title="Включить", Default=false}, function(v) notifyOn=v end)
-    addOpt(notifySec, "AddToggle", "NotifyRoles", {Title="Показывать роль", Default=false}, function(v) rolesOn=v end)
+    addOpt(notifySec, "AddToggle", "NotifyOn", {Title="Г‚ГЄГ«ГѕГ·ГЁГІГј", Default=false}, function(v) notifyOn=v end)
+    addOpt(notifySec, "AddToggle", "NotifyRoles", {Title="ГЏГ®ГЄГ Г§Г»ГўГ ГІГј Г°Г®Г«Гј", Default=false}, function(v) rolesOn=v end)
 
     -- ============================================================
-    -- НЕВИДИМОСТЬ
+    -- ГЌГ…Г‚Г€Г„Г€ГЊГЋГ‘Г’Гњ
     -- ============================================================
-    local invisSec=tU:AddSection({Name="Невидимость"})
+    local invisSec=tU:AddSection({Name="ГЌГҐГўГЁГ¤ГЁГ¬Г®Г±ГІГј"})
     local invis={active=false,realCF=nil,hbConn=nil,bindName="FH_InvisClient",savedLTM={},savedDecals={},savedFallenHeight=nil}
     local HIDDEN_CF=CFrame.new(0,-50000,0)
     getgenv().FH_INVIS_ACTIVE=false
@@ -4794,10 +4794,10 @@ do
     local function invisBegin()
         if invis.active then return end
         local char=LocalPlayer.Character
-        if not char then Notify("FH","Персонаж не загружен",2) return end
+        if not char then Notify("FH","ГЏГҐГ°Г±Г®Г­Г Г¦ Г­ГҐ Г§Г ГЈГ°ГіГ¦ГҐГ­",2) return end
         local hrp=char:FindFirstChild("HumanoidRootPart")
         local hum=char:FindFirstChildOfClass("Humanoid")
-        if not hrp or not hum then Notify("FH","Персонаж не загружен",2) return end
+        if not hrp or not hum then Notify("FH","ГЏГҐГ°Г±Г®Г­Г Г¦ Г­ГҐ Г§Г ГЈГ°ГіГ¦ГҐГ­",2) return end
         invis.savedLTM={}
         invis.savedDecals={}
         invis.realCF=hrp.CFrame
@@ -4828,7 +4828,7 @@ do
             local h=c and c:FindFirstChild("HumanoidRootPart")
             if h and invis.realCF then h.CFrame=invis.realCF end
         end)
-        Notify("FH","Невидимость ВКЛ",2)
+        Notify("FH","ГЌГҐГўГЁГ¤ГЁГ¬Г®Г±ГІГј Г‚ГЉГ‹",2)
     end
     local function invisEnd()
         if not invis.active then return end
@@ -4855,17 +4855,17 @@ do
             invis.savedFallenHeight=nil
         end
         invis.realCF=nil
-        Notify("FH","Невидимость ВЫКЛ",2)
+        Notify("FH","ГЌГҐГўГЁГ¤ГЁГ¬Г®Г±ГІГј Г‚Г›ГЉГ‹",2)
     end
-    addOpt(invisSec, "AddToggle", "InvisOn", {Title="Включить невидимость", Default=false}, function(v)
+    addOpt(invisSec, "AddToggle", "InvisOn", {Title="Г‚ГЄГ«ГѕГ·ГЁГІГј Г­ГҐГўГЁГ¤ГЁГ¬Г®Г±ГІГј", Default=false}, function(v)
         if v then invisBegin() else invisEnd() end
     end)
     getgenv().INVIS_UNLOAD=function() if invis.active then invisEnd() end end
 
     -- ============================================================
-    -- ЗВУКИ
+    -- Г‡Г‚Г“ГЉГ€
     -- ============================================================
-    local sndSec=tU:AddSection({Name="Звуки"})
+    local sndSec=tU:AddSection({Name="Г‡ГўГіГЄГЁ"})
     local SND_BASES={
         "https://cdn.jsdelivr.net/gh/khenn791/lmao@main/",
         "https://raw.githack.com/khenn791/lmao/main/",
@@ -4927,7 +4927,7 @@ do
     end
     local function playSound(name,volume)
         local id=resolveSound(name)
-        if not id then Notify("FH","Не нашёл звук: "..name,3) return end
+        if not id then Notify("FH","ГЌГҐ Г­Г ГёВёГ« Г§ГўГіГЄ: "..name,3) return end
         local s=Instance.new("Sound")
         s.SoundId=id
         s.Volume=volume or 1
@@ -5013,36 +5013,36 @@ do
     end
     task.spawn(connectSheriffShoot)
 
-    addOpt(sndSec, "AddToggle", "SndSheriffKill", {Title="Мы убили убийцу", Default=false}, function(v) sndCfg.sheriffKill.on=v end)
-    addOpt(sndSec, "AddDropdown", "SndSheriffKillName", {Title="  Звук", Values=SND_LIST, Default="mc bow"}, function(v) sndCfg.sheriffKill.name=v end)
-    addOpt(sndSec, "AddSlider", "SndSheriffKillVol", {Title="  Громкость", Min=0.1, Max=5, Default=1, Rounding=1}, function(v) sndCfg.sheriffKill.volume=tonumber(v) or 1 end)
-    sndSec:AddButton({Title="  Прослушать",Callback=function() playSound(sndCfg.sheriffKill.name,sndCfg.sheriffKill.volume) end})
+    addOpt(sndSec, "AddToggle", "SndSheriffKill", {Title="ГЊГ» ГіГЎГЁГ«ГЁ ГіГЎГЁГ©Г¶Гі", Default=false}, function(v) sndCfg.sheriffKill.on=v end)
+    addOpt(sndSec, "AddDropdown", "SndSheriffKillName", {Title="  Г‡ГўГіГЄ", Values=SND_LIST, Default="mc bow"}, function(v) sndCfg.sheriffKill.name=v end)
+    addOpt(sndSec, "AddSlider", "SndSheriffKillVol", {Title="  ГѓГ°Г®Г¬ГЄГ®Г±ГІГј", Min=0.1, Max=5, Default=1, Rounding=1}, function(v) sndCfg.sheriffKill.volume=tonumber(v) or 1 end)
+    sndSec:AddButton({Title="  ГЏГ°Г®Г±Г«ГіГёГ ГІГј",Callback=function() playSound(sndCfg.sheriffKill.name,sndCfg.sheriffKill.volume) end})
 
-    addOpt(sndSec, "AddToggle", "SndMurderKill", {Title="Убийца кого-то убил", Default=false}, function(v) sndCfg.murderKill.on=v end)
-    addOpt(sndSec, "AddDropdown", "SndMurderKillName", {Title="  Звук", Values=SND_LIST, Default="skeet"}, function(v) sndCfg.murderKill.name=v end)
-    addOpt(sndSec, "AddSlider", "SndMurderKillVol", {Title="  Громкость", Min=0.1, Max=5, Default=1, Rounding=1}, function(v) sndCfg.murderKill.volume=tonumber(v) or 1 end)
-    sndSec:AddButton({Title="  Прослушать",Callback=function() playSound(sndCfg.murderKill.name,sndCfg.murderKill.volume) end})
+    addOpt(sndSec, "AddToggle", "SndMurderKill", {Title="Г“ГЎГЁГ©Г¶Г  ГЄГ®ГЈГ®-ГІГ® ГіГЎГЁГ«", Default=false}, function(v) sndCfg.murderKill.on=v end)
+    addOpt(sndSec, "AddDropdown", "SndMurderKillName", {Title="  Г‡ГўГіГЄ", Values=SND_LIST, Default="skeet"}, function(v) sndCfg.murderKill.name=v end)
+    addOpt(sndSec, "AddSlider", "SndMurderKillVol", {Title="  ГѓГ°Г®Г¬ГЄГ®Г±ГІГј", Min=0.1, Max=5, Default=1, Rounding=1}, function(v) sndCfg.murderKill.volume=tonumber(v) or 1 end)
+    sndSec:AddButton({Title="  ГЏГ°Г®Г±Г«ГіГёГ ГІГј",Callback=function() playSound(sndCfg.murderKill.name,sndCfg.murderKill.volume) end})
 
-    addOpt(sndSec, "AddToggle", "SndSheriffShoot", {Title="Наш выстрел", Default=false}, function(v)
+    addOpt(sndSec, "AddToggle", "SndSheriffShoot", {Title="ГЌГ Гё ГўГ»Г±ГІГ°ГҐГ«", Default=false}, function(v)
         sndCfg.sheriffShoot.on=v
         if v then connectSheriffShoot() end
     end)
-    addOpt(sndSec, "AddDropdown", "SndSheriffShootName", {Title="  Звук", Values=SND_LIST, Default="sparkle"}, function(v) sndCfg.sheriffShoot.name=v end)
-    addOpt(sndSec, "AddSlider", "SndSheriffShootVol", {Title="  Громкость", Min=0.1, Max=5, Default=0.6, Rounding=1}, function(v) sndCfg.sheriffShoot.volume=tonumber(v) or 0.6 end)
-    sndSec:AddButton({Title="  Прослушать",Callback=function() playSound(sndCfg.sheriffShoot.name,sndCfg.sheriffShoot.volume) end})
+    addOpt(sndSec, "AddDropdown", "SndSheriffShootName", {Title="  Г‡ГўГіГЄ", Values=SND_LIST, Default="sparkle"}, function(v) sndCfg.sheriffShoot.name=v end)
+    addOpt(sndSec, "AddSlider", "SndSheriffShootVol", {Title="  ГѓГ°Г®Г¬ГЄГ®Г±ГІГј", Min=0.1, Max=5, Default=0.6, Rounding=1}, function(v) sndCfg.sheriffShoot.volume=tonumber(v) or 0.6 end)
+    sndSec:AddButton({Title="  ГЏГ°Г®Г±Г«ГіГёГ ГІГј",Callback=function() playSound(sndCfg.sheriffShoot.name,sndCfg.sheriffShoot.volume) end})
 
     -- ============================================================
-    -- БУСТ ГОЛОСОВ (макс 15, респавн-тп-0.5с)
+    -- ГЃГ“Г‘Г’ ГѓГЋГ‹ГЋГ‘ГЋГ‚ (Г¬Г ГЄГ± 15, Г°ГҐГ±ГЇГ ГўГ­-ГІГЇ-0.5Г±)
     -- ============================================================
-    local mvSec=tU:AddSection({Name="Буст голосов"})
+    local mvSec=tU:AddSection({Name="ГЃГіГ±ГІ ГЈГ®Г«Г®Г±Г®Гў"})
     local mvDupCap=10
     local function DupeVoteFast(times)
         local char=LocalPlayer.Character
-        if not char then Notify("FH","Персонаж не загружен",2) return end
+        if not char then Notify("FH","ГЏГҐГ°Г±Г®Г­Г Г¦ Г­ГҐ Г§Г ГЈГ°ГіГ¦ГҐГ­",2) return end
         local hrp=char:FindFirstChild("HumanoidRootPart")
-        if not hrp then Notify("FH","HRP не найден",2) return end
+        if not hrp then Notify("FH","HRP Г­ГҐ Г­Г Г©Г¤ГҐГ­",2) return end
         local savedCF=hrp.CFrame
-        Notify("FH","Буст голосов: "..times.." раз",3)
+        Notify("FH","ГЃГіГ±ГІ ГЈГ®Г«Г®Г±Г®Гў: "..times.." Г°Г Г§",3)
         task.spawn(function()
             for i=1,times do
                 local c=LocalPlayer.Character
@@ -5074,20 +5074,20 @@ do
                     task.wait(0.5)
                 end
             end
-            Notify("FH","Буст завершён",3)
+            Notify("FH","ГЃГіГ±ГІ Г§Г ГўГҐГ°ГёВёГ­",3)
         end)
     end
-    addOpt(mvSec, "AddSlider", "MVDupeCap", {Title="Кол-во", Min=1, Max=15, Default=10, Rounding=0}, function(v) mvDupCap=tonumber(v) or 10 end)
-    mvSec:AddButton({Title="Буст голосов",Callback=function()
+    addOpt(mvSec, "AddSlider", "MVDupeCap", {Title="ГЉГ®Г«-ГўГ®", Min=1, Max=15, Default=10, Rounding=0}, function(v) mvDupCap=tonumber(v) or 10 end)
+    mvSec:AddButton({Title="ГЃГіГ±ГІ ГЈГ®Г«Г®Г±Г®Гў",Callback=function()
         task.spawn(function()
             DupeVoteFast(math.clamp(math.floor(mvDupCap),1,15))
         end)
     end})
 
     -- ============================================================
-    -- АНТИ
+    -- ГЂГЌГ’Г€
     -- ============================================================
-    local antiSec=tU:AddSection({Name="Анти"})
+    local antiSec=tU:AddSection({Name="ГЂГ­ГІГЁ"})
     local antiFlingOn=false
     local flingCache,flingReg={},{}
     local function regFling(model)
@@ -5126,7 +5126,7 @@ do
             end
         end
     end)
-    addOpt(antiSec, "AddToggle", "AntiFling", {Title="Анти-отброс", Default=false}, function(v)
+    addOpt(antiSec, "AddToggle", "AntiFling", {Title="ГЂГ­ГІГЁ-Г®ГІГЎГ°Г®Г±", Default=false}, function(v)
         antiFlingOn=v
         if not v then restoreFling() end
     end)
@@ -5135,7 +5135,7 @@ do
     RunService.Heartbeat:Connect(function()
         pcall(function() Workspace.FallenPartsDestroyHeight=antiVoidOn and -9e9 or voidOrig end)
     end)
-    addOpt(antiSec, "AddToggle", "AntiVoid", {Title="Анти-падение", Default=false}, function(v) antiVoidOn=v end)
+    addOpt(antiSec, "AddToggle", "AntiVoid", {Title="ГЂГ­ГІГЁ-ГЇГ Г¤ГҐГ­ГЁГҐ", Default=false}, function(v) antiVoidOn=v end)
     local antiTrapOn=false
     local trapSpeedCache,trapJumpCache=16,50
     RunService.Heartbeat:Connect(function()
@@ -5155,7 +5155,7 @@ do
             end
         end
     end)
-    addOpt(antiSec, "AddToggle", "AntiTrap", {Title="Анти-ловушка", Default=false}, function(v) antiTrapOn=v end)
+    addOpt(antiSec, "AddToggle", "AntiTrap", {Title="ГЂГ­ГІГЁ-Г«Г®ГўГіГёГЄГ ", Default=false}, function(v) antiTrapOn=v end)
     local antiFadeOn=false
     local fadeCache,fadeConns={},{}
     local fadeNames={CameraFade=true,SpawnFade=true,Fade=true,DeathFade=true}
@@ -5192,7 +5192,7 @@ do
         end
         fadeCache={}
     end
-    addOpt(antiSec, "AddToggle", "AntiFade", {Title="Убрать чёрный экран", Default=false}, function(v)
+    addOpt(antiSec, "AddToggle", "AntiFade", {Title="Г“ГЎГ°Г ГІГј Г·ВёГ°Г­Г»Г© ГЅГЄГ°Г Г­", Default=false}, function(v)
         antiFadeOn=v
         if v then fadeApply() else fadeRestore() end
     end)
@@ -5204,7 +5204,7 @@ do
 end
 
 -- ============================================================
--- ТРОЛЛИНГ
+-- Г’ГђГЋГ‹Г‹Г€ГЌГѓ
 -- ============================================================
 do
     local tT=Tabs.Troll
@@ -5236,7 +5236,7 @@ do
         local c=LocalPlayer.Character
         if c then local t=c:FindFirstChild("tp") if t then pcall(function() t:Destroy() end) end end
     end
-    addOpt(tT:AddSection({Name="Инструменты"}), "AddToggle", "ToolTP", {Title="ТП-тул", Default=false}, function(v)
+    addOpt(tT:AddSection({Name="Г€Г­Г±ГІГ°ГіГ¬ГҐГ­ГІГ»"}), "AddToggle", "ToolTP", {Title="Г’ГЏ-ГІГіГ«", Default=false}, function(v)
         tpOn=v
         if v then giveTpTool() else removeTpTool() end
     end)
@@ -5392,12 +5392,12 @@ do
         if c then local t=c:FindFirstChild("fling") if t then pcall(function() t:Destroy() end) end end
     end
 
-    local flingSec=tT:AddSection({Name="Отброс"})
-    addOpt(flingSec, "AddToggle", "ToolFling", {Title="Тул отброса", Default=false}, function(v)
+    local flingSec=tT:AddSection({Name="ГЋГІГЎГ°Г®Г±"})
+    addOpt(flingSec, "AddToggle", "ToolFling", {Title="Г’ГіГ« Г®ГІГЎГ°Г®Г±Г ", Default=false}, function(v)
         ftOn=v
         if v then giveFlingTool() else removeFlingTool() end
     end)
-    addOpt(flingSec, "AddDropdown", "FlingMode", {Title="Режим", Values={"Classic","DeathLoop"}, Default="Classic"}, function(v)
+    addOpt(flingSec, "AddDropdown", "FlingMode", {Title="ГђГҐГ¦ГЁГ¬", Values={"Classic","DeathLoop"}, Default="Classic"}, function(v)
         flingMode = v or "Classic"
     end)
     LocalPlayer.CharacterAdded:Connect(function()
@@ -5406,9 +5406,9 @@ do
     end)
 
     -- ============================================================
-    -- ФЕЙК-СМЕРТЬ
+    -- Г”Г…Г‰ГЉ-Г‘ГЊГ…ГђГ’Гњ
     -- ============================================================
-    local fdSec=tT:AddSection({Name="Фейк-смерть"})
+    local fdSec=tT:AddSection({Name="Г”ГҐГ©ГЄ-Г±Г¬ГҐГ°ГІГј"})
     local FAKE_DEATH_1_ID = "132384701706046"
     local FAKE_DEATH_2_ID = "125032357496729"
     local fdTrack1,fdTrack2=nil,nil
@@ -5430,7 +5430,7 @@ do
     local function playFd(id, slot)
         local c=LocalPlayer.Character
         local hum=c and c:FindFirstChildOfClass("Humanoid")
-        if not hum then Notify("FH","Персонаж не загружен",2) return end
+        if not hum then Notify("FH","ГЏГҐГ°Г±Г®Г­Г Г¦ Г­ГҐ Г§Г ГЈГ°ГіГ¦ГҐГ­",2) return end
         local resolved = resolveId(id)
         if not resolved then return end
         if slot==1 and fdTrack1 then pcall(function() fdTrack1:Stop() end) fdTrack1=nil end
@@ -5444,20 +5444,20 @@ do
             track.Looped=true
             pcall(function() track:Play() end)
             if slot==1 then fdTrack1=track else fdTrack2=track end
-            Notify("FH","Фейк-смерть "..slot,2)
+            Notify("FH","Г”ГҐГ©ГЄ-Г±Г¬ГҐГ°ГІГј "..slot,2)
         else
-            Notify("FH","Не удалось запустить "..slot,2)
+            Notify("FH","ГЌГҐ ГіГ¤Г Г«Г®Г±Гј Г§Г ГЇГіГ±ГІГЁГІГј "..slot,2)
         end
     end
-    fdSec:AddButton({Title="Фейк-смерть 1",Callback=function() playFd(FAKE_DEATH_1_ID, 1) end})
-    fdSec:AddButton({Title="Фейк-смерть 2",Callback=function() playFd(FAKE_DEATH_2_ID, 2) end})
-    fdSec:AddButton({Title="Остановить",Callback=function()
+    fdSec:AddButton({Title="Г”ГҐГ©ГЄ-Г±Г¬ГҐГ°ГІГј 1",Callback=function() playFd(FAKE_DEATH_1_ID, 1) end})
+    fdSec:AddButton({Title="Г”ГҐГ©ГЄ-Г±Г¬ГҐГ°ГІГј 2",Callback=function() playFd(FAKE_DEATH_2_ID, 2) end})
+    fdSec:AddButton({Title="ГЋГ±ГІГ Г­Г®ГўГЁГІГј",Callback=function()
         stopAllFd()
-        Notify("FH","Остановлено",2)
+        Notify("FH","ГЋГ±ГІГ Г­Г®ГўГ«ГҐГ­Г®",2)
     end})
 
     -- ============================================================
-    -- ТЕЛЕПОРТ
+    -- Г’Г…Г‹Г…ГЏГЋГђГ’
     -- ============================================================
     local function inLobby(obj)
         local p=obj.Parent
@@ -5467,8 +5467,8 @@ do
         end
         return false
     end
-    local tpBtnSec=tT:AddSection({Name="Телепорт"})
-    tpBtnSec:AddButton({Title="ТП в лобби",Callback=function()
+    local tpBtnSec=tT:AddSection({Name="Г’ГҐГ«ГҐГЇГ®Г°ГІ"})
+    tpBtnSec:AddButton({Title="Г’ГЏ Гў Г«Г®ГЎГЎГЁ",Callback=function()
         local hrp=getHRP()
         if not hrp then return end
         local lobby=Workspace:FindFirstChild("RegularLobby") or Workspace:FindFirstChild("Lobby")
@@ -5482,7 +5482,7 @@ do
             hrp.CFrame=s.CFrame+Vector3.new(0,3,0)
         end
     end})
-    tpBtnSec:AddButton({Title="ТП на карту",Callback=function()
+    tpBtnSec:AddButton({Title="Г’ГЏ Г­Г  ГЄГ Г°ГІГі",Callback=function()
         local hrp=getHRP()
         if not hrp then return end
         local spawns={}
@@ -5506,21 +5506,21 @@ end
 
 pcall(function() Window:SelectTab(1) end)
 print("[FH] ============================================")
-print("[FH] Part 1/2 — FortniHub v20.1 — "..CREDITS)
+print("[FH] Part 1/2 вЂ” FortniHub v20.1 вЂ” "..CREDITS)
 print("[FH] ============================================")
 -- ============================================================
--- FORTNIHUB v20.1 — EXTRA FEATURES — ЧАСТЬ 2/2
--- Всё из KITI: TradeHelper, VoteDuper, Emotes, Anti-utils, GunModels,
+-- FORTNIHUB v20.1 вЂ” EXTRA FEATURES вЂ” Г—ГЂГ‘Г’Гњ 2/2
+-- Г‚Г±Вё ГЁГ§ KITI: TradeHelper, VoteDuper, Emotes, Anti-utils, GunModels,
 -- BeamEffects, Skybox, Auras, AntiAim, Ghost, Avatars, PlayerPanel,
 -- UISounds, GameSounds, Language, Watermark, JumpCircle, RTX, AdvFarm
 -- ============================================================
 
 if not (Window and Options and Notify and getRoundData and getRoleFromData and getHRP and getHum) then
-    warn("[FH] Part 1 не загружена — Extra Part 2/2 пропущена.")
+    warn("[FH] Part 1 Г­ГҐ Г§Г ГЈГ°ГіГ¦ГҐГ­Г  вЂ” Extra Part 2/2 ГЇГ°Г®ГЇГіГ№ГҐГ­Г .")
     return
 end
 local Tabs = getgenv().FH_Tabs
-if not Tabs then warn("[FH] FH_Tabs не найден.") return end
+if not Tabs then warn("[FH] FH_Tabs Г­ГҐ Г­Г Г©Г¤ГҐГ­.") return end
 local _OnChangedRegistry = getgenv().FH_OnChangedRegistry or {}
 getgenv().FH_OnChangedRegistry = _OnChangedRegistry
 local function _regOnChanged(name, cb) _OnChangedRegistry[name] = cb end
@@ -5747,7 +5747,7 @@ do
                     loaded = loaded + 1
                     if loaded == #sources then
                         print("[FH TradeHelper] Loaded "..tostring(loaded).." sources.")
-                        Notify("Trade Helper", "Значения загружены", 2)
+                        Notify("Trade Helper", "Г‡Г­Г Г·ГҐГ­ГЁГї Г§Г ГЈГ°ГіГ¦ГҐГ­Г»", 2)
                     end
                 end)
             end
@@ -5779,22 +5779,22 @@ do
     _addOpt(thSec, "AddToggle", "THOn", {Title="Trade Helper (MM2 Values)", Default=false}, function(v)
         if v then
             th.Start()
-            Notify("FH", "Trade Helper ВКЛ", 2)
+            Notify("FH", "Trade Helper Г‚ГЉГ‹", 2)
         else
             th.Stop()
-            Notify("FH", "Trade Helper ВЫКЛ", 2)
+            Notify("FH", "Trade Helper Г‚Г›ГЉГ‹", 2)
         end
     end)
-    thSec:AddButton({Title="Обновить значения", Callback=function()
+    thSec:AddButton({Title="ГЋГЎГ­Г®ГўГЁГІГј Г§Г­Г Г·ГҐГ­ГЁГї", Callback=function()
         th.Loaded = false
         th.TradeValues = {}
         loadValues()
-        Notify("FH", "Обновляю значения...", 3)
+        Notify("FH", "ГЋГЎГ­Г®ГўГ«ГїГѕ Г§Г­Г Г·ГҐГ­ГЁГї...", 3)
     end})
-    thSec:AddButton({Title="Показать счётчик", Callback=function()
+    thSec:AddButton({Title="ГЏГ®ГЄГ Г§Г ГІГј Г±Г·ВёГІГ·ГЁГЄ", Callback=function()
         local n = 0
         for _ in pairs(th.TradeValues) do n = n + 1 end
-        Notify("FH", "Загружено предметов: "..n, 3)
+        Notify("FH", "Г‡Г ГЈГ°ГіГ¦ГҐГ­Г® ГЇГ°ГҐГ¤Г¬ГҐГІГ®Гў: "..n, 3)
     end})
 end
 
@@ -5946,13 +5946,13 @@ do
                 if #pads > 0 then selectedVotePad = pads[1] end
             end
             startDupe()
-            Notify("FH", "Vote Duper ВКЛ", 2)
+            Notify("FH", "Vote Duper Г‚ГЉГ‹", 2)
         else
             stopDupe()
-            Notify("FH", "Vote Duper ВЫКЛ", 2)
+            Notify("FH", "Vote Duper Г‚Г›ГЉГ‹", 2)
         end
     end)
-    _addOpt(thSec, "AddSlider", "THDupeDelay", {Title="Задержка на пэде (сек)", Min=0.1, Max=1.5, Default=0.38, Rounding=2}, function(v)
+    _addOpt(thSec, "AddSlider", "THDupeDelay", {Title="Г‡Г Г¤ГҐГ°Г¦ГЄГ  Г­Г  ГЇГЅГ¤ГҐ (Г±ГҐГЄ)", Min=0.1, Max=1.5, Default=0.38, Rounding=2}, function(v)
         DELAY_ON_PAD = tonumber(v) or 0.38
     end)
 
@@ -5967,23 +5967,23 @@ do
             if n == "" then n = "Pad "..i end
             padNames[i] = n
         end
-        if #padNames == 0 then padNames = {"(нет пэдов)"} end
+        if #padNames == 0 then padNames = {"(Г­ГҐГІ ГЇГЅГ¤Г®Гў)"} end
         local drop = Options.THPadPick
         if drop then pcall(function() drop:SetValues(padNames); drop:Generate() end) end
     end
-    _addOpt(thSec, "AddDropdown", "THPadPick", {Title="Пэд для голосования", Values={"Pad 1","Pad 2","Pad 3"}, Default="Pad 1"}, function(v)
+    _addOpt(thSec, "AddDropdown", "THPadPick", {Title="ГЏГЅГ¤ Г¤Г«Гї ГЈГ®Г«Г®Г±Г®ГўГ Г­ГЁГї", Values={"Pad 1","Pad 2","Pad 3"}, Default="Pad 1"}, function(v)
         for i, name in ipairs(padNames) do
             if name == v then
                 selectedVotePad = padRefs[i]
                 voteMapName = getVoteMapName(selectedVotePad)
-                Notify("FH", "Пэд выбран: "..voteMapName, 2)
+                Notify("FH", "ГЏГЅГ¤ ГўГ»ГЎГ°Г Г­: "..voteMapName, 2)
                 return
             end
         end
     end)
-    thSec:AddButton({Title="Обновить список пэдов", Callback=function()
+    thSec:AddButton({Title="ГЋГЎГ­Г®ГўГЁГІГј Г±ГЇГЁГ±Г®ГЄ ГЇГЅГ¤Г®Гў", Callback=function()
         refreshPads()
-        Notify("FH", "Пэды обновлены", 2)
+        Notify("FH", "ГЏГЅГ¤Г» Г®ГЎГ­Г®ГўГ«ГҐГ­Г»", 2)
     end})
     task.spawn(function()
         while true do
@@ -6007,7 +6007,7 @@ end
 -- ============================================================
 do
     local emoteTab = Tabs.Animations
-    local emoteSec = emoteTab:AddSection({Name="Эмоции (расширенные)"})
+    local emoteSec = emoteTab:AddSection({Name="ГќГ¬Г®Г¶ГЁГЁ (Г°Г Г±ГёГЁГ°ГҐГ­Г­Г»ГҐ)"})
 
     local EMOTE_LIST = {
         ["Around Town"]=3576747102, ["Fashionable"]=3576745472, ["Swish"]=3821527813,
@@ -6076,9 +6076,9 @@ do
     for name in pairs(EMOTE_LIST) do emoteNames[#emoteNames+1] = name end
     table.sort(emoteNames, function(a,b) return a:lower() < b:lower() end)
 
-    local searchInput = emoteSec:AddInput("FHBigEmoteSearch", {Title="Поиск эмоции", Default=""})
+    local searchInput = emoteSec:AddInput("FHBigEmoteSearch", {Title="ГЏГ®ГЁГ±ГЄ ГЅГ¬Г®Г¶ГЁГЁ", Default=""})
     local drop = emoteSec:AddDropdown("FHBigEmotePick", {
-        Title="Выбрать эмоцию",
+        Title="Г‚Г»ГЎГ°Г ГІГј ГЅГ¬Г®Г¶ГЁГѕ",
         Values=emoteNames,
         Default=emoteNames[1] or "Default Dance",
     })
@@ -6097,7 +6097,7 @@ do
         if not id then return end
         local c = LocalPlayer.Character
         local hum = c and c:FindFirstChildOfClass("Humanoid")
-        if not hum then Notify("FH","Персонаж не загружен",2) return end
+        if not hum then Notify("FH","ГЏГҐГ°Г±Г®Г­Г Г¦ Г­ГҐ Г§Г ГЈГ°ГіГ¦ГҐГ­",2) return end
         stopCurrent()
         local anim = Instance.new("Animation")
         anim.AnimationId = "rbxassetid://"..tostring(id)
@@ -6109,24 +6109,24 @@ do
             pcall(function() track:Play(0) end)
             currentTrack = track
             currentName = name
-            Notify("FH", "Эмоция: "..name, 2)
+            Notify("FH", "ГќГ¬Г®Г¶ГЁГї: "..name, 2)
         else
-            Notify("FH", "Не удалось запустить: "..name, 2)
+            Notify("FH", "ГЌГҐ ГіГ¤Г Г«Г®Г±Гј Г§Г ГЇГіГ±ГІГЁГІГј: "..name, 2)
         end
     end
 
-    emoteSec:AddButton({Title="Запустить эмоцию", Callback=function()
+    emoteSec:AddButton({Title="Г‡Г ГЇГіГ±ГІГЁГІГј ГЅГ¬Г®Г¶ГЁГѕ", Callback=function()
         local v = drop.Value
         if type(v) == "table" then v = v[1] end
         if type(v) == "string" then playEmoteByName(v) end
     end})
-    emoteSec:AddButton({Title="Остановить эмоцию", Callback=function()
+    emoteSec:AddButton({Title="ГЋГ±ГІГ Г­Г®ГўГЁГІГј ГЅГ¬Г®Г¶ГЁГѕ", Callback=function()
         stopCurrent()
-        Notify("FH","Эмоция остановлена", 2)
+        Notify("FH","ГќГ¬Г®Г¶ГЁГї Г®Г±ГІГ Г­Г®ГўГ«ГҐГ­Г ", 2)
     end})
 
     _addOpt(emoteSec, "AddInput", "FHBigEmoteSearchReal", {
-        Title = "Строка поиска",
+        Title = "Г‘ГІГ°Г®ГЄГ  ГЇГ®ГЁГ±ГЄГ ",
         Default = "",
     }, function(v)
         local q = tostring(v or ""):lower()
@@ -6137,7 +6137,7 @@ do
             for _, n in ipairs(emoteNames) do
                 if n:lower():find(q, 1, true) then filtered[#filtered+1] = n end
             end
-            if #filtered == 0 then filtered = {"(ничего не найдено)"} end
+            if #filtered == 0 then filtered = {"(Г­ГЁГ·ГҐГЈГ® Г­ГҐ Г­Г Г©Г¤ГҐГ­Г®)"} end
         end
         pcall(function() drop:SetValues(filtered); drop:Generate() end)
     end)
@@ -6160,23 +6160,23 @@ do
         end
     end
     loadFav()
-    emoteSec:AddButton({Title="Добавить/убрать из избранного", Callback=function()
+    emoteSec:AddButton({Title="Г„Г®ГЎГ ГўГЁГІГј/ГіГЎГ°Г ГІГј ГЁГ§ ГЁГ§ГЎГ°Г Г­Г­Г®ГЈГ®", Callback=function()
         local v = drop.Value
         if type(v)=="table" then v=v[1] end
         if type(v)~="string" or v=="" then return end
         favorites[v] = not favorites[v] or nil
         saveFav()
-        Notify("FH", favorites[v] and ("Добавлено: "..v) or ("Удалено: "..v), 2)
+        Notify("FH", favorites[v] and ("Г„Г®ГЎГ ГўГ«ГҐГ­Г®: "..v) or ("Г“Г¤Г Г«ГҐГ­Г®: "..v), 2)
     end})
-    emoteSec:AddButton({Title="Показать избранное", Callback=function()
+    emoteSec:AddButton({Title="ГЏГ®ГЄГ Г§Г ГІГј ГЁГ§ГЎГ°Г Г­Г­Г®ГҐ", Callback=function()
         local list = {}
         for k in pairs(favorites) do list[#list+1] = k end
         if #list == 0 then
-            Notify("FH", "Избранное пусто", 2)
+            Notify("FH", "Г€Г§ГЎГ°Г Г­Г­Г®ГҐ ГЇГіГ±ГІГ®", 2)
         else
             table.sort(list)
             pcall(function() drop:SetValues(list); drop:Generate() end)
-            Notify("FH", "Показано "..#list.." избранных", 2)
+            Notify("FH", "ГЏГ®ГЄГ Г§Г Г­Г® "..#list.." ГЁГ§ГЎГ°Г Г­Г­Г»Гµ", 2)
         end
     end})
 end
@@ -6255,16 +6255,16 @@ do
         offDamageWater = v
         if v then
             applyAll()
-            Notify("FH", "Защита от воды ВКЛ", 2)
+            Notify("FH", "Г‡Г Г№ГЁГІГ  Г®ГІ ГўГ®Г¤Г» Г‚ГЉГ‹", 2)
         else
             restoreAll()
-            Notify("FH", "Защита от воды ВЫКЛ", 2)
+            Notify("FH", "Г‡Г Г№ГЁГІГ  Г®ГІ ГўГ®Г¤Г» Г‚Г›ГЉГ‹", 2)
         end
     end)
 end
 
 -- ============================================================
--- 5. FADE DISABLER (расширенный)
+-- 5. FADE DISABLER (Г°Г Г±ГёГЁГ°ГҐГ­Г­Г»Г©)
 -- ============================================================
 do
     local savedFadeGuis = ReplicatedStorage:FindFirstChild("FH_SavedFadeGuis")
@@ -6309,13 +6309,13 @@ do
     end
 
     local utilsSec = Tabs.Utility:AddSection({Name="Fade Disabler"})
-    _addOpt(utilsSec, "AddToggle", "FadeDisablerOn", {Title="Убрать чёрный экран (расширенный)", Default=false}, function(v)
+    _addOpt(utilsSec, "AddToggle", "FadeDisablerOn", {Title="Г“ГЎГ°Г ГІГј Г·ВёГ°Г­Г»Г© ГЅГЄГ°Г Г­ (Г°Г Г±ГёГЁГ°ГҐГ­Г­Г»Г©)", Default=false}, function(v)
         if v then
             apply()
-            Notify("FH", "Fade Disabler ВКЛ", 2)
+            Notify("FH", "Fade Disabler Г‚ГЉГ‹", 2)
         else
             restore()
-            Notify("FH", "Fade Disabler ВЫКЛ", 2)
+            Notify("FH", "Fade Disabler Г‚Г›ГЉГ‹", 2)
         end
     end)
 end
@@ -6365,7 +6365,7 @@ do
     end
 
     local utilsSec = Tabs.Utility:AddSection({Name="Anti-Coin"})
-    _addOpt(utilsSec, "AddToggle", "AntiCoinOn", {Title="Скрыть монеты", Default=false}, function(v)
+    _addOpt(utilsSec, "AddToggle", "AntiCoinOn", {Title="Г‘ГЄГ°Г»ГІГј Г¬Г®Г­ГҐГІГ»", Default=false}, function(v)
         antiCoinOn = v
         if v then
             task.spawn(function()
@@ -6374,10 +6374,10 @@ do
                     task.wait(0.5)
                 end
             end)
-            Notify("FH", "Anti-Coin ВКЛ", 2)
+            Notify("FH", "Anti-Coin Г‚ГЉГ‹", 2)
         else
             restore()
-            Notify("FH", "Anti-Coin ВЫКЛ", 2)
+            Notify("FH", "Anti-Coin Г‚Г›ГЉГ‹", 2)
         end
     end)
 end
@@ -6618,18 +6618,18 @@ do
     end)
 
     local sec = Tabs.Visual:AddSection({Name="Custom Gun Models (CFrame)"})
-    _addOpt(sec, "AddToggle", "FHGunModelOn", {Title="Заменить модель оружия", Default=false}, function(v)
+    _addOpt(sec, "AddToggle", "FHGunModelOn", {Title="Г‡Г Г¬ГҐГ­ГЁГІГј Г¬Г®Г¤ГҐГ«Гј Г®Г°ГіГ¦ГЁГї", Default=false}, function(v)
         customModelEnabled = v
         refreshAll()
-        Notify("FH", v and "Модель оружия ВКЛ" or "Модель оружия ВЫКЛ", 2)
+        Notify("FH", v and "ГЊГ®Г¤ГҐГ«Гј Г®Г°ГіГ¦ГЁГї Г‚ГЉГ‹" or "ГЊГ®Г¤ГҐГ«Гј Г®Г°ГіГ¦ГЁГї Г‚Г›ГЉГ‹", 2)
     end)
-    _addOpt(sec, "AddDropdown", "FHGunModelPick", {Title="Модель", Values=MODEL_LIST, Default="AWP"}, function(v)
+    _addOpt(sec, "AddDropdown", "FHGunModelPick", {Title="ГЊГ®Г¤ГҐГ«Гј", Values=MODEL_LIST, Default="AWP"}, function(v)
         selectedModelName = v or "AWP"
         if customModelEnabled then refreshAll() end
     end)
-    sec:AddButton({Title="Применить к текущему оружию", Callback=function()
+    sec:AddButton({Title="ГЏГ°ГЁГ¬ГҐГ­ГЁГІГј ГЄ ГІГҐГЄГіГ№ГҐГ¬Гі Г®Г°ГіГ¦ГЁГѕ", Callback=function()
         refreshAll()
-        Notify("FH", "Обновлено", 2)
+        Notify("FH", "ГЋГЎГ­Г®ГўГ«ГҐГ­Г®", 2)
     end})
 end
 
@@ -6845,7 +6845,7 @@ do
     end)
 
     local sec = Tabs.Effects:AddSection({Name="Gun Beam Effects"})
-    _addOpt(sec, "AddDropdown", "FHBeamType", {Title="Тип луча", Values={"Default", "Neon Fat", "Nuke", "Zigzag Light", "Orbital Strike", "Black Hole", "Rainbow RGB"}, Default="Default"}, function(v)
+    _addOpt(sec, "AddDropdown", "FHBeamType", {Title="Г’ГЁГЇ Г«ГіГ·Г ", Values={"Default", "Neon Fat", "Nuke", "Zigzag Light", "Orbital Strike", "Black Hole", "Rainbow RGB"}, Default="Default"}, function(v)
         BeamCfg.Type = v or "Default"
         if BeamCfg.Type ~= "Default" then
             task.spawn(function()
@@ -6856,7 +6856,7 @@ do
         end
         Notify("FH", "Beam: "..BeamCfg.Type, 2)
     end)
-    _addOpt(sec, "AddColorPicker", "FHBeamColor", {Title="Цвет луча", Default=Color3.fromRGB(0, 240, 255)}, function(c)
+    _addOpt(sec, "AddColorPicker", "FHBeamColor", {Title="Г–ГўГҐГІ Г«ГіГ·Г ", Default=Color3.fromRGB(0, 240, 255)}, function(c)
         BeamCfg.Color = c
     end)
 end
@@ -6879,7 +6879,7 @@ do
                 return game:GetObjects("rbxassetid://"..tostring(id))
             end)
             if not ok or type(objs) ~= "table" or #objs == 0 then
-                Notify("FH", "Не удалось загрузить skybox: "..tostring(name), 3)
+                Notify("FH", "ГЌГҐ ГіГ¤Г Г«Г®Г±Гј Г§Г ГЈГ°ГіГ§ГЁГІГј skybox: "..tostring(name), 3)
                 return
             end
             local first = objs[1]
@@ -6895,7 +6895,7 @@ do
             end
             if not sky then
                 pcall(function() first:Destroy() end)
-                Notify("FH", "Sky не найден в модели", 3)
+                Notify("FH", "Sky Г­ГҐ Г­Г Г©Г¤ГҐГ­ Гў Г¬Г®Г¤ГҐГ«ГЁ", 3)
                 return
             end
             local existing = Lighting:FindFirstChildOfClass("Sky")
@@ -6918,11 +6918,11 @@ do
         skyboxEnabled = false
         currentSkyId = nil
         currentSkyName = nil
-        Notify("FH", "Skybox удалён", 2)
+        Notify("FH", "Skybox ГіГ¤Г Г«ВёГ­", 2)
     end
 
     local sec = Tabs.Effects:AddSection({Name="Skybox Manager"})
-    sec:AddButton({Title="Убрать небо", Callback=removeSky})
+    sec:AddButton({Title="Г“ГЎГ°Г ГІГј Г­ГҐГЎГ®", Callback=removeSky})
     sec:AddButton({Title="Snow Skybox", Callback=function() applySkybox(4604073339, "Snow") end})
     sec:AddButton({Title="Realistic Space", Callback=function() applySkybox(136402262, "Realistic Space") end})
     sec:AddButton({Title="Purple Nebula", Callback=function() applySkybox(83555979203508, "Purple Nebula") end})
@@ -6931,13 +6931,13 @@ do
     sec:AddButton({Title="Night Sky Vibe", Callback=function() applySkybox(78613024128163, "Night Sky") end})
     sec:AddButton({Title="Geoz Skybox", Callback=function() applySkybox(97573261671957, "Geoz") end})
     sec:AddButton({Title="Asteroid Space", Callback=function() applySkybox(295604372, "Asteroid") end})
-    local input = sec:AddInput("FHSkyboxCustomId", {Title="Свой Skybox ID", Default=""})
-    sec:AddButton({Title="Применить свой ID", Callback=function()
+    local input = sec:AddInput("FHSkyboxCustomId", {Title="Г‘ГўГ®Г© Skybox ID", Default=""})
+    sec:AddButton({Title="ГЏГ°ГЁГ¬ГҐГ­ГЁГІГј Г±ГўГ®Г© ID", Callback=function()
         local v = input.Value
         if type(v)=="table" then v=v[1] end
         local num = tonumber(v)
         if num then applySkybox(num, "Custom #"..num)
-        else Notify("FH", "Введи число", 2) end
+        else Notify("FH", "Г‚ГўГҐГ¤ГЁ Г·ГЁГ±Г«Г®", 2) end
     end})
 end
 
@@ -6964,7 +6964,7 @@ do
         if activeAuraName == name then
             clearAura()
             pendingAura = nil
-            Notify("FH", name.." выключена", 2)
+            Notify("FH", name.." ГўГ»ГЄГ«ГѕГ·ГҐГ­Г ", 2)
             return
         end
         clearAura()
@@ -6972,7 +6972,7 @@ do
             return game:GetObjects("rbxassetid://"..tostring(assetId))
         end)
         if not ok or type(objs) ~= "table" or #objs == 0 then
-            Notify("FH", "Не удалось загрузить ауру: "..name, 3)
+            Notify("FH", "ГЌГҐ ГіГ¤Г Г«Г®Г±Гј Г§Г ГЈГ°ГіГ§ГЁГІГј Г ГіГ°Гі: "..name, 3)
             return
         end
         local model = objs[1]
@@ -7008,13 +7008,13 @@ do
         end
         local char = LocalPlayer.Character
         if not char then
-            Notify("FH", "Персонаж не загружен", 2)
+            Notify("FH", "ГЏГҐГ°Г±Г®Г­Г Г¦ Г­ГҐ Г§Г ГЈГ°ГіГ¦ГҐГ­", 2)
             return
         end
         local torso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
         local head = char:FindFirstChild("Head")
         if not torso or not head then
-            Notify("FH", "Части персонажа не найдены", 2)
+            Notify("FH", "Г—Г Г±ГІГЁ ГЇГҐГ°Г±Г®Г­Г Г¦Г  Г­ГҐ Г­Г Г©Г¤ГҐГ­Г»", 2)
             return
         end
         local nameMap = {
@@ -7124,7 +7124,7 @@ do
         activeAura = tracked
         activeAuraName = name
         pendingAura = {assetId = assetId, name = name}
-        Notify("FH", name.." включена", 2)
+        Notify("FH", name.." ГўГЄГ«ГѕГ·ГҐГ­Г ", 2)
     end
     LocalPlayer.CharacterAdded:Connect(function()
         task.wait(0.5)
@@ -7134,7 +7134,7 @@ do
         end
     end)
 
-    local sec = Tabs.Effects:AddSection({Name="Auras (расширенные)"})
+    local sec = Tabs.Effects:AddSection({Name="Auras (Г°Г Г±ГёГЁГ°ГҐГ­Г­Г»ГҐ)"})
     local AURAS = {
         {"Midnight Blues", "12002206611"},
         {"Rainbow Effect", "8509695714"},
@@ -7155,10 +7155,10 @@ do
             applyAura(a[2], a[1])
         end})
     end
-    sec:AddButton({Title="Очистить ауру", Callback=function()
+    sec:AddButton({Title="ГЋГ·ГЁГ±ГІГЁГІГј Г ГіГ°Гі", Callback=function()
         clearAura()
         pendingAura = nil
-        Notify("FH", "Аура очищена", 2)
+        Notify("FH", "ГЂГіГ°Г  Г®Г·ГЁГ№ГҐГ­Г ", 2)
     end})
 end
 
@@ -7272,20 +7272,20 @@ do
     end
 
     local sec = Tabs.Utility:AddSection({Name="Anti-Aim"})
-    _addOpt(sec, "AddToggle", "FHAntiAimOn", {Title="Анти-аим (неуязвимость от аима)", Default=false}, function(v)
+    _addOpt(sec, "AddToggle", "FHAntiAimOn", {Title="ГЂГ­ГІГЁ-Г ГЁГ¬ (Г­ГҐГіГїГ§ГўГЁГ¬Г®Г±ГІГј Г®ГІ Г ГЁГ¬Г )", Default=false}, function(v)
         if v then
             start()
-            Notify("FH", "Anti-Aim ВКЛ", 2)
+            Notify("FH", "Anti-Aim Г‚ГЉГ‹", 2)
         else
             stop()
-            Notify("FH", "Anti-Aim ВЫКЛ", 2)
+            Notify("FH", "Anti-Aim Г‚Г›ГЉГ‹", 2)
         end
     end)
     getgenv().FH_AntiAimCleanup = stop
 end
 
 -- ============================================================
--- 12. CLIENT GHOST (с бэктреком)
+-- 12. CLIENT GHOST (Г± ГЎГЅГЄГІГ°ГҐГЄГ®Г¬)
 -- ============================================================
 do
     local folder = Workspace:FindFirstChild("FH_ClientVisuals")
@@ -7426,27 +7426,27 @@ do
     end)
 
     local sec = Tabs.Visual:AddSection({Name="Client Ghost"})
-    _addOpt(sec, "AddToggle", "FHGhostOn", {Title="Включить Client Ghost", Default=false}, function(v)
+    _addOpt(sec, "AddToggle", "FHGhostOn", {Title="Г‚ГЄГ«ГѕГ·ГЁГІГј Client Ghost", Default=false}, function(v)
         active = v
         if not v then cleanup() end
-        Notify("FH", v and "Ghost ВКЛ" or "Ghost ВЫКЛ", 2)
+        Notify("FH", v and "Ghost Г‚ГЉГ‹" or "Ghost Г‚Г›ГЉГ‹", 2)
     end)
-    _addOpt(sec, "AddSlider", "FHGhostTransparency", {Title="Прозрачность (%)", Min = 0, Max = 100, Default = 50, Rounding = 0}, function(v)
+    _addOpt(sec, "AddSlider", "FHGhostTransparency", {Title="ГЏГ°Г®Г§Г°Г Г·Г­Г®Г±ГІГј (%)", Min = 0, Max = 100, Default = 50, Rounding = 0}, function(v)
         cfg.Transparency = tonumber(v) or 50
         paint()
     end)
-    _addOpt(sec, "AddColorPicker", "FHGhostColor", {Title="Цвет", Default = Color3.fromRGB(255, 100, 100)}, function(c)
+    _addOpt(sec, "AddColorPicker", "FHGhostColor", {Title="Г–ГўГҐГІ", Default = Color3.fromRGB(255, 100, 100)}, function(c)
         cfg.Color = c
         paint()
     end)
-    _addOpt(sec, "AddToggle", "FHGhostNoTexture", {Title="Убрать текстуры", Default = false}, function(v)
+    _addOpt(sec, "AddToggle", "FHGhostNoTexture", {Title="Г“ГЎГ°Г ГІГј ГІГҐГЄГ±ГІГіГ°Г»", Default = false}, function(v)
         cfg.DeleteTexture = v
         paint()
     end)
-    _addOpt(sec, "AddToggle", "FHGhostBacktrack", {Title="Бэктрек (задержка)", Default = true}, function(v)
+    _addOpt(sec, "AddToggle", "FHGhostBacktrack", {Title="ГЃГЅГЄГІГ°ГҐГЄ (Г§Г Г¤ГҐГ°Г¦ГЄГ )", Default = true}, function(v)
         cfg.Backtrack = v
     end)
-    _addOpt(sec, "AddSlider", "FHGhostBacktrackTime", {Title="Время бэктрека (сек)", Min = 0, Max = 0.8, Default = 0.15, Rounding = 2}, function(v)
+    _addOpt(sec, "AddSlider", "FHGhostBacktrackTime", {Title="Г‚Г°ГҐГ¬Гї ГЎГЅГЄГІГ°ГҐГЄГ  (Г±ГҐГЄ)", Min = 0, Max = 0.8, Default = 0.15, Rounding = 2}, function(v)
         cfg.BacktrackTime = tonumber(v) or 0.15
     end)
 end
@@ -7599,7 +7599,7 @@ do
         searchInner.BorderSizePixel = 0
         searchInner.ClearTextOnFocus = false
         searchInner.Font = Enum.Font.Gotham
-        searchInner.PlaceholderText = "Поиск игроков..."
+        searchInner.PlaceholderText = "ГЏГ®ГЁГ±ГЄ ГЁГЈГ°Г®ГЄГ®Гў..."
         searchInner.PlaceholderColor3 = Color3.fromRGB(150, 145, 140)
         searchInner.Text = ""
         searchInner.TextColor3 = Color3.fromRGB(245, 242, 238)
@@ -7704,7 +7704,7 @@ do
                     btn.Activated:Connect(function()
                         panel.SelectedPlayer = pl
                         getgenv().FH_SelectedPlayer = pl
-                        Notify("FH", "Выбран: "..pl.Name, 1.5)
+                        Notify("FH", "Г‚Г»ГЎГ°Г Г­: "..pl.Name, 1.5)
                     end)
                     panel.CardMap[pl] = btn
                 end
@@ -7725,41 +7725,41 @@ do
     end)
     refreshCards()
 
-    _addOpt(targetSection, "AddToggle", "FHPlayerPanelOn", {Title = "Открыть Player List Panel", Default = false}, function(v)
+    _addOpt(targetSection, "AddToggle", "FHPlayerPanelOn", {Title = "ГЋГІГЄГ°Г»ГІГј Player List Panel", Default = false}, function(v)
         if panel and panel.Frame then
             panel.Frame.Parent.Enabled = v
             if v then refreshCards() end
         end
     end)
 
-    targetSection:AddButton({Title="Телепорт к выбранному", Callback=function()
+    targetSection:AddButton({Title="Г’ГҐГ«ГҐГЇГ®Г°ГІ ГЄ ГўГ»ГЎГ°Г Г­Г­Г®Г¬Гі", Callback=function()
         local pl = getgenv().FH_SelectedPlayer
-        if not pl or not pl.Character then Notify("FH","Игрок не выбран или мёртв", 2) return end
+        if not pl or not pl.Character then Notify("FH","Г€ГЈГ°Г®ГЄ Г­ГҐ ГўГ»ГЎГ°Г Г­ ГЁГ«ГЁ Г¬ВёГ°ГІГў", 2) return end
         local hrp = getHRP()
         if not hrp then return end
         local t = pl.Character:FindFirstChild("HumanoidRootPart")
         if t then hrp.CFrame = t.CFrame + Vector3.new(0, 5, 0) end
     end})
-    targetSection:AddButton({Title="Телепорт игрока к себе", Callback=function()
+    targetSection:AddButton({Title="Г’ГҐГ«ГҐГЇГ®Г°ГІ ГЁГЈГ°Г®ГЄГ  ГЄ Г±ГҐГЎГҐ", Callback=function()
         local pl = getgenv().FH_SelectedPlayer
-        if not pl or not pl.Character then Notify("FH","Игрок не выбран", 2) return end
+        if not pl or not pl.Character then Notify("FH","Г€ГЈГ°Г®ГЄ Г­ГҐ ГўГ»ГЎГ°Г Г­", 2) return end
         local hrp = getHRP()
         if not hrp then return end
         local t = pl.Character:FindFirstChild("HumanoidRootPart")
         if t then t.CFrame = hrp.CFrame + Vector3.new(0, 3, 0) end
     end})
-    targetSection:AddButton({Title="Замутить выбранного (AntiFling)", Callback=function()
+    targetSection:AddButton({Title="Г‡Г Г¬ГіГІГЁГІГј ГўГ»ГЎГ°Г Г­Г­Г®ГЈГ® (AntiFling)", Callback=function()
         local pl = getgenv().FH_SelectedPlayer
-        if not pl or not pl.Character then Notify("FH","Игрок не выбран", 2) return end
+        if not pl or not pl.Character then Notify("FH","Г€ГЈГ°Г®ГЄ Г­ГҐ ГўГ»ГЎГ°Г Г­", 2) return end
         for _, d in ipairs(pl.Character:GetDescendants()) do
             if d:IsA("BasePart") then d.CanCollide = false end
         end
-        Notify("FH", pl.Name.." замучен", 2)
+        Notify("FH", pl.Name.." Г§Г Г¬ГіГ·ГҐГ­", 2)
     end})
 end
 
 -- ============================================================
--- 15. UI SOUNDS (5 звуков)
+-- 15. UI SOUNDS (5 Г§ГўГіГЄГ®Гў)
 -- ============================================================
 do
     local SoundIds = {
@@ -7793,20 +7793,20 @@ do
     getgenv().FH_PlayUISound = play
 
     local sec = Tabs.Utility:AddSection({Name="UI Sounds"})
-    _addOpt(sec, "AddToggle", "FH_UISoundsOn", {Title = "Звуки интерфейса", Default = true}, function(v)
+    _addOpt(sec, "AddToggle", "FH_UISoundsOn", {Title = "Г‡ГўГіГЄГЁ ГЁГ­ГІГҐГ°ГґГҐГ©Г±Г ", Default = true}, function(v)
         cfg.Enabled = v
         if v then playEnable() end
     end)
-    _addOpt(sec, "AddDropdown", "FH_UISoundEnable", {Title = "Звук включения", Values = {"Enable 1", "Sparkle", "Laser Click", "Enable 2", "Notify"}, Default = "Enable 1"}, function(v)
+    _addOpt(sec, "AddDropdown", "FH_UISoundEnable", {Title = "Г‡ГўГіГЄ ГўГЄГ«ГѕГ·ГҐГ­ГЁГї", Values = {"Enable 1", "Sparkle", "Laser Click", "Enable 2", "Notify"}, Default = "Enable 1"}, function(v)
         cfg.EnableSound = v or "Enable 1"
         play(SoundIds[cfg.EnableSound])
     end)
-    _addOpt(sec, "AddDropdown", "FH_UISoundDisable", {Title = "Звук выключения", Values = {"Enable 1", "Sparkle", "Laser Click", "Enable 2", "Notify"}, Default = "Enable 1"}, function(v)
+    _addOpt(sec, "AddDropdown", "FH_UISoundDisable", {Title = "Г‡ГўГіГЄ ГўГ»ГЄГ«ГѕГ·ГҐГ­ГЁГї", Values = {"Enable 1", "Sparkle", "Laser Click", "Enable 2", "Notify"}, Default = "Enable 1"}, function(v)
         cfg.DisableSound = v or "Enable 1"
         play(SoundIds[cfg.DisableSound])
     end)
-    sec:AddButton({Title="Проверить звук включения", Callback=function() playEnable() end})
-    sec:AddButton({Title="Проверить звук выключения", Callback=function() playDisable() end})
+    sec:AddButton({Title="ГЏГ°Г®ГўГҐГ°ГЁГІГј Г§ГўГіГЄ ГўГЄГ«ГѕГ·ГҐГ­ГЁГї", Callback=function() playEnable() end})
+    sec:AddButton({Title="ГЏГ°Г®ГўГҐГ°ГЁГІГј Г§ГўГіГЄ ГўГ»ГЄГ«ГѕГ·ГҐГ­ГЁГї", Callback=function() playDisable() end})
 end
 
 -- ============================================================
@@ -7935,12 +7935,12 @@ do
     end
 
     local sec = Tabs.Utility:AddSection({Name="Game Sounds"})
-    _addOpt(sec, "AddDropdown", "FH_SheriffKill", {Title = "Мы убили убийцу", Values = list, Default = "Default"}, function(v) cfg.SheriffKill = v or "Default" end)
-    _addOpt(sec, "AddDropdown", "FH_MurderKill", {Title = "Убийца кого-то убил", Values = list, Default = "Default"}, function(v) cfg.MurderKill = v or "Default" end)
-    _addOpt(sec, "AddDropdown", "FH_KnifeKill", {Title = "Убийство ножом", Values = list, Default = "Default"}, function(v) cfg.KnifeKill = v or "Default" end)
-    _addOpt(sec, "AddDropdown", "FH_Gunshot", {Title = "Выстрел", Values = list, Default = "Default"}, function(v) cfg.Gunshot = v or "Default" end)
-    _addOpt(sec, "AddToggle", "FH_MuteReload", {Title = "Заглушить перезарядку", Default = false}, function(v) cfg.MutedReload = v end)
-    sec:AddButton({Title="Проверить (текущий)", Callback=function() play(cfg.SheriffKill) end})
+    _addOpt(sec, "AddDropdown", "FH_SheriffKill", {Title = "ГЊГ» ГіГЎГЁГ«ГЁ ГіГЎГЁГ©Г¶Гі", Values = list, Default = "Default"}, function(v) cfg.SheriffKill = v or "Default" end)
+    _addOpt(sec, "AddDropdown", "FH_MurderKill", {Title = "Г“ГЎГЁГ©Г¶Г  ГЄГ®ГЈГ®-ГІГ® ГіГЎГЁГ«", Values = list, Default = "Default"}, function(v) cfg.MurderKill = v or "Default" end)
+    _addOpt(sec, "AddDropdown", "FH_KnifeKill", {Title = "Г“ГЎГЁГ©Г±ГІГўГ® Г­Г®Г¦Г®Г¬", Values = list, Default = "Default"}, function(v) cfg.KnifeKill = v or "Default" end)
+    _addOpt(sec, "AddDropdown", "FH_Gunshot", {Title = "Г‚Г»Г±ГІГ°ГҐГ«", Values = list, Default = "Default"}, function(v) cfg.Gunshot = v or "Default" end)
+    _addOpt(sec, "AddToggle", "FH_MuteReload", {Title = "Г‡Г ГЈГ«ГіГёГЁГІГј ГЇГҐГ°ГҐГ§Г Г°ГїГ¤ГЄГі", Default = false}, function(v) cfg.MutedReload = v end)
+    sec:AddButton({Title="ГЏГ°Г®ГўГҐГ°ГЁГІГј (ГІГҐГЄГіГ№ГЁГ©)", Callback=function() play(cfg.SheriffKill) end})
 end
 
 -- ============================================================
@@ -7951,10 +7951,10 @@ do
     local textMap = {
         EN = {},
         RU = {
-            ["Bой"] = "Бой", ["Движение"] = "Движение", ["Бинды"] = "Бинды",
-            ["Визуал"] = "Визуал", ["Эффекты"] = "Эффекты", ["Фарм"] = "Фарм",
-            ["Эмоции"] = "Эмоции", ["Утилиты"] = "Утилиты",
-            ["Троллинг"] = "Троллинг", ["Настройки"] = "Настройки",
+            ["BГ®Г©"] = "ГЃГ®Г©", ["Г„ГўГЁГ¦ГҐГ­ГЁГҐ"] = "Г„ГўГЁГ¦ГҐГ­ГЁГҐ", ["ГЃГЁГ­Г¤Г»"] = "ГЃГЁГ­Г¤Г»",
+            ["Г‚ГЁГ§ГіГ Г«"] = "Г‚ГЁГ§ГіГ Г«", ["ГќГґГґГҐГЄГІГ»"] = "ГќГґГґГҐГЄГІГ»", ["Г”Г Г°Г¬"] = "Г”Г Г°Г¬",
+            ["ГќГ¬Г®Г¶ГЁГЁ"] = "ГќГ¬Г®Г¶ГЁГЁ", ["Г“ГІГЁГ«ГЁГІГ»"] = "Г“ГІГЁГ«ГЁГІГ»",
+            ["Г’Г°Г®Г«Г«ГЁГ­ГЈ"] = "Г’Г°Г®Г«Г«ГЁГ­ГЈ", ["ГЌГ Г±ГІГ°Г®Г©ГЄГЁ"] = "ГЌГ Г±ГІГ°Г®Г©ГЄГЁ",
         },
     }
     getgenv().FH_CurrentLang = currentLang
@@ -7967,13 +7967,13 @@ do
     end
     getgenv().FH_Translate = translate
     local sec = Tabs.Settings:AddSection({Name="Language"})
-    _addOpt(sec, "AddDropdown", "FH_Lang", {Title = "Язык интерфейса", Values = {"EN", "RU"}, Default = "EN"}, function(v)
+    _addOpt(sec, "AddDropdown", "FH_Lang", {Title = "ГџГ§Г»ГЄ ГЁГ­ГІГҐГ°ГґГҐГ©Г±Г ", Values = {"EN", "RU"}, Default = "EN"}, function(v)
         currentLang = v or "EN"
         getgenv().FH_CurrentLang = currentLang
-        Notify("FH", "Язык: "..currentLang, 2)
+        Notify("FH", "ГџГ§Г»ГЄ: "..currentLang, 2)
     end)
-    sec:AddButton({Title="Применить сейчас", Callback=function()
-        Notify("FH", "Язык: "..currentLang, 2)
+    sec:AddButton({Title="ГЏГ°ГЁГ¬ГҐГ­ГЁГІГј Г±ГҐГ©Г·Г Г±", Callback=function()
+        Notify("FH", "ГџГ§Г»ГЄ: "..currentLang, 2)
     end})
 end
 
@@ -8084,7 +8084,7 @@ do
     end)
 
     local sec = Tabs.Settings:AddSection({Name="Watermark"})
-    _addOpt(sec, "AddToggle", "FH_WatermarkOn", {Title = "Показывать Watermark", Default = true}, function(v)
+    _addOpt(sec, "AddToggle", "FH_WatermarkOn", {Title = "ГЏГ®ГЄГ Г§Г»ГўГ ГІГј Watermark", Default = true}, function(v)
         frame.Visible = v
     end)
 end
@@ -8148,11 +8148,11 @@ do
     if LocalPlayer.Character then bind(LocalPlayer.Character) end
 
     local sec = Tabs.Visual:AddSection({Name="Jump Circle"})
-    _addOpt(sec, "AddToggle", "FH_JumpCircleOn", {Title = "Круг при прыжке", Default = false}, function(v)
+    _addOpt(sec, "AddToggle", "FH_JumpCircleOn", {Title = "ГЉГ°ГіГЈ ГЇГ°ГЁ ГЇГ°Г»Г¦ГЄГҐ", Default = false}, function(v)
         settings.enabled = v
         if v and LocalPlayer.Character then bind(LocalPlayer.Character) end
     end)
-    _addOpt(sec, "AddColorPicker", "FH_JumpCircleCol", {Title = "Цвет", Default = Color3.fromRGB(255, 105, 180)}, function(c) settings.color = c end)
+    _addOpt(sec, "AddColorPicker", "FH_JumpCircleCol", {Title = "Г–ГўГҐГІ", Default = Color3.fromRGB(255, 105, 180)}, function(c) settings.color = c end)
 end
 
 -- ============================================================
@@ -8247,9 +8247,9 @@ do
     end
 
     local sec = Tabs.Effects:AddSection({Name="RTX Shader"})
-    _addOpt(sec, "AddToggle", "FH_RTXOn", {Title = "Включить RTX", Default = false}, function(v)
+    _addOpt(sec, "AddToggle", "FH_RTXOn", {Title = "Г‚ГЄГ«ГѕГ·ГЁГІГј RTX", Default = false}, function(v)
         if v then enable() else disable() end
-        Notify("FH", "RTX "..(v and "ВКЛ" or "ВЫКЛ"), 2)
+        Notify("FH", "RTX "..(v and "Г‚ГЉГ‹" or "Г‚Г›ГЉГ‹"), 2)
     end)
 end
 
@@ -8465,32 +8465,32 @@ do
     end
 
     local sec = Tabs.Farm:AddSection({Name="Advanced AutoFarm"})
-    _addOpt(sec, "AddToggle", "FHAdvFarmOn", {Title = "Включить Advanced Farm", Default = false}, function(v)
+    _addOpt(sec, "AddToggle", "FHAdvFarmOn", {Title = "Г‚ГЄГ«ГѕГ·ГЁГІГј Advanced Farm", Default = false}, function(v)
         if v then
             start()
-            Notify("FH", "Advanced Farm ВКЛ", 2)
+            Notify("FH", "Advanced Farm Г‚ГЉГ‹", 2)
         else
             stopFarming()
-            Notify("FH", "Advanced Farm ВЫКЛ", 2)
+            Notify("FH", "Advanced Farm Г‚Г›ГЉГ‹", 2)
         end
     end)
-    _addOpt(sec, "AddDropdown", "FHAdvFarmMode", {Title = "Режим", Values = {"Underground", "Sit"}, Default = "Underground"}, function(v) cfg.Mode = v or "Underground" end)
-    _addOpt(sec, "AddSlider", "FHAdvFarmSpeed", {Title = "Скорость перемещения", Min = 5, Max = 100, Default = 25, Rounding = 0}, function(v) cfg.TweenSpeed = tonumber(v) or 25 end)
-    _addOpt(sec, "AddSlider", "FHAdvFarmOffset", {Title = "Смещение под землёй", Min = 0, Max = 20, Default = 4, Rounding = 0}, function(v) cfg.UndergroundOffset = tonumber(v) or 4 end)
-    _addOpt(sec, "AddSlider", "FHAdvFarmDist", {Title = "Макс. дистанция монет", Min = 50, Max = 2000, Default = 600, Rounding = 0}, function(v) cfg.MaxDistance = tonumber(v) or 600 end)
-    _addOpt(sec, "AddSlider", "FHAdvFarmCoinLimit", {Title = "Лимит монет (авто-ресет)", Min = 5, Max = 200, Default = 40, Rounding = 0}, function(v) cfg.CoinLimit = tonumber(v) or 40 end)
-    _addOpt(sec, "AddToggle", "FHAdvFarmAutoReset", {Title = "Авто-ресет при полных мешках", Default = false}, function(v) cfg.AutoReset = v end)
-    _addOpt(sec, "AddToggle", "FHAdvFarmAvoid", {Title = "Избегать маньяка", Default = false}, function(v) cfg.AvoidMurder = v end)
+    _addOpt(sec, "AddDropdown", "FHAdvFarmMode", {Title = "ГђГҐГ¦ГЁГ¬", Values = {"Underground", "Sit"}, Default = "Underground"}, function(v) cfg.Mode = v or "Underground" end)
+    _addOpt(sec, "AddSlider", "FHAdvFarmSpeed", {Title = "Г‘ГЄГ®Г°Г®Г±ГІГј ГЇГҐГ°ГҐГ¬ГҐГ№ГҐГ­ГЁГї", Min = 5, Max = 100, Default = 25, Rounding = 0}, function(v) cfg.TweenSpeed = tonumber(v) or 25 end)
+    _addOpt(sec, "AddSlider", "FHAdvFarmOffset", {Title = "Г‘Г¬ГҐГ№ГҐГ­ГЁГҐ ГЇГ®Г¤ Г§ГҐГ¬Г«ВёГ©", Min = 0, Max = 20, Default = 4, Rounding = 0}, function(v) cfg.UndergroundOffset = tonumber(v) or 4 end)
+    _addOpt(sec, "AddSlider", "FHAdvFarmDist", {Title = "ГЊГ ГЄГ±. Г¤ГЁГ±ГІГ Г­Г¶ГЁГї Г¬Г®Г­ГҐГІ", Min = 50, Max = 2000, Default = 600, Rounding = 0}, function(v) cfg.MaxDistance = tonumber(v) or 600 end)
+    _addOpt(sec, "AddSlider", "FHAdvFarmCoinLimit", {Title = "Г‹ГЁГ¬ГЁГІ Г¬Г®Г­ГҐГІ (Г ГўГІГ®-Г°ГҐГ±ГҐГІ)", Min = 5, Max = 200, Default = 40, Rounding = 0}, function(v) cfg.CoinLimit = tonumber(v) or 40 end)
+    _addOpt(sec, "AddToggle", "FHAdvFarmAutoReset", {Title = "ГЂГўГІГ®-Г°ГҐГ±ГҐГІ ГЇГ°ГЁ ГЇГ®Г«Г­Г»Гµ Г¬ГҐГёГЄГ Гµ", Default = false}, function(v) cfg.AutoReset = v end)
+    _addOpt(sec, "AddToggle", "FHAdvFarmAvoid", {Title = "Г€Г§ГЎГҐГЈГ ГІГј Г¬Г Г­ГјГїГЄГ ", Default = false}, function(v) cfg.AvoidMurder = v end)
     getgenv().FH_AdvFarmStop = stopFarming
 end
 
 pcall(function() Window:SelectTab(1) end)
 
 print("[FH] ============================================")
-print("[FH] Part 2/2 — Extra Features v20.1 — "..CREDITS)
+print("[FH] Part 2/2 вЂ” Extra Features v20.1 вЂ” "..CREDITS)
 print("[FH] TradeHelper, VoteDuper, Emotes, WaterProt, FadeDisabler, AntiCoin")
 print("[FH] GunModels, BeamEffects, Skybox, Auras, AntiAim, Ghost, Avatars")
 print("[FH] PlayerPanel, UISounds, GameSounds, Language, Watermark, JumpCircle")
 print("[FH] RTX, Advanced AutoFarm")
-print("[FH] Скрипт создан HOTI и Ve315. BETA версия.")
+print("[FH] Г‘ГЄГ°ГЁГЇГІ Г±Г®Г§Г¤Г Г­ HOTI ГЁ Ve315. BETA ГўГҐГ°Г±ГЁГї.")
 print("[FH] ============================================")
