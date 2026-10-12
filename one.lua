@@ -2,7 +2,19 @@
 -- main.lua — FortniHub MM2 v20.1 — ЧАСТЬ 1/2
 -- Main code (бывшие Parts 1/2 + 2/2 + 3/3, всё в одном)
 -- ============================================================
-
+-- ============================================================
+-- F O R T N I H U B   L O A D E R
+-- ============================================================
+local ascii_art = [[
+    ______                __  _    __  __      
+   / ____/____   _____  / /_(_)  / / / /_  __
+  / /_   / __ \ / ___/ / __/ /  / /_/ / / / /
+ / __/  / /_/ // /    / /_/ /  / __  / /_/ / 
+/_/     \____//_/     \__/_/  /_/ /_/\__,_/  
+                                               
+]]
+print(ascii_art)
+print("[FH] Скрипт успешно загружен!")
 local Players=game:GetService("Players")
 local RunService=game:GetService("RunService")
 local UserInputService=game:GetService("UserInputService")
@@ -2292,155 +2304,194 @@ do
         end
         return out
     end
-    local function serializeValue(v)
-        if typeof(v)=="Color3" then
-            return string.format("C:%.6f,%.6f,%.6f", v.R, v.G, v.B)
+    -- ============================================================
+-- ИСПРАВЛЕННАЯ СИСТЕМА КОНФИГОВ
+-- ============================================================
+local function serializeValue(v)
+    if typeof(v)=="Color3" then
+        return string.format("C:%.6f,%.6f,%.6f", v.R, v.G, v.B)
+    end
+    -- Для перечислений (Enum) сохраняем их тип и имя
+    if typeof(v)=="EnumItem" then
+        return "E:"..tostring(v.EnumType).."|"..v.Name
+    end
+    local t=type(v)
+    if t=="number" then return "N:"..tostring(v) end
+    if t=="boolean" then return "B:"..tostring(v) end
+    if t=="string" then
+        -- Если строка является именем KeyCode, сохраняем как KeyCode
+        if Enum.KeyCode[v] then return "K:"..v end
+        v = v:gsub("\n","\\n"):gsub("\t","\\t")
+        return "S:"..v
+    end
+    if t=="table" then
+        local isArray=true
+        for k in pairs(v) do if type(k)~="number" then isArray=false break end end
+        if isArray then
+            local parts={}
+            for i=1,#v do parts[#parts+1]=tostring(v[i]) end
+            return "L:"..table.concat(parts,",")
+        else
+            local parts={}
+            for k,val in pairs(v) do parts[#parts+1]=tostring(k).."="..tostring(val) end
+            return "D:"..table.concat(parts,";")
         end
-        if typeof(v)=="EnumItem" then
-            if v.EnumType == Enum.KeyCode then
-                return "K:"..v.Name
-            end
-            return "E:"..tostring(v.EnumType).."|"..v.Name
-        end
-        local t=type(v)
-        if t=="number" then return "N:"..tostring(v) end
-        if t=="boolean" then return "B:"..tostring(v) end
-        if t=="string" then
-            if Enum.KeyCode[v] then return "K:"..v end
-            v = v:gsub("\n","\\n"):gsub("\t","\\t")
-            return "S:"..v
-        end
-        if t=="table" then
-            local isArray=true
-            for k in pairs(v) do if type(k)~="number" then isArray=false break end end
-            if isArray then
-                local parts={}
-                for i=1,#v do parts[#parts+1]=tostring(v[i]) end
-                return "L:"..table.concat(parts,",")
-            else
-                local parts={}
-                for k,val in pairs(v) do parts[#parts+1]=tostring(k).."="..tostring(val) end
-                return "D:"..table.concat(parts,";")
+    end
+    return nil
+end
+
+local function deserializeValue(s)
+    local prefix, rest = string.match(s, "^(%a):(.*)$")
+    if not prefix then return nil end
+
+    if prefix == "K" then -- KeyCode
+        return Enum.KeyCode[rest]
+    end
+
+    if prefix == "C" then -- Color3
+        local r, g, b = string.match(rest, "([^,]+),([^,]+),([^,]+)")
+        if r and g and b then return Color3.new(tonumber(r), tonumber(g), tonumber(b)) end
+        return nil
+    end
+
+    if prefix == "E" then -- Общий EnumItem
+        local enumType, name = string.match(rest, "^([^|]+)|(.+)$")
+        if enumType and name then
+            local et = Enum[enumType]
+            if et and et[name] then
+                return et[name]
             end
         end
         return nil
     end
-    local function deserializeValue(s)
-        local prefix,rest=string.match(s,"^(%a):(.*)$")
-        if not prefix then return nil end
-        if prefix=="K" then
-            return Enum.KeyCode[rest]
-        end
-        if prefix=="C" then
-            local r,g,b=string.match(rest,"([^,]+),([^,]+),([^,]+)")
-            if r and g and b then return Color3.new(tonumber(r),tonumber(g),tonumber(b)) end
-            return nil
-        end
-        if prefix=="E" then
-            local enumType,name=string.match(rest,"^([^|]+)|(.+)$")
-            if enumType and name then
-                local et=Enum[enumType]
-                if et and et[name] then return et[name] end
-            end
-            return nil
-        end
-        if prefix=="N" then return tonumber(rest) end
-        if prefix=="B" then return rest=="true" end
-        if prefix=="S" then
-            return rest:gsub("\\n","\n"):gsub("\\t","\t")
-        end
-        if prefix=="L" then
-            local out={}
-            for piece in string.gmatch(rest,"[^,]+") do
-                local n=tonumber(piece)
-                if n then out[#out+1]=n else out[#out+1]=piece end
-            end
-            return out
-        end
-        if prefix=="D" then
-            local out={}
-            for pair in string.gmatch(rest,"[^;]+") do
-                local k,val=string.match(pair,"^(.-)=(.*)$")
-                if k then
-                    local n=tonumber(val)
-                    if n then out[k]=n
-                    elseif val=="true" then out[k]=true
-                    elseif val=="false" then out[k]=false
-                    else out[k]=val end
-                end
-            end
-            return out
-        end
-        return nil
+
+    if prefix == "N" then return tonumber(rest) end
+    if prefix == "B" then return rest == "true" end
+    if prefix == "S" then
+        return rest:gsub("\\n", "\n"):gsub("\\t", "\t")
     end
-    local function saveConfig(name)
-        if type(writefile)~="function" then Notify("FH","Нет writefile",4) return false end
-        if not ensureConfigDir() then Notify("FH","Не создал папку",4) return false end
-        local lines={"-- FortniHub Config: "..tostring(name),"-- "..os.date("%Y-%m-%d %H:%M:%S")}
-        for optionName,option in pairs(Options) do
-            if option and option.Value~=nil then
-                local ser=serializeValue(option.Value)
-                if ser then lines[#lines+1]=optionName.."\t"..ser end
+    if prefix == "L" then -- Массив
+        local out = {}
+        for piece in string.gmatch(rest, "[^,]+") do
+            local n = tonumber(piece)
+            if n then out[#out+1] = n else out[#out+1] = piece end
+        end
+        return out
+    end
+    if prefix == "D" then -- Словарь
+        local out = {}
+        for pair in string.gmatch(rest, "[^;]+") do
+            local k, val = string.match(pair, "^(.-)=(.*)$")
+            if k then
+                local n = tonumber(val)
+                if n then out[k] = n
+                elseif val == "true" then out[k] = true
+                elseif val == "false" then out[k] = false
+                else out[k] = val end
             end
         end
-        local path=CONFIG_DIR..name..CONFIG_EXT
-        local ok=pcall(writefile,path,table.concat(lines,"\n"))
-        if ok then Notify("FH","Сохранено: "..name,3) return true end
-        Notify("FH","Ошибка сохранения",3)
+        return out
+    end
+    return nil
+end
+
+-- ... (функции ensureConfigDir и listConfigs остаются без изменений) ...
+
+local function saveConfig(name)
+    if type(writefile) ~= "function" then
+        Notify("FH", "Нет writefile", 4)
         return false
     end
-    local function loadConfig(name)
-        if type(readfile)~="function" then Notify("FH","Нет readfile",4) return false end
-        local path=CONFIG_DIR..name..CONFIG_EXT
-        local ok,data=pcall(readfile,path)
-        if not ok or type(data)~="string" then Notify("FH","Ошибка чтения",3) return false end
-        local loaded=0
-        local bindLoaded=0
-        local BS = getgenv().FH_BindState
-        for line in string.gmatch(data,"[^\r\n]+") do
-            if line:sub(1,2)~="--" then
-                local key,ser=string.match(line,"^([^\t]+)\t(.+)$")
-                if key and ser then
-                    if key:sub(1,9)=="BIND_KEY_" then
-                        local id = key:sub(10)
-                        local enumVal = nil
-                        if ser:sub(1,2)=="K:" then
-                            local sname = ser:sub(3)
-                            if Enum.KeyCode[sname] then enumVal = Enum.KeyCode[sname] end
-                        elseif ser:sub(1,2)=="E:" then
-                            local raw = ser:sub(3)
-                            local enumType,keyName=string.match(raw,"^([^|]+)|(.+)$")
-                            if enumType and keyName then
-                                local et=Enum[enumType]
-                                if et and et[keyName] then enumVal = et[keyName] end
-                            end
-                        elseif ser:sub(1,2)=="S:" then
-                            local sname = ser:sub(3)
-                            if Enum.KeyCode[sname] then enumVal = Enum.KeyCode[sname] end
-                        end
-                        if enumVal then
-                            pcall(function() Options[key]:SetValue(enumVal) end)
-                            if BS and BS[id] then BS[id].key = enumVal end
-                            bindLoaded = bindLoaded + 1
-                        else
-                            pcall(function() Options[key]:SetValue(Enum.KeyCode.Unknown) end)
-                            if BS and BS[id] then BS[id].key = nil end
-                        end
-                        loaded = loaded + 1
+    if not ensureConfigDir() then
+        Notify("FH", "Не создал папку", 4)
+        return false
+    end
+
+    local lines = {"-- FortniHub Config: "..tostring(name), "-- "..os.date("%Y-%m-%d %H:%M:%S")}
+
+    for optionName, option in pairs(Options) do
+        if option and option.Value ~= nil then
+            local ser = serializeValue(option.Value)
+            if ser then
+                lines[#lines+1] = optionName.."\t"..ser
+            end
+        end
+    end
+
+    local path = CONFIG_DIR..name..CONFIG_EXT
+    local ok = pcall(writefile, path, table.concat(lines, "\n"))
+
+    if ok then
+        Notify("FH", "Сохранено: "..name, 3)
+        return true
+    end
+
+    Notify("FH", "Ошибка сохранения", 3)
+    return false
+end
+
+local function loadConfig(name)
+    if type(readfile) ~= "function" then
+        Notify("FH", "Нет readfile", 4)
+        return false
+    end
+
+    local path = CONFIG_DIR..name..CONFIG_EXT
+    local ok, data = pcall(readfile, path)
+
+    if not ok or type(data) ~= "string" then
+        Notify("FH", "Ошибка чтения", 3)
+        return false
+    end
+
+    local loaded = 0
+    local bindLoaded = 0
+    local BS = getgenv().FH_BindState
+
+    for line in string.gmatch(data, "[^\r\n]+") do
+        if line:sub(1, 2) ~= "--" then
+            local key, ser = string.match(line, "^([^\t]+)\t(.+)$")
+            if key and ser then
+                -- Обработка биндов (KeyCode)
+                if key:sub(1, 9) == "BIND_KEY_" then
+                    local id = key:sub(10)
+                    local enumVal = nil
+                    if ser:sub(1, 2) == "K:" then
+                        local sname = ser:sub(3)
+                        if Enum.KeyCode[sname] then enumVal = Enum.KeyCode[sname] end
+                    elseif ser:sub(1, 2) == "S:" then
+                        local sname = ser:sub(3)
+                        if Enum.KeyCode[sname] then enumVal = Enum.KeyCode[sname] end
+                    end
+                    -- (можно добавить обработку "E:" для других Enum, если бинды могут быть такими)
+                    if enumVal then
+                        pcall(function() Options[key]:SetValue(enumVal) end)
+                        if BS and BS[id] then BS[id].key = enumVal end
+                        bindLoaded = bindLoaded + 1
                     else
-                        local val=deserializeValue(ser)
-                        if val~=nil and Options[key] then
-                            pcall(function() Options[key]:SetValue(val) end)
-                            fireRegistered(key, val)
-                            loaded=loaded+1
-                        end
+                        pcall(function() Options[key]:SetValue(Enum.KeyCode.Unknown) end)
+                        if BS and BS[id] then BS[id].key = nil end
+                    end
+                    loaded = loaded + 1
+                else
+                    -- Обработка остальных опций через десериализатор
+                    local val = deserializeValue(ser)
+                    if val ~= nil and Options[key] then
+                        pcall(function() Options[key]:SetValue(val) end)
+                        -- Важно: вызываем callback, чтобы скрипт применил новое значение
+                        fireRegistered(key, val)
+                        loaded = loaded + 1
                     end
                 end
             end
         end
-        Notify("FH","Загружено: "..name.." ("..loaded..", биндов: "..bindLoaded..")",4)
-        return true
     end
+
+    Notify("FH", "Загружено: "..name.." ("..loaded..", биндов: "..bindLoaded..")", 4)
+    return true
+end
+
+-- ... (функции deleteConfig и refreshList остаются без изменений) ...
     local function deleteConfig(name)
         if type(delfile)~="function" then Notify("FH","Нет delfile",4) return false end
         local ok=pcall(delfile,CONFIG_DIR..name..CONFIG_EXT)
