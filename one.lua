@@ -6964,3 +6964,594 @@ print("[FH] GunModels, Skybox, Auras, AntiAim, Avatars")
 print("[FH] GameSounds, JumpCircle, RTX")
 print("[FH] Скрипт создан HOTI и Ve315. BETA версия.")
 print("[FH] ============================================")
+--[=[
+============================================================
+  FORTNIHUB — FIXED PATCH v1.0
+  Вставить В САМЫЙ КОНЕЦ one.lua (после Part 2/2).
+  Не трогает старый код — создаёт свои разделы в UI.
+============================================================
+]=]
+
+-- ============================================================
+-- 1. БЕЗОПАСНАЯ ТАБЛИЦА KeyCode (без вызова Enum.KeyCode[...])
+-- ============================================================
+local FIX_KeyCodeLookup = {}
+do
+    local ok, items = pcall(function() return Enum.KeyCode:GetEnumItems() end)
+    if ok and type(items) == "table" then
+        for _, item in ipairs(items) do
+            FIX_KeyCodeLookup[item.Name] = item
+        end
+    end
+end
+
+-- ============================================================
+-- 2. НОВЫЕ ФУНКЦИИ СЕРИАЛИЗАЦИИ / ДЕСЕРИАЛИЗАЦИИ
+-- ============================================================
+local FIX_Dir = "FortniHub_Configs/"
+local FIX_Ext = ".txt"
+
+local function FIX_ensureDir()
+    if type(isfolder) ~= "function" or type(makefolder) ~= "function" then return false end
+    local ok, has = pcall(isfolder, FIX_Dir)
+    if ok and has then return true end
+    return pcall(makefolder, FIX_Dir) == true
+end
+
+local function FIX_serialize(v)
+    if typeof(v) == "Color3" then
+        return string.format("C:%.6f,%.6f,%.6f", v.R, v.G, v.B)
+    end
+    if typeof(v) == "EnumItem" then
+        local enumTypeName = nil
+        pcall(function() enumTypeName = tostring(v.EnumType) end)
+        if enumTypeName == "Enum.KeyCode" then
+            return "K:"..v.Name
+        elseif enumTypeName then
+            return "E:"..enumTypeName.."|"..v.Name
+        end
+        return nil
+    end
+    local t = type(v)
+    if t == "number" then return "N:"..tostring(v) end
+    if t == "boolean" then return "B:"..tostring(v) end
+    if t == "string" then
+        if FIX_KeyCodeLookup[v] then return "K:"..v end
+        v = v:gsub("\n", "\\n"):gsub("\t", "\\t")
+        return "S:"..v
+    end
+    if t == "table" then
+        local isArray = true
+        for k in pairs(v) do
+            if type(k) ~= "number" then isArray = false; break end
+        end
+        if isArray then
+            local parts = {}
+            for i = 1, #v do parts[#parts+1] = tostring(v[i]) end
+            return "L:"..table.concat(parts, ",")
+        else
+            local parts = {}
+            for k, val in pairs(v) do parts[#parts+1] = tostring(k).."="..tostring(val) end
+            return "D:"..table.concat(parts, ";")
+        end
+    end
+    return nil
+end
+
+local function FIX_deserialize(s)
+    if type(s) ~= "string" then return nil end
+    local prefix, rest = string.match(s, "^(%a):(.*)$")
+    if not prefix then return nil end
+
+    if prefix == "K" then
+        return FIX_KeyCodeLookup[rest]
+    end
+    if prefix == "C" then
+        local r, g, b = string.match(rest, "([^,]+),([^,]+),([^,]+)")
+        if r and g and b then
+            local ok, c = pcall(function() return Color3.new(tonumber(r), tonumber(g), tonumber(b)) end)
+            if ok then return c end
+        end
+        return nil
+    end
+    if prefix == "E" then
+        local enumType, name = string.match(rest, "^([^|]+)|(.+)$")
+        if enumType and name then
+            local ok, val = pcall(function()
+                local et = Enum[enumType]
+                if not et then return nil end
+                for _, item in ipairs(et:GetEnumItems()) do
+                    if item.Name == name then return item end
+                end
+                return nil
+            end)
+            if ok then return val end
+        end
+        return nil
+    end
+    if prefix == "N" then return tonumber(rest) end
+    if prefix == "B" then return rest == "true" end
+    if prefix == "S" then return rest:gsub("\\n", "\n"):gsub("\\t", "\t") end
+    if prefix == "L" then
+        local out = {}
+        for piece in string.gmatch(rest, "[^,]+") do
+            local n = tonumber(piece)
+            if n then out[#out+1] = n else out[#out+1] = piece end
+        end
+        return out
+    end
+    if prefix == "D" then
+        local out = {}
+        for pair in string.gmatch(rest, "[^;]+") do
+            local k, val = string.match(pair, "^(.-)=(.*)$")
+            if k then
+                local n = tonumber(val)
+                if n then out[k] = n
+                elseif val == "true" then out[k] = true
+                elseif val == "false" then out[k] = false
+                else out[k] = val end
+            end
+        end
+        return out
+    end
+    return nil
+end
+
+-- ============================================================
+-- 3. СОХРАНЕНИЕ / ЗАГРУЗКА КОНФИГА (полностью безопасные)
+-- ============================================================
+local function FIX_save(name)
+    if type(writefile) ~= "function" then
+        pcall(function() getgenv().FH_Notify("FH", "Нет writefile", 4) end)
+        return false
+    end
+    if not FIX_ensureDir() then
+        pcall(function() getgenv().FH_Notify("FH", "Не создал папку", 4) end)
+        return false
+    end
+
+    local Opts = getgenv().Options
+    if not Opts then
+        pcall(function() getgenv().FH_Notify("FH", "Options не найден", 4) end)
+        return false
+    end
+
+    local lines = {"-- FortniHub Config (FIXED): "..tostring(name), "-- "..os.date("%Y-%m-%d %H:%M:%S")}
+    local count = 0
+
+    for optionName, option in pairs(Opts) do
+        if option and option.Value ~= nil then
+            local ok, ser = pcall(FIX_serialize, option.Value)
+            if ok and ser then
+                lines[#lines+1] = optionName.."\t"..ser
+                count = count + 1
+            end
+        end
+    end
+
+    local path = FIX_Dir..name..FIX_Ext
+    local ok = pcall(writefile, path, table.concat(lines, "\n"))
+
+    if ok then
+        pcall(function() getgenv().FH_Notify("FH", "Сохранено: "..name.." ("..count..")", 3) end)
+        return true
+    end
+    pcall(function() getgenv().FH_Notify("FH", "Ошибка сохранения", 3) end)
+    return false
+end
+
+local function FIX_load(name)
+    if type(readfile) ~= "function" then
+        pcall(function() getgenv().FH_Notify("FH", "Нет readfile", 4) end)
+        return false
+    end
+
+    local Opts = getgenv().Options
+    if not Opts then
+        pcall(function() getgenv().FH_Notify("FH", "Options не найден", 4) end)
+        return false
+    end
+
+    local path = FIX_Dir..name..FIX_Ext
+    local ok, data = pcall(readfile, path)
+    if not ok or type(data) ~= "string" then
+        pcall(function() getgenv().FH_Notify("FH", "Ошибка чтения", 3) end)
+        return false
+    end
+
+    local loaded = 0
+    local BS = getgenv().FH_BindState
+    local Reg = getgenv().FH_OnChangedRegistry
+
+    for line in string.gmatch(data, "[^\r\n]+") do
+        if line:sub(1, 2) ~= "--" then
+            local key, ser = string.match(line, "^([^\t]+)\t(.+)$")
+            if key and ser then
+                local ok2, val = pcall(FIX_deserialize, ser)
+                if ok2 and val ~= nil and Opts[key] then
+                    -- SetValue может вызывать callback'и, оборачиваем в pcall
+                    pcall(function() Opts[key]:SetValue(val) end)
+
+                    -- Обновляем состояние биндов
+                    if BS and key:sub(1, 9) == "BIND_KEY_" then
+                        local id = key:sub(10)
+                        if BS[id] then
+                            if typeof(val) == "EnumItem" then
+                                BS[id].key = val
+                            else
+                                BS[id].key = nil
+                            end
+                        end
+                    end
+
+                    -- Дублируем вызов callback'а отдельно, тоже безопасно
+                    if Reg and Reg[key] then
+                        pcall(Reg[key], val)
+                    end
+
+                    loaded = loaded + 1
+                end
+            end
+        end
+    end
+
+    pcall(function() getgenv().FH_Notify("FH", "Загружено: "..name.." ("..loaded..")", 3) end)
+    return true
+end
+
+local function FIX_list()
+    local out = {}
+    if type(listfiles) ~= "function" then return out end
+    if not FIX_ensureDir() then return out end
+    local ok, files = pcall(listfiles, FIX_Dir)
+    if not ok or type(files) ~= "table" then return out end
+    for _, f in ipairs(files) do
+        local name = string.match(f, "([^/\\]+)"..FIX_Ext:gsub("%.", "%%.").."$")
+        if name then out[#out+1] = name end
+    end
+    return out
+end
+
+-- ============================================================
+-- 4. НОВЫЙ UI РАЗДЕЛ "CONFIG (FIXED)" в настройках
+-- ============================================================
+do
+    local Tabs = getgenv().FH_Tabs
+    if not Tabs or not Tabs.Settings then
+        warn("[FIX] Не найден Tabs.Settings")
+    else
+        local sec = Tabs.Settings:AddSection({Name="Config (FIXED)"})
+
+        local currentList = FIX_list()
+        if #currentList == 0 then currentList = {"(нет конфигов)"} end
+
+        local drop = sec:AddDropdown("FIX_ConfigPick", {
+            Title = "Выбрать конфиг",
+            Values = currentList,
+            Default = currentList[1],
+        })
+
+        sec:AddInput("FIX_ConfigName", {
+            Title = "Имя конфига",
+            Default = "my_config",
+        })
+
+        local function refresh()
+            local list = FIX_list()
+            if #list == 0 then list = {"(нет конфигов)"} end
+            pcall(function()
+                drop:SetValues(list)
+                if drop.Generate then drop:Generate() end
+            end)
+        end
+
+        sec:AddButton({Title = "Сохранить", Callback = function()
+            local nameOpt = getgenv().Options.FIX_ConfigName
+            local name = nameOpt and nameOpt.Value or "my_config"
+            if type(name) ~= "string" or name == "" then
+                pcall(function() getgenv().FH_Notify("FH", "Введи имя", 3) end)
+                return
+            end
+            if FIX_save(name) then refresh() end
+        end})
+
+        sec:AddButton({Title = "Загрузить", Callback = function()
+            local pick = getgenv().Options.FIX_ConfigPick
+            local name = pick and pick.Value
+            if type(name) ~= "string" or name == "" or name == "(нет конфигов)" then
+                pcall(function() getgenv().FH_Notify("FH", "Выбери конфиг", 3) end)
+                return
+            end
+            FIX_load(name)
+        end})
+
+        sec:AddButton({Title = "Удалить", Callback = function()
+            local pick = getgenv().Options.FIX_ConfigPick
+            local name = pick and pick.Value
+            if type(name) ~= "string" or name == "" or name == "(нет конфигов)" then
+                pcall(function() getgenv().FH_Notify("FH", "Выбери конфиг", 3) end)
+                return
+            end
+            if type(delfile) == "function" then
+                pcall(delfile, FIX_Dir..name..FIX_Ext)
+                pcall(function() getgenv().FH_Notify("FH", "Удалено: "..name, 2) end)
+                refresh()
+            end
+        end})
+
+        sec:AddButton({Title = "Обновить список", Callback = refresh})
+
+        print("[FIX] Config (FIXED) раздел добавлен в Settings")
+    end
+end
+
+-- ============================================================
+-- 5. ИСПРАВЛЕННЫЙ ПЛЕЕР ЭМОЦИЙ
+-- ============================================================
+do
+    local Tabs = getgenv().FH_Tabs
+    if not Tabs or not Tabs.Animations then
+        warn("[FIX] Не найден Tabs.Animations")
+    else
+        local sec = Tabs.Animations:AddSection({Name="Emotes (FIXED)"})
+
+        local EMOTE_LIST = {
+            ["Around Town"]        = 3576747102,
+            ["Fashionable"]        = 3576745472,
+            ["Swish"]              = 3821527813,
+            ["Top Rock"]           = 3570535774,
+            ["Fancy Feet"]         = 3934988903,
+            ["Idol"]               = 4102317848,
+            ["Sneaky"]             = 3576754235,
+            ["Robot"]              = 3576721660,
+            ["Louder"]             = 3576751796,
+            ["Twirl"]              = 3716633898,
+            ["Bodybuilder"]        = 3994130516,
+            ["Jacks"]              = 3570649048,
+            ["Shuffle"]            = 4391208058,
+            ["Dorky Dance"]        = 4212499637,
+            ["Dizzy"]              = 3934986896,
+            ["T"]                  = 3576719440,
+            ["Air Dance"]          = 4646302011,
+            ["TMNT Dance"]         = 18665886405,
+            ["Line Dance"]         = 4049646104,
+            ["Break Dance"]        = 5915773992,
+            ["Zombie"]             = 4212496830,
+            ["Baby Dance"]         = 4272484885,
+            ["Cha Cha"]            = 6865013133,
+            ["Dolphin Dance"]      = 5938365243,
+            ["Y"]                  = 4391211308,
+            ["Samba"]              = 6869813008,
+            ["Side to Side"]       = 3762641826,
+            ["Tree"]               = 4049634387,
+            ["Godlike"]            = 3823158750,
+            ["Keeping Time"]       = 4646306072,
+            ["Tantrum"]            = 5104374556,
+            ["Rock On"]            = 5915782672,
+            ["Hero Landing"]       = 5104377791,
+            ["Fishing"]            = 3994129128,
+            ["Floss Dance"]        = 5917570207,
+            ["Get Out"]            = 3934984583,
+            ["Victory Dance"]      = 15506503658,
+            ["Monkey"]             = 3716636630,
+            ["Greatest"]           = 3762654854,
+            ["Jumping Wave"]       = 4940602656,
+            ["Haha"]               = 4102315500,
+            ["Agree"]              = 4849487550,
+            ["Mini Kong"]          = 17000058939,
+            ["Festive Dance"]      = 15679955281,
+            ["Jumping Cheer"]      = 5895009708,
+            ["Sleep"]              = 4689362868,
+            ["Disagree"]           = 4849495710,
+            ["Happy"]              = 4849499887,
+            ["Bored"]              = 5230661597,
+            ["High Wave"]          = 5915776835,
+            ["Cower"]              = 4940597758,
+            ["Rock n Roll"]        = 15506496093,
+            ["Shy"]                = 3576717965,
+            ["Curtsy"]             = 4646306583,
+            ["Celebrate"]          = 3994127840,
+            ["Confused"]           = 4940592718,
+            ["Beckon"]             = 5230615437,
+            ["Sad"]                = 4849502101,
+            ["Cha-Cha"]            = 3696764866,
+            ["Chicken Dance"]      = 4849493309,
+            ["Sandwich Dance"]     = 4390121879,
+            ["Salute"]             = 3360689775,
+            ["Stadium"]            = 3360686498,
+            ["Bunny Hop"]          = 4646296016,
+            ["Swag Walk"]          = 10478377385,
+            ["Superhero Reveal"]   = 3696759798,
+            ["Hype Dance"]         = 3696757129,
+            ["Heisman Pose"]       = 3696763549,
+            ["Point2"]             = 3576823880,
+            ["Vroom Vroom"]        = 18526410572,
+            ["Tilt"]               = 3360692915,
+            ["Applaud"]            = 5915779043,
+            ["Hello"]              = 3576686446,
+            ["Vans Ollie"]         = 18305539673,
+            ["Shrug"]              = 3576968026,
+            ["Wally West"]         = 133948663586698,
+            ["Take The L"]         = 123159156696507,
+            ["Belly Dancing"]      = 131939729732240,
+            ["CaramellDansen"]     = 93105950995997,
+            ["Rambunctious"]       = 134311528115559,
+            ["Ballin"]             = 96293409369770,
+            ["Nyan Nyan!"]         = 73796726960568,
+            ["Skibidi"]            = 124828909173982,
+            ["Chronoshift"]        = 92600655160976,
+            ["Floating on Clouds"] = 111426928948833,
+            ["Jersey Joe"]         = 134149640725489,
+            ["Virtual Insanity"]   = 83261816934732,
+            ["Doodle Dance"]       = 107091254142209,
+            ["Club Penguin"]       = 98099211500155,
+            ["Kazotsky"]           = 97629500912487,
+            ["Miku Dance"]         = 117734400993750,
+            ["Gangnam Style"]      = 77205409178702,
+            ["Push-Up"]            = 117922227854118,
+            ["Split"]              = 98522218962476,
+            ["PROXIMA"]            = 81390693780805,
+            ["HeadBanging"]        = 87447252507832,
+            ["Assumptions"]        = 127507691649322,
+            ["Jumpstyle"]          = 99563839802389,
+            ["Flopping Fish"]      = 133142324349281,
+            ["Fancy Feets"]        = 124512151372711,
+            ["Absolute Cinema"]    = 97258018304125,
+            ["Griddy"]             = 116065653184749,
+            ["Paranoid"]           = 123407922818447,
+            ["Kawaii Groove"]      = 77152953688098,
+            ["Smeeze"]             = 131683926643291,
+            ["Onion"]              = 113890289455724,
+            ["Thinking"]           = 124584711308900,
+            ["Slenderman"]         = 81926508907412,
+            ["Macarena"]           = 91274761264433,
+            ["RONALDO"]            = 97547486465713,
+            ["Slickback"]          = 103789826265487,
+            ["Default Dance"]      = 80877772569772,
+            ["Family Guy"]         = 78459263478161,
+            ["SpongeBob Shuffle"]  = 107899954696611,
+            ["Electro Shuffle"]    = 96426537876059,
+            ["Foreign Shuffle"]    = 101507732056031,
+            ["Caipirinha"]         = 100165303717371,
+            ["Squidward Yell"]     = 109244554368414,
+            ["Teto Dance"]         = 93031502567721,
+            ["Michael Myers"]      = 88229016850146,
+            ["Torture Dance"]      = 116099356619436,
+            ["Mewing / Mogging"]   = 135493514352956,
+            ["Cute Jump"]          = 80556794144838,
+            ["Billy Bounce"]       = 126516908191316,
+            ["Dio Pose"]           = 76736978166708,
+            ["Golden Freddy"]      = 122463450997235,
+            ["Lethal Dance"]       = 77108921633993,
+            ["Plug Walk"]          = 100359724990859,
+            ["At Ease"]            = 76993139936388,
+            ["Conga"]              = 97547955535086,
+            ["Barrel"]             = 84511772437190,
+            ["Helicopter"]         = 84555218084038,
+            ["Jersey Joe2"]        = 115782117564871,
+            ["California Girl"]    = 132074413582912,
+            ["Shocked meme"]       = 129501229484294,
+            ["Car Transformation"] = 96887377943085,
+            ["Insanity"]           = 129843344424281,
+            ["Honored One"]        = 121643381580730,
+            ["Sukuna"]             = 91839607010745,
+            ["Dropper"]            = 130358790702800,
+            ["Be Not Afraid"]      = 70635223083942,
+            ["Helicopter2"]        = 119431985170060,
+            ["Nya Anime Dance"]    = 126647057611522,
+            ["Do that thang"]      = 113772829398170,
+            ["Squat?"]             = 95441477641149,
+        }
+
+        local names = {}
+        for name in pairs(EMOTE_LIST) do names[#names+1] = name end
+        table.sort(names, function(a, b) return a:lower() < b:lower() end)
+
+        local drop = sec:AddDropdown("FIX_EmotePick", {
+            Title = "Эмоция",
+            Values = names,
+            Default = "Default Dance",
+        })
+
+        local currentTrack = nil
+
+        local function stopTrack()
+            if currentTrack then
+                pcall(function() currentTrack:Stop(0) end)
+                pcall(function() currentTrack:Destroy() end)
+                currentTrack = nil
+            end
+        end
+
+        local function playEmote(name)
+            local id = EMOTE_LIST[name]
+            if not id then
+                pcall(function() getgenv().FH_Notify("FH", "Эмоция не найдена: "..tostring(name), 3) end)
+                return
+            end
+
+            local char = LocalPlayer.Character
+            if not char then
+                pcall(function() getgenv().FH_Notify("FH", "Персонаж не загружен", 2) end)
+                return
+            end
+
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if not hum then
+                pcall(function() getgenv().FH_Notify("FH", "Humanoid не найден", 2) end)
+                return
+            end
+
+            stopTrack()
+
+            local anim = Instance.new("Animation")
+            anim.AnimationId = "rbxassetid://"..tostring(id)
+
+            local track = nil
+
+            -- Метод 1: Animator (правильный для современных Roblox)
+            local animator = hum:FindFirstChildOfClass("Animator")
+            if not animator then
+                animator = hum:FindFirstChild("Animator")
+            end
+            if not animator then
+                pcall(function()
+                    animator = Instance.new("Animator")
+                    animator.Parent = hum
+                end)
+            end
+            if animator then
+                local ok, result = pcall(function() return animator:LoadAnimation(anim) end)
+                if ok and result then track = result end
+            end
+
+            -- Метод 2: Humanoid:LoadAnimation (устаревший, но иногда работает когда Animator не работает)
+            if not track then
+                local ok, result = pcall(function() return hum:LoadAnimation(anim) end)
+                if ok and result then track = result end
+            end
+
+            anim:Destroy()
+
+            if track then
+                local ok = pcall(function()
+                    track.Priority = Enum.AnimationPriority.Action4
+                    track.Looped = true
+                    track:Play(0.1, 1, 1)
+                end)
+                if ok then
+                    currentTrack = track
+                    pcall(function() getgenv().FH_Notify("FH", "Эмоция: "..name, 2) end)
+                    return
+                end
+            end
+
+            pcall(function() getgenv().FH_Notify("FH", "Не удалось запустить: "..name, 3) end)
+        end
+
+        sec:AddButton({Title = "Играть", Callback = function()
+            local v = drop.Value
+            if type(v) == "table" then v = v[1] end
+            if type(v) == "string" then playEmote(v) end
+        end})
+
+        sec:AddButton({Title = "Стоп", Callback = function()
+            stopTrack()
+            pcall(function() getgenv().FH_Notify("FH", "Остановлено", 2) end)
+        end})
+
+        -- Автостоп при респавне
+        LocalPlayer.CharacterAdded:Connect(function()
+            task.wait(0.2)
+            stopTrack()
+        end)
+
+        print("[FIX] Emotes (FIXED) раздел добавлен в Animations")
+    end
+end
+
+print("[FH] ============================================")
+print("[FH] FIXED PATCH applied successfully!")
+print("[FH] - Config (FIXED) в Настройках")
+print("[FH] - Emotes (FIXED) в Эмоциях")
+print("[FH] ============================================")
