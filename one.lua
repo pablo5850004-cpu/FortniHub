@@ -4690,7 +4690,7 @@ do
 end
 
 -- ============================================================
--- УТИЛИТЫ (с новым анти-флингом из KITI)
+-- УТИЛИТЫ
 -- ============================================================
 do
     local tU=Tabs.Utility
@@ -4856,11 +4856,10 @@ do
     end})
 
     -- ============================================================
-    -- АНТИ (НОВЫЙ АНТИ-ФЛИНГ ИЗ KITI)
+    -- АНТИ 
     -- ============================================================
     local antiSec=tU:AddSection({Name="Анти"})
-
-    -- ===== ANTI-FLING (KITI версия) =====
+    
     local antiFlingOn=false
     local flingCache,flingReg={},{}
     local flingConns={}
@@ -5236,8 +5235,8 @@ do
     cam.CameraSubject=thrp
 
     local speed=getgenv().FLING_TURBO_SPEED or 90
-    local laps=getgenv().FLING_TURBO_LAPS or 8
     local distance=getgenv().FLING_TURBO_DISTANCE or 8
+    local duration=getgenv().FLING_TURBO_DURATION or 2.5  -- новое: время работы
 
     local bodyVel=Instance.new("BodyVelocity")
     bodyVel.MaxForce=Vector3.new(9e9,9e9,9e9)
@@ -5245,41 +5244,46 @@ do
     bodyVel.Parent=hrp
 
     local tm=tick()
-    local maxTime=4
-
-    for i=1,laps do
-        if not ftOn then break end
-        if tick()-tm>maxTime then break end
+    local lap=0
+    while tick()-tm < duration and ftOn do
+        lap = lap + 1
         local tc2=tp.Character
         if not tc2 then break end
         local thrp2=tc2:FindFirstChild("HumanoidRootPart") or tc2:FindFirstChild("Head")
         if not thrp2 then break end
 
-        local angle = (i / laps) * math.pi * 4
-        local yOffset = math.sin(i * 0.7) * 2
+        local angle = lap * 1.2
+        local yOffset = math.sin(lap * 0.8) * 2
         local dir = Vector3.new(math.cos(angle), 0, math.sin(angle))
         local targetPos = thrp2.Position + Vector3.new(0, yOffset, 0)
         local startPos = targetPos - dir * distance
         local endPos = targetPos + dir * distance
 
-        -- 1) Телепорт в стартовую точку лицом к цели
         pcall(function()
             hrp.CFrame = CFrame.new(startPos, endPos)
         end)
         RunService.Heartbeat:Wait()
 
-        -- 2) Летим сквозь цель с умеренной скоростью (НЕ 800!)
         pcall(function()
             bodyVel.Velocity = dir * speed
             hrp.AssemblyLinearVelocity = dir * speed
             hrp.AssemblyAngularVelocity = Vector3.new(9999, 9999, 9999)
         end)
 
-        -- 3) Даём физике 3 кадра обработать столкновение
         RunService.Heartbeat:Wait()
         RunService.Heartbeat:Wait()
         RunService.Heartbeat:Wait()
     end
+
+    if bodyVel then bodyVel:Destroy() end
+    cam.CameraSubject=LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    pcall(function()
+        hrp.CFrame=oldPos
+        hrp.AssemblyLinearVelocity=oldVel
+        hrp.AssemblyAngularVelocity=oldAng
+    end)
+    getgenv().FLING_ACTIVE = math.max(0, (getgenv().FLING_ACTIVE or 1) - 1)
+end
 
     if bodyVel then bodyVel:Destroy() end
     cam.CameraSubject=LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
@@ -5817,23 +5821,58 @@ do
         end
         currentName = nil
     end
-    local function playEmoteByName(name)
-        local id = EMOTE_LIST[name]
-        if not id then return end
-        local c = LocalPlayer.Character
-        local hum = c and c:FindFirstChildOfClass("Humanoid")
-        if not hum then Notify("FH","Персонаж не загружен",2) return end
-        stopCurrent()
+   local function playEmoteByName(name)
+    local id = EMOTE_LIST[name]
+    if not id then return end
+    local c = LocalPlayer.Character
+    local hum = c and c:FindFirstChildOfClass("Humanoid")
+    if not hum then Notify("FH","Персонаж не загружен",2) return end
+    stopCurrent()
+
+    local track = nil
+
+    -- Метод 1: PlayEmoteAndGetAnimTrackById (современный, как в KITI)
+    local ok1, res1 = pcall(function() return hum:PlayEmoteAndGetAnimTrackById(tonumber(id)) end)
+    if ok1 and typeof(res1) == "Instance" and res1:IsA("AnimationTrack") then
+        track = res1
+    end
+
+    -- Метод 2: Animator:LoadAnimation
+    if not track then
         local anim = Instance.new("Animation")
         anim.AnimationId = "rbxassetid://"..tostring(id)
         local animator = hum:FindFirstChildOfClass("Animator")
         if not animator then
-            animator = hum:FindFirstChild("Animator")
-            if not animator then
-                animator = Instance.new("Animator")
-                animator.Parent = hum
-            end
+            animator = Instance.new("Animator")
+            animator.Parent = hum
         end
+        local ok2, t2 = pcall(function() return animator:LoadAnimation(anim) end)
+        if ok2 and t2 then track = t2 end
+        anim:Destroy()
+    end
+
+    -- Метод 3: Humanoid:LoadAnimation (deprecated, но иногда работает когда Animator молчит)
+    if not track then
+        local anim = Instance.new("Animation")
+        anim.AnimationId = "rbxassetid://"..tostring(id)
+        local ok3, t3 = pcall(function() return hum:LoadAnimation(anim) end)
+        if ok3 and t3 then track = t3 end
+        anim:Destroy()
+    end
+
+    if track then
+        pcall(function()
+            track.Priority = Enum.AnimationPriority.Action4
+            track.Looped = true
+            track:Play(0.1, 1, 1)
+        end)
+        currentTrack = track
+        currentName = name
+        Notify("FH", "Эмоция: "..name, 2)
+    else
+        Notify("FH", "Игра заблокировала эмоцию: "..name, 3)
+    end
+end
         local ok, track = pcall(function() return animator:LoadAnimation(anim) end)
         anim:Destroy()
         if ok and track then
