@@ -5438,7 +5438,6 @@ end
         removeFlingTool()
         stopAllFd()
     end
-end
 
 pcall(function() Window:SelectTab(1) end)
 print("[FH] ============================================")
