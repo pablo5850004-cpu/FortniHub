@@ -5030,7 +5030,7 @@ do
     AddConn("AntiFlingBeat",RunService.Heartbeat:Connect(function()
         if antiFlingOn then pcall(flingGuard,false) end
     end))
-    addOpt(antiSec, "AddToggle", "AntiFling", {Title="Анти-отброс (KITI)", Default=false}, function(v)
+    addOpt(antiSec, "AddToggle", "AntiFling", {Title="Анти-отброс", Default=false}, function(v)
         antiFlingOn=v
         if v then flingAttach() else flingRestore() end
     end)
@@ -5221,70 +5221,75 @@ do
         getgenv().FLING_ACTIVE = math.max(0, (getgenv().FLING_ACTIVE or 1) - 1)
     end
 
-    -- ==== TURBO FLING (новый режим) ====
-    -- Принцип: быстро пролетаем сквозь цель с разных сторон,
-    -- не залипаем, каждый проход под новым углом.
-    local function flingTurbo(tp)
-        if not tp or not tp.Character then return end
-        local hrp=getHRP()
-        if not hrp then return end
-        local tc=tp.Character
-        local thrp=tc:FindFirstChild("HumanoidRootPart") or tc:FindFirstChild("Head")
-        if not thrp then return end
-        getgenv().FLING_ACTIVE = (getgenv().FLING_ACTIVE or 0) + 1
-        local oldPos=hrp.CFrame
-        local oldVel=hrp.AssemblyLinearVelocity
-        local oldAng=hrp.AssemblyAngularVelocity
-        local cam=Workspace.CurrentCamera
-        cam.CameraSubject=thrp
+  local function flingTurbo(tp)
+    if not tp or not tp.Character then return end
+    local hrp=getHRP()
+    if not hrp then return end
+    local tc=tp.Character
+    local thrp=tc:FindFirstChild("HumanoidRootPart") or tc:FindFirstChild("Head")
+    if not thrp then return end
+    getgenv().FLING_ACTIVE = (getgenv().FLING_ACTIVE or 0) + 1
+    local oldPos=hrp.CFrame
+    local oldVel=hrp.AssemblyLinearVelocity
+    local oldAng=hrp.AssemblyAngularVelocity
+    local cam=Workspace.CurrentCamera
+    cam.CameraSubject=thrp
 
-        local speed=getgenv().FLING_TURBO_SPEED or 800
-        local laps=getgenv().FLING_TURBO_LAPS or 12
-        local distance=getgenv().FLING_TURBO_DISTANCE or 12
-        local bodyVel=Instance.new("BodyVelocity")
-        bodyVel.MaxForce=Vector3.new(9e9,9e9,9e9)
-        bodyVel.Parent=hrp
-        local tm=tick()
-        local maxTime=3
+    local speed=getgenv().FLING_TURBO_SPEED or 90
+    local laps=getgenv().FLING_TURBO_LAPS or 8
+    local distance=getgenv().FLING_TURBO_DISTANCE or 8
 
-        for i=1,laps do
-            if not ftOn then break end
-            if tick()-tm>maxTime then break end
-            local tc2=tp.Character
-            if not tc2 then break end
-            local thrp2=tc2:FindFirstChild("HumanoidRootPart") or tc2:FindFirstChild("Head")
-            if not thrp2 then break end
+    local bodyVel=Instance.new("BodyVelocity")
+    bodyVel.MaxForce=Vector3.new(9e9,9e9,9e9)
+    bodyVel.Velocity=Vector3.zero
+    bodyVel.Parent=hrp
 
-            -- Позиции входа и выхода сквозь цель
-            local angle = (i / laps) * math.pi * 4   -- 2 полных оборота вокруг цели
-            local yOffset = math.sin(i * 0.7) * 3    -- немного по высоте
-            local dir = Vector3.new(math.cos(angle), 0, math.sin(angle))
-            local startPos = thrp2.Position - dir * distance + Vector3.new(0, yOffset, 0)
-            local endPos = thrp2.Position + dir * distance + Vector3.new(0, yOffset, 0)
+    local tm=tick()
+    local maxTime=4
 
-            -- Телепорт в стартовую точку, выставляем огромную скорость
-            pcall(function()
-                hrp.CFrame = CFrame.new(startPos, endPos)
-                bodyVel.Velocity = (endPos - startPos).Unit * speed
-                hrp.AssemblyLinearVelocity = (endPos - startPos).Unit * speed
-                hrp.AssemblyAngularVelocity = Vector3.new(
-                    math.random(-9999,9999),
-                    math.random(-9999,9999),
-                    math.random(-9999,9999)
-                )
-            end)
-            RunService.Heartbeat:Wait()
-        end
+    for i=1,laps do
+        if not ftOn then break end
+        if tick()-tm>maxTime then break end
+        local tc2=tp.Character
+        if not tc2 then break end
+        local thrp2=tc2:FindFirstChild("HumanoidRootPart") or tc2:FindFirstChild("Head")
+        if not thrp2 then break end
 
-        if bodyVel then bodyVel:Destroy() end
-        cam.CameraSubject=LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        local angle = (i / laps) * math.pi * 4
+        local yOffset = math.sin(i * 0.7) * 2
+        local dir = Vector3.new(math.cos(angle), 0, math.sin(angle))
+        local targetPos = thrp2.Position + Vector3.new(0, yOffset, 0)
+        local startPos = targetPos - dir * distance
+        local endPos = targetPos + dir * distance
+
+        -- 1) Телепорт в стартовую точку лицом к цели
         pcall(function()
-            hrp.CFrame=oldPos
-            hrp.AssemblyLinearVelocity=oldVel
-            hrp.AssemblyAngularVelocity=oldAng
+            hrp.CFrame = CFrame.new(startPos, endPos)
         end)
-        getgenv().FLING_ACTIVE = math.max(0, (getgenv().FLING_ACTIVE or 1) - 1)
+        RunService.Heartbeat:Wait()
+
+        -- 2) Летим сквозь цель с умеренной скоростью (НЕ 800!)
+        pcall(function()
+            bodyVel.Velocity = dir * speed
+            hrp.AssemblyLinearVelocity = dir * speed
+            hrp.AssemblyAngularVelocity = Vector3.new(9999, 9999, 9999)
+        end)
+
+        -- 3) Даём физике 3 кадра обработать столкновение
+        RunService.Heartbeat:Wait()
+        RunService.Heartbeat:Wait()
+        RunService.Heartbeat:Wait()
     end
+
+    if bodyVel then bodyVel:Destroy() end
+    cam.CameraSubject=LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    pcall(function()
+        hrp.CFrame=oldPos
+        hrp.AssemblyLinearVelocity=oldVel
+        hrp.AssemblyAngularVelocity=oldAng
+    end)
+    getgenv().FLING_ACTIVE = math.max(0, (getgenv().FLING_ACTIVE or 1) - 1)
+end
 
     local function doFling(tp)
         local mode = getgenv().FLING_MODE or "Classic"
@@ -5327,7 +5332,7 @@ do
         if v then giveFlingTool() else removeFlingTool() end
     end)
     -- Показ текущего режима флинга (изменяется в Настройках)
-    flingSec:AddLabel("Режим: "..(getgenv().FLING_MODE or "Classic"))
+    pcall(function() flingSec:AddLabel("Режим: "..(getgenv().FLING_MODE or "Classic")) end)
     LocalPlayer.CharacterAdded:Connect(function()
         task.wait(1)
         if ftOn then giveFlingTool() end
@@ -7199,3 +7204,35 @@ print("[FH] GunModels, Skybox, Auras (with colors + crown fix), AntiAim, Avatars
 print("[FH] GameSounds, JumpCircle, RTX")
 print("[FH] Скрипт создан HOTI и Ve315. BETA версия.")
 print("[FH] ============================================")
+-- ============================================================
+-- ПАТЧ v20.3.1 — корректные дефолты Turbo
+-- ============================================================
+task.spawn(function()
+    task.wait(2)
+    -- новые значения по умолчанию для Turbo
+    getgenv().FLING_TURBO_SPEED = 90
+    getgenv().FLING_TURBO_LAPS = 8
+    getgenv().FLING_TURBO_DISTANCE = 8
+
+    -- обновляем слайдеры в настройках
+    pcall(function()
+        local o = Options.FlingTurboSpeed
+        if o then o:SetValue(90) end
+    end)
+    pcall(function()
+        local o = Options.FlingTurboLaps
+        if o then o:SetValue(8) end
+    end)
+    pcall(function()
+        local o = Options.FlingTurboDistance
+        if o then o:SetValue(8) end
+    end)
+
+    -- возвращаем Min для скорости на разумный диапазон
+    pcall(function()
+        local o = Options.FlingTurboSpeed
+        if o and o.Min ~= nil then o.Min = 30 end
+        if o and o.Max ~= nil then o.Max = 300 end
+    end)
+end)
+print("[FH] Patch v20.3.1 применён")
